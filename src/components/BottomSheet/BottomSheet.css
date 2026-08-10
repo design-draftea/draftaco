@@ -17,6 +17,11 @@
   transition: top 180ms ease, height 180ms ease;
 }
 
+.bottom-sheet__container--stable-scroll {
+  top: 0;
+  transition: none;
+}
+
 /* Overlay */
 .bottom-sheet__overlay {
   position: absolute;
@@ -75,6 +80,11 @@
   flex-direction: column;
   animation: slideUp 0.3s ease-out;
   pointer-events: auto;
+}
+
+.bottom-sheet--stable-scroll {
+  box-sizing: border-box;
+  padding-bottom: var(--bottom-sheet-keyboard-inset, 0px);
 }
 
 @keyframes slideUp {

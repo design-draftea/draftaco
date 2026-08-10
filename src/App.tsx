@@ -19,6 +19,7 @@ import { useBetslip } from './hooks/useBetslip'
 import { getBetslipTurboEligibleSelectionCount } from './hooks/betslipTurboBonus'
 import type { ProductMode } from './types/home'
 import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './utils/betslipLiveEvent'
+import type { PixKeyType } from './utils/pixKeyValidation'
 import { BrandLocalizationEffect } from './i18n/brandLocalization'
 import { LoginPage } from './pages/LoginPage'
 import type { BetSuccessReceipt } from './pages/BetSuccessPage'
@@ -221,22 +222,29 @@ type AuthScrollLockState = {
 }
 
 const loginMotionDurationMs = 320
-const loggedInInitialBalanceCents = 0
-const signupInitialBalanceCents = 0
+const loggedInInitialWithdrawableBalanceCents = 0
+const signupInitialWithdrawableBalanceCents = 0
+const promotionalBalanceCents = 2000
 const nubankDepositAccount: DepositAccount = {
   id: 'nubank',
   bankName: 'Nu Pagamentos S.A.',
   lastDigits: '548',
+  pixKeyType: 'cpf',
+  pixKeyValue: '12345678909',
 }
 const santanderDepositAccount: DepositAccount = {
   id: 'santander',
   bankName: 'Banco Santander (Brasil) S.A.',
   lastDigits: '217',
+  pixKeyType: 'phone',
+  pixKeyValue: '+5511982736451',
 }
 const caixaDepositAccount: DepositAccount = {
   id: 'caixa',
   bankName: 'Caixa Econômica Federal',
   lastDigits: '234',
+  pixKeyType: 'email',
+  pixKeyValue: 'usuario@exemplo.com',
 }
 const depositAccountCatalog: DepositAccount[] = [
   nubankDepositAccount,
@@ -257,7 +265,8 @@ function AppContent() {
   const signupDepositExitPathRef = useRef<string | null>(null)
   const authScrollLockRef = useRef<AuthScrollLockState | null>(null)
   const [authVariant, setAuthVariant] = useState<AuthVariant>('logged-out')
-  const [balanceCents, setBalanceCents] = useState(0)
+  const [withdrawableBalanceCents, setWithdrawableBalanceCents] = useState(0)
+  const playableBalanceCents = withdrawableBalanceCents + promotionalBalanceCents
   const [savedDepositAccounts, setSavedDepositAccounts] = useState<DepositAccount[]>([])
   const [activeDepositAccountId, setActiveDepositAccountId] = useState<DepositAccountId | null>(null)
   const nextDepositAccountId = useMemo(() => (
@@ -349,7 +358,7 @@ function AppContent() {
   const depositPanelInitialAmountCents = depositPanelOrigin === 'signup'
     ? signupPendingDepositAmountCents
     : null
-  const isDepositRequiredForBetting = authVariant === 'logged-in' && balanceCents <= 0
+  const isDepositRequiredForBetting = authVariant === 'logged-in' && playableBalanceCents <= 0
 
   const syncBrowserLocation = useCallback(() => {
     const nextPathname = window.location.pathname
@@ -544,7 +553,7 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(loggedInInitialBalanceCents)
+    setWithdrawableBalanceCents(loggedInInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
     setSignupPendingDepositAmountCents(null)
@@ -559,7 +568,7 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
     setSignupPendingDepositAmountCents(null)
@@ -580,7 +589,7 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
     setSignupPendingDepositAmountCents(null)
@@ -595,7 +604,7 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
     setSignupPendingDepositAmountCents(null)
@@ -740,15 +749,50 @@ function AppContent() {
     depositAmountCents: number,
     accountId: DepositAccountId,
   ) => {
-    setBalanceCents((currentBalanceCents) => currentBalanceCents + depositAmountCents)
+    setWithdrawableBalanceCents((currentBalanceCents) => currentBalanceCents + depositAmountCents)
     setSavedDepositAccounts((currentAccounts) => {
-      const savedAccountIds = new Set(currentAccounts.map((account) => account.id))
-      savedAccountIds.add(accountId)
+      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
 
-      return depositAccountCatalog.filter((account) => savedAccountIds.has(account.id))
+      const accountToSave = depositAccountCatalog.find((account) => account.id === accountId)
+      return accountToSave ? [...currentAccounts, accountToSave] : currentAccounts
     })
     setActiveDepositAccountId(accountId)
     setSignupPendingDepositAmountCents(null)
+  }, [])
+
+  const handleWithdrawalConfirmed = useCallback((withdrawalAmountCents: number) => {
+    const normalizedWithdrawalAmountCents = Number.isFinite(withdrawalAmountCents)
+      ? Math.max(0, Math.round(withdrawalAmountCents))
+      : 0
+
+    if (normalizedWithdrawalAmountCents <= 0) return
+
+    setWithdrawableBalanceCents((currentBalanceCents) => (
+      Math.max(0, currentBalanceCents - normalizedWithdrawalAmountCents)
+    ))
+  }, [])
+
+  const handleDepositAccountAdd = useCallback((
+    accountId: DepositAccountId,
+    pixKeyType: PixKeyType,
+    pixKeyValue: string,
+  ) => {
+    const accountTemplate = depositAccountCatalog.find((account) => account.id === accountId)
+    if (!accountTemplate) return
+
+    setSavedDepositAccounts((currentAccounts) => {
+      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
+
+      return [
+        ...currentAccounts,
+        {
+          ...accountTemplate,
+          pixKeyType,
+          pixKeyValue,
+        },
+      ]
+    })
+    setActiveDepositAccountId(accountId)
   }, [])
 
   const handleDepositAccountSelect = useCallback((accountId: DepositAccountId) => {
@@ -943,7 +987,7 @@ function AppContent() {
           <PromotionsPage
             activeProduct={activeProduct}
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             HeaderComponent={HeaderV2}
             isProfileOpen={isProfileOpen}
@@ -958,7 +1002,7 @@ function AppContent() {
         ) : isSportsV2Page ? (
           <SportsPageV2
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             isProfileOpen={isProfileOpen}
             onLoginClick={handleLoginOpen}
@@ -974,7 +1018,7 @@ function AppContent() {
           <Home
             activeProduct={activeProduct}
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             HeaderComponent={HeaderV2}
             isLiveEventSuppressed={isFullBetslipOpen}
@@ -1015,7 +1059,7 @@ function AppContent() {
         <Suspense fallback={null}>
           <BetslipPageV2
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             camisaPremiadaOutcomeOverride={camisaPremiadaOutcomeOverride}
             isCamisaPremiadaMode={isPremiadaMode}
             premiadaFeatureName={premiadaFeatureName}
@@ -1082,13 +1126,16 @@ function AppContent() {
         <ProfileBottomSheet
           isOpen={isProfileOpen}
           onClose={handleProfileClose}
-          balanceCents={balanceCents}
+          onWithdrawalConfirmed={handleWithdrawalConfirmed}
+          withdrawableBalanceCents={withdrawableBalanceCents}
+          promotionalBalanceCents={promotionalBalanceCents}
           depositFlow={{
             savedAccounts: savedDepositAccounts,
             activeAccountId: activeDepositAccountId,
             newBankAccountId: nextDepositAccountId,
             onRemoveAccount: handleDepositAccountRemove,
             onSelectAccount: handleDepositAccountSelect,
+            onAddAccount: handleDepositAccountAdd,
             onDepositConfirmed: handleDepositConfirmed,
           }}
         />

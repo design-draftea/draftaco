@@ -2,12 +2,16 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef, type ReactNo
 import { createPortal } from 'react-dom'
 import { CaretUpIcon } from '@phosphor-icons/react'
 import closeBS from '../../assets/iconsDraftaco/closeBS.svg'
+import { useStableKeyboardViewport } from '../../hooks/useStableKeyboardViewport'
 import { useTouchScrollFence } from '../../hooks/useTouchScrollFence'
 import './BottomSheet.css'
+
+type BottomSheetKeyboardBehavior = 'follow-viewport' | 'stable-scroll'
 
 interface BottomSheetProps {
   isOpen: boolean
   onClose: () => void
+  onCloseStart?: () => void
   title?: string
   titleIcon?: string
   leadingContent?: ReactNode
@@ -18,11 +22,14 @@ interface BottomSheetProps {
   sheetClassName?: string
   bodyClassName?: string
   hideScrollIndicator?: boolean
+  closeOnEscape?: boolean
+  keyboardBehavior?: BottomSheetKeyboardBehavior
 }
 
 export function BottomSheet({
   isOpen,
   onClose,
+  onCloseStart,
   title,
   titleIcon,
   leadingContent,
@@ -33,6 +40,8 @@ export function BottomSheet({
   sheetClassName = '',
   bodyClassName = '',
   hideScrollIndicator = false,
+  closeOnEscape = true,
+  keyboardBehavior = 'follow-viewport',
 }: BottomSheetProps) {
   const [isClosing, setIsClosing] = useState(false)
   const [shouldRender, setShouldRender] = useState(false)
@@ -45,6 +54,13 @@ export function BottomSheet({
   // O portal fica fora da página que já tem o fence: bloqueia aqui o pan nativo
   // do iOS (teclado aberto) para toques que começam na própria sheet/overlay.
   useTouchScrollFence(containerRef, isMounted)
+  useStableKeyboardViewport({
+    rootRef: containerRef,
+    scrollContainerSelector: '.bottom-sheet__body',
+    stableHeightCssVariable: '--bottom-sheet-viewport-height',
+    keyboardInsetCssVariable: '--bottom-sheet-keyboard-inset',
+    enabled: isMounted && keyboardBehavior === 'stable-scroll',
+  })
 
   // Check scroll position
   const handleScroll = () => {
@@ -87,9 +103,12 @@ export function BottomSheet({
   }, [isOpen, shouldRender, isClosing])
 
   const handleClose = useCallback(() => {
+    if (isClosing) return
+
     if (closeTimerRef.current !== null) {
       window.clearTimeout(closeTimerRef.current)
     }
+    onCloseStart?.()
     setIsClosing(true)
     closeTimerRef.current = window.setTimeout(() => {
       setShouldRender(false)
@@ -97,7 +116,7 @@ export function BottomSheet({
       closeTimerRef.current = null
       onClose()
     }, 300) // Match animation duration
-  }, [onClose])
+  }, [isClosing, onClose, onCloseStart])
 
   // Prevent body scroll when bottom sheet is open
   useEffect(() => {
@@ -113,7 +132,7 @@ export function BottomSheet({
   }, [isMounted])
 
   useLayoutEffect(() => {
-    if (!isMounted) return undefined
+    if (!isMounted || keyboardBehavior === 'stable-scroll') return undefined
 
     let lastViewportHeight = 0
     let lastViewportTop = -1
@@ -147,8 +166,10 @@ export function BottomSheet({
       window.removeEventListener('orientationchange', updateViewportStyle)
       window.visualViewport?.removeEventListener('resize', updateViewportStyle)
       window.visualViewport?.removeEventListener('scroll', updateViewportStyle)
+      containerRef.current?.style.removeProperty('--bottom-sheet-viewport-height')
+      containerRef.current?.style.removeProperty('--bottom-sheet-viewport-top')
     }
-  }, [isMounted])
+  }, [isMounted, keyboardBehavior])
 
   // Close on escape key
   useEffect(() => {
@@ -157,19 +178,23 @@ export function BottomSheet({
         handleClose()
       }
     }
-    if (isMounted) {
+    if (isMounted && closeOnEscape) {
       window.addEventListener('keydown', handleEscape)
     }
     return () => {
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [isMounted, handleClose])
+  }, [closeOnEscape, isMounted, handleClose])
 
   if (!isMounted) return null
 
   return createPortal(
     <div
-      className={['bottom-sheet__container', containerClassName].filter(Boolean).join(' ')}
+      className={[
+        'bottom-sheet__container',
+        keyboardBehavior === 'stable-scroll' ? 'bottom-sheet__container--stable-scroll' : '',
+        containerClassName,
+      ].filter(Boolean).join(' ')}
       ref={containerRef}
     >
       {/* Overlay - separate from bottom sheet for independent animation */}
@@ -180,7 +205,12 @@ export function BottomSheet({
 
       {/* Bottom Sheet */}
       <div
-        className={`bottom-sheet ${sheetClassName} ${isClosing ? 'bottom-sheet--closing' : ''}`}
+        className={[
+          'bottom-sheet',
+          keyboardBehavior === 'stable-scroll' ? 'bottom-sheet--stable-scroll' : '',
+          sheetClassName,
+          isClosing ? 'bottom-sheet--closing' : '',
+        ].filter(Boolean).join(' ')}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Fixed */}
@@ -208,7 +238,7 @@ export function BottomSheet({
         {/* Body - Scrollable */}
         <div className="bottom-sheet__body-wrapper">
           <div
-            className={`bottom-sheet__body ${bodyClassName}`}
+            className={['bottom-sheet__body', bodyClassName].filter(Boolean).join(' ')}
             ref={bodyRef}
             onScroll={handleScroll}
           >
