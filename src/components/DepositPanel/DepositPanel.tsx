@@ -16,6 +16,7 @@ import iconSetaTrocarBanco from '../../assets/iconsDraftaco/iconSetaTrocarBanco.
 import iconVoltarExcluirConta from '../../assets/iconsDraftaco/iconVoltarExcluirConta.svg'
 import qrCodeImage from '../../assets/iconsDraftaco/qrCode.png'
 import { useTouchScrollFence } from '../../hooks/useTouchScrollFence'
+import type { PixKeyType } from '../../utils/pixKeyValidation'
 import { BottomSheet } from '../BottomSheet/BottomSheet'
 import './DepositPanel.css'
 
@@ -44,6 +45,8 @@ export interface DepositAccount {
   id: DepositAccountId
   bankName: string
   lastDigits: string
+  pixKeyType: PixKeyType
+  pixKeyValue: string
 }
 
 type PanelMotionState = 'entering' | 'open' | 'closing'

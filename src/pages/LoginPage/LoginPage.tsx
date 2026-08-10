@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type AnimationEvent, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type AnimationEvent, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { flushSync } from 'react-dom'
 import backHeaderIcon from '../../assets/iconsDraftaco/backHeader.svg'
 import closeBSIcon from '../../assets/iconsDraftaco/closeBS.svg'
@@ -29,6 +29,12 @@ import imgVerificaIdentidadeLogo from '../../assets/iconsDraftaco/imgVerificaIde
 import logoUnico from '../../assets/iconsDraftaco/logoUnico.png'
 import flagBrasil from '../../assets/iconPaises/brasil.png'
 import { BottomSheet } from '../../components/BottomSheet'
+import {
+  FacialVerificationCapture,
+  IdentityVerificationLoading,
+} from '../../components/IdentityVerification'
+import { useStableKeyboardViewport } from '../../hooks/useStableKeyboardViewport'
+import { useTapFocusScrollGuard } from '../../hooks/useTapFocusScrollGuard'
 import { useTouchScrollFence } from '../../hooks/useTouchScrollFence'
 import {
   PROMO_COUNTDOWN_TICK_MS,
@@ -37,6 +43,11 @@ import {
   getPromoCountdownParts,
   type PromoCountdownParts,
 } from '../../utils/garantidaPromoCountdown'
+import {
+  isBrazilMobilePhoneValid,
+  isCpfValid,
+  normalizeBrazilPhone,
+} from '../../utils/personalDataValidation'
 import './LoginPage.css'
 
 type AuthMode = 'login' | 'signup'
@@ -121,16 +132,6 @@ interface ViaCepResponse {
 
 interface IbgeCityResponse {
   nome?: string
-}
-
-interface ScrollSnapshot {
-  windowX: number
-  windowY: number
-  scrollContainers: Array<{
-    element: HTMLElement
-    left: number
-    top: number
-  }>
 }
 
 const loginEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -339,22 +340,6 @@ const isSignupPasswordValid = (value: string) => (
   signupPasswordRequirements.every(({ isMet }) => isMet(value))
 )
 
-const getCpfCheckDigit = (baseDigits: string) => {
-  const initialWeight = baseDigits.length + 1
-  const sum = Array.from(baseDigits).reduce((total, digit, index) => (
-    total + Number(digit) * (initialWeight - index)
-  ), 0)
-  const remainder = 11 - (sum % 11)
-
-  return remainder >= 10 ? 0 : remainder
-}
-
-// CPF de teste liberado para o protótipo.
-const prototypeAllowedCpf = '11111111111'
-
-// Celular de teste liberado para o protótipo.
-const prototypeAllowedPhone = '11111111111'
-
 // CEP de teste liberado para o protótipo, com endereço completo de exemplo.
 const prototypeAllowedCep = '11111111'
 const prototypeAllowedAddress = {
@@ -363,31 +348,6 @@ const prototypeAllowedAddress = {
   city: 'São Paulo',
   neighborhood: 'Centro',
   street: 'Avenida Paulista',
-}
-
-const brazilMobileAreaCodes = new Set([
-  '11', '12', '13', '14', '15', '16', '17', '18', '19',
-  '21', '22', '24', '27', '28',
-  '31', '32', '33', '34', '35', '37', '38',
-  '41', '42', '43', '44', '45', '46', '47', '48', '49',
-  '51', '53', '54', '55',
-  '61', '62', '63', '64', '65', '66', '67', '68', '69',
-  '71', '73', '74', '75', '77', '79',
-  '81', '82', '83', '84', '85', '86', '87', '88', '89',
-  '91', '92', '93', '94', '95', '96', '97', '98', '99',
-])
-
-const isCpfValid = (value: string) => {
-  const digits = onlyDigits(value)
-
-  if (digits.length !== 11) return false
-  if (digits === prototypeAllowedCpf) return true
-  if (/^(\d)\1{10}$/.test(digits)) return false
-
-  const firstCheckDigit = getCpfCheckDigit(digits.slice(0, 9))
-  const secondCheckDigit = getCpfCheckDigit(digits.slice(0, 10))
-
-  return firstCheckDigit === Number(digits[9]) && secondCheckDigit === Number(digits[10])
 }
 
 const getCpfErrorMessage = (value: string) => {
@@ -430,38 +390,6 @@ const formatCep = (value: string) => {
   return secondGroup ? `${firstGroup}-${secondGroup}` : firstGroup
 }
 
-const normalizeBrazilPhone = (value: string) => {
-  const digits = onlyDigits(value)
-
-  if (digits.startsWith('55') && digits.length > 11) {
-    return digits.slice(2, 13)
-  }
-
-  return digits.slice(0, 11)
-}
-
-const isSequentialDigits = (value: string) => {
-  if (value.length < 4) return false
-
-  return '01234567890123456789'.includes(value)
-    || '98765432109876543210'.includes(value)
-}
-
-const isBrazilMobilePhoneValid = (value: string) => {
-  const digits = normalizeBrazilPhone(value)
-  const areaCode = digits.slice(0, 2)
-  const subscriberNumber = digits.slice(2)
-
-  if (digits.length !== 11) return false
-  if (digits === prototypeAllowedPhone) return true
-  if (!brazilMobileAreaCodes.has(areaCode)) return false
-  if (!subscriberNumber.startsWith('9')) return false
-  if (/^(\d)\1{8}$/.test(subscriberNumber)) return false
-  if (isSequentialDigits(subscriberNumber) || isSequentialDigits(subscriberNumber.slice(1))) return false
-
-  return true
-}
-
 const formatBrazilPhone = (value: string) => {
   const digits = normalizeBrazilPhone(value)
   const areaCode = digits.slice(0, 2)
@@ -496,144 +424,6 @@ const focusPhoneValidationInput = () => {
   }
 
   window.scrollTo(scrollX, scrollY)
-}
-
-const isKeyboardFocusElement = (element: Element | null) => {
-  if (!(element instanceof HTMLElement)) return false
-  if (element.isContentEditable) return true
-  if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) return true
-  if (!(element instanceof HTMLInputElement)) return false
-
-  return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(element.type)
-}
-
-const hasScrollableOverflow = (element: HTMLElement) => {
-  const style = window.getComputedStyle(element)
-
-  return /(auto|scroll|overlay)/.test(`${style.overflow}${style.overflowX}${style.overflowY}`)
-}
-
-const captureScrollSnapshot = (element: HTMLElement): ScrollSnapshot => {
-  const scrollContainers: ScrollSnapshot['scrollContainers'] = []
-  let parentElement = element.parentElement
-
-  while (parentElement) {
-    if (hasScrollableOverflow(parentElement)) {
-      scrollContainers.push({
-        element: parentElement,
-        left: parentElement.scrollLeft,
-        top: parentElement.scrollTop,
-      })
-    }
-
-    parentElement = parentElement.parentElement
-  }
-
-  return {
-    windowX: window.scrollX,
-    windowY: window.scrollY,
-    scrollContainers,
-  }
-}
-
-const restoreScrollSnapshot = (snapshot: ScrollSnapshot) => {
-  window.scrollTo(snapshot.windowX, snapshot.windowY)
-
-  snapshot.scrollContainers.forEach(({ element, left, top }) => {
-    element.scrollLeft = left
-    element.scrollTop = top
-  })
-}
-
-const restoreScrollSnapshotAfterFocus = (snapshot: ScrollSnapshot) => {
-  restoreScrollSnapshot(snapshot)
-
-  window.requestAnimationFrame(() => {
-    restoreScrollSnapshot(snapshot)
-    window.requestAnimationFrame(() => restoreScrollSnapshot(snapshot))
-  })
-
-  window.setTimeout(() => restoreScrollSnapshot(snapshot), 80)
-  window.setTimeout(() => restoreScrollSnapshot(snapshot), 160)
-  window.setTimeout(() => restoreScrollSnapshot(snapshot), 320)
-}
-
-const TAP_MOVEMENT_TOLERANCE_PX = 10
-
-function useTapFocusScrollGuard({
-  inputRef,
-  isEnabled,
-  onFocus,
-}: {
-  inputRef: { current: HTMLInputElement | null }
-  isEnabled: boolean
-  onFocus?: () => void
-}) {
-  const pendingScrollSnapshotRef = useRef<ScrollSnapshot | null>(null)
-  const pendingTapRef = useRef<{ pointerId: number; startX: number; startY: number } | null>(null)
-
-  const handleFieldPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!isEnabled) return
-    if (event.pointerType === 'mouse' && event.button !== 0) return
-    if (event.target instanceof Element && event.target.closest('button')) {
-      pendingTapRef.current = null
-      return
-    }
-    if (document.activeElement === inputRef.current && event.target === inputRef.current) return
-
-    // Bloqueia o foco nativo (que rola a tela), mas NÃO foca ainda: o foco é
-    // decidido no pointerup, somente se o gesto for um toque — um drag de
-    // scroll dispara pointercancel (touch) ou excede a tolerância de movimento.
-    event.preventDefault()
-    pendingTapRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-    }
-  }
-
-  const handleFieldPointerUp = (event: ReactPointerEvent<HTMLElement>) => {
-    if (event.target instanceof Element && event.target.closest('button')) {
-      pendingTapRef.current = null
-      return
-    }
-
-    const pendingTap = pendingTapRef.current
-    pendingTapRef.current = null
-
-    if (!isEnabled || !pendingTap || pendingTap.pointerId !== event.pointerId) return
-
-    const tapDistance = Math.hypot(event.clientX - pendingTap.startX, event.clientY - pendingTap.startY)
-
-    if (tapDistance > TAP_MOVEMENT_TOLERANCE_PX) return
-
-    const input = inputRef.current
-
-    if (!input) return
-
-    const scrollSnapshot = captureScrollSnapshot(input)
-
-    pendingScrollSnapshotRef.current = scrollSnapshot
-    input.focus({ preventScroll: true })
-    restoreScrollSnapshotAfterFocus(scrollSnapshot)
-  }
-
-  const handleFieldPointerCancel = () => {
-    pendingTapRef.current = null
-  }
-
-  const handleFocus = () => {
-    onFocus?.()
-
-    if (!isEnabled || pendingScrollSnapshotRef.current === null) return
-
-    const scrollSnapshot = pendingScrollSnapshotRef.current
-
-    pendingScrollSnapshotRef.current = null
-    restoreScrollSnapshotAfterFocus(scrollSnapshot)
-  }
-
-  return { handleFieldPointerDown, handleFieldPointerUp, handleFieldPointerCancel, handleFocus }
 }
 
 function LoginInput({
@@ -1603,234 +1393,18 @@ export function LoginPage({
     return () => mediaQueryList.removeEventListener('change', updateMobileStatus)
   }, [])
 
-  useLayoutEffect(() => {
-    const loginPageElement = loginPageRef.current
-
-    if (!loginPageElement) return undefined
-
-    let stableViewportHeight = 0
-    let keyboardInset = 0
-    let viewportUpdateTimer: number | null = null
-    let revealTimer: number | null = null
-
-    const readLayoutViewportHeight = () => Math.max(
-      window.innerHeight || 0,
-      document.documentElement.clientHeight || 0,
-      1
-    )
-
-    // Bottom edge of the area the keyboard leaves visible, in layout viewport coords.
-    const readVisibleViewportBottom = () => {
-      const visualViewport = window.visualViewport
-
-      if (!visualViewport) return readLayoutViewportHeight()
-
-      return visualViewport.offsetTop + visualViewport.height
-    }
-
-    const revealFocusedField = () => {
-      const activeElement = document.activeElement
-
-      if (!(activeElement instanceof HTMLElement)) return
-      if (!isKeyboardFocusElement(activeElement) || !loginPageElement.contains(activeElement)) return
-
-      const scrollContainer = activeElement.closest('.login-page__container')
-
-      if (!(scrollContainer instanceof HTMLElement)) return
-
-      const hiddenBelow = activeElement.getBoundingClientRect().bottom + 24 - readVisibleViewportBottom()
-
-      if (hiddenBelow > 0) {
-        scrollContainer.scrollTop += hiddenBelow
-      }
-    }
-
-    // A late pass wins over the focus scroll-restore timers (up to 320ms).
-    const scheduleFocusedFieldReveal = () => {
-      window.requestAnimationFrame(revealFocusedField)
-
-      if (revealTimer !== null) window.clearTimeout(revealTimer)
-      revealTimer = window.setTimeout(() => {
-        revealTimer = null
-        revealFocusedField()
-      }, 400)
-    }
-
-    const updateKeyboardInset = () => {
-      const visibleBottom = readVisibleViewportBottom()
-
-      // Área visível maior que a altura congelada = a viewport cresceu (não é teclado);
-      // atualiza a base mesmo com input focado para não deixar buraco no fundo.
-      if (visibleBottom > stableViewportHeight + 1) {
-        const nextViewportHeight = readLayoutViewportHeight()
-
-        if (Math.abs(nextViewportHeight - stableViewportHeight) >= 1) {
-          stableViewportHeight = nextViewportHeight
-          loginPageElement.style.setProperty('--login-page-stable-height', `${nextViewportHeight}px`)
-        }
-      }
-
-      const layoutHeight = stableViewportHeight || readLayoutViewportHeight()
-      const nextKeyboardInset = Math.max(0, Math.round(layoutHeight - visibleBottom))
-
-      if (Math.abs(nextKeyboardInset - keyboardInset) < 2) return
-
-      keyboardInset = nextKeyboardInset
-      loginPageElement.style.setProperty('--login-page-keyboard-inset', `${nextKeyboardInset}px`)
-
-      if (nextKeyboardInset > 0) {
-        scheduleFocusedFieldReveal()
-      }
-    }
-
-    const updateStableViewportHeight = (force = false) => {
-      if (force || !isKeyboardFocusElement(document.activeElement)) {
-        const nextViewportHeight = readLayoutViewportHeight()
-
-        if (Math.abs(nextViewportHeight - stableViewportHeight) >= 1) {
-          stableViewportHeight = nextViewportHeight
-          loginPageElement.style.setProperty('--login-page-stable-height', `${nextViewportHeight}px`)
-        }
-      }
-
-      updateKeyboardInset()
-    }
-
-    const scheduleStableViewportHeightUpdate = (force = false) => {
-      if (viewportUpdateTimer !== null) {
-        window.clearTimeout(viewportUpdateTimer)
-      }
-
-      viewportUpdateTimer = window.setTimeout(() => {
-        viewportUpdateTimer = null
-        updateStableViewportHeight(force)
-      }, force ? 320 : 120)
-    }
-
-    updateStableViewportHeight(true)
-
-    const handleViewportResize = () => {
-      updateKeyboardInset()
-      scheduleStableViewportHeightUpdate()
-    }
-    const handleOrientationChange = () => scheduleStableViewportHeightUpdate(true)
-    const handleVisualViewportChange = () => updateKeyboardInset()
-
-    // Cobre foco programático (setinhas do teclado iOS) com o teclado já aberto,
-    // quando nenhum evento de viewport dispara.
-    const handleFocusInReveal = (event: FocusEvent) => {
-      const target = event.target instanceof Element ? event.target : null
-
-      if (!target || !loginPageElement.contains(target)) return
-      if (!isKeyboardFocusElement(target)) return
-
-      scheduleFocusedFieldReveal()
-    }
-
-    window.addEventListener('resize', handleViewportResize)
-    window.addEventListener('orientationchange', handleOrientationChange)
-    window.visualViewport?.addEventListener('resize', handleVisualViewportChange)
-    window.visualViewport?.addEventListener('scroll', handleVisualViewportChange)
-    document.addEventListener('focusin', handleFocusInReveal)
-
-    return () => {
-      if (viewportUpdateTimer !== null) {
-        window.clearTimeout(viewportUpdateTimer)
-      }
-
-      if (revealTimer !== null) {
-        window.clearTimeout(revealTimer)
-      }
-
-      window.removeEventListener('resize', handleViewportResize)
-      window.removeEventListener('orientationchange', handleOrientationChange)
-      window.visualViewport?.removeEventListener('resize', handleVisualViewportChange)
-      window.visualViewport?.removeEventListener('scroll', handleVisualViewportChange)
-      document.removeEventListener('focusin', handleFocusInReveal)
-      loginPageElement.style.removeProperty('--login-page-stable-height')
-      loginPageElement.style.removeProperty('--login-page-keyboard-inset')
-    }
-  }, [])
+  useStableKeyboardViewport({
+    rootRef: loginPageRef,
+    scrollContainerSelector: '.login-page__container',
+    stableHeightCssVariable: '--login-page-stable-height',
+    keyboardInsetCssVariable: '--login-page-keyboard-inset',
+  })
 
   useTouchScrollFence(loginPageRef)
-
-  useLayoutEffect(() => {
-    const loginPageElement = loginPageRef.current
-
-    if (!loginPageElement) return undefined
-
-    let restoreFrame: number | null = null
-    const restoreTimers: number[] = []
-
-    const hasWindowScroll = () => (
-      window.scrollX !== 0
-      || window.scrollY !== 0
-      || document.documentElement.scrollTop !== 0
-      || document.body.scrollTop !== 0
-    )
-
-    const restoreWindowScroll = () => {
-      document.documentElement.scrollTop = 0
-      document.body.scrollTop = 0
-
-      if (window.scrollX !== 0 || window.scrollY !== 0) {
-        window.scrollTo(0, 0)
-      }
-    }
-
-    const scheduleWindowScrollRestore = () => {
-      restoreWindowScroll()
-
-      if (restoreFrame !== null) {
-        window.cancelAnimationFrame(restoreFrame)
-      }
-
-      restoreTimers.splice(0).forEach((timer) => window.clearTimeout(timer))
-
-      restoreFrame = window.requestAnimationFrame(() => {
-        restoreFrame = null
-        restoreWindowScroll()
-      })
-
-      ;[80, 160, 320].forEach((delay) => {
-        restoreTimers.push(window.setTimeout(restoreWindowScroll, delay))
-      })
-    }
-
-    const handleFocusIn = (event: FocusEvent) => {
-      const target = event.target instanceof Element ? event.target : null
-
-      if (!target || !loginPageElement.contains(target)) return
-      if (!isKeyboardFocusElement(target)) return
-
-      scheduleWindowScrollRestore()
-    }
-
-    const handleWindowScroll = () => {
-      if (!hasWindowScroll()) return
-      if (!isKeyboardFocusElement(document.activeElement)) return
-
-      scheduleWindowScrollRestore()
-    }
-
-    document.addEventListener('focusin', handleFocusIn)
-    window.addEventListener('scroll', handleWindowScroll, { passive: true })
-
-    return () => {
-      if (restoreFrame !== null) {
-        window.cancelAnimationFrame(restoreFrame)
-      }
-
-      restoreTimers.splice(0).forEach((timer) => window.clearTimeout(timer))
-      document.removeEventListener('focusin', handleFocusIn)
-      window.removeEventListener('scroll', handleWindowScroll)
-    }
-  }, [])
 
   useEffect(() => {
     const captureConfig = verificationStage === 'document-front'
       || verificationStage === 'document-back'
-      || verificationStage === 'face'
       ? verificationCaptureScreens[verificationStage]
       : null
 
@@ -3227,8 +2801,16 @@ export function LoginPage({
   )
 
   const renderVerificationCapture = (stage: VerificationCaptureStage) => {
+    if (stage === 'face') {
+      return (
+        <FacialVerificationCapture
+          isFadingOut={isVerificationFadingOut}
+          onComplete={() => transitionToNextVerificationStage('face')}
+        />
+      )
+    }
+
     const captureConfig = verificationCaptureScreens[stage]
-    const isFaceCapture = stage === 'face'
     const isCaptureButtonDisabled = !isVerificationMobile
       || isVerificationFadingOut
       || verificationCameraStatus !== 'ready'
@@ -3244,7 +2826,6 @@ export function LoginPage({
         className={[
           'login-page__verification',
           'login-page__verification--capture',
-          isFaceCapture ? 'login-page__verification--capture-face' : '',
         ].filter(Boolean).join(' ')}
         aria-labelledby={`signup-verification-${stage}-title`}
       >
@@ -3261,7 +2842,6 @@ export function LoginPage({
               type="button"
               className={[
                 'login-page__capture-card',
-                isFaceCapture ? 'login-page__capture-card--face' : '',
               ].filter(Boolean).join(' ')}
               disabled={isCaptureButtonDisabled}
               aria-label={captureConfig.ariaLabel}
@@ -3272,7 +2852,6 @@ export function LoginPage({
                   ref={verificationVideoRef}
                   className={[
                     'login-page__capture-video',
-                    isFaceCapture ? 'login-page__capture-video--mirrored' : '',
                   ].filter(Boolean).join(' ')}
                   autoPlay
                   muted
@@ -3290,10 +2869,9 @@ export function LoginPage({
               )}
 
               <span
-                className={[
-                  'login-page__capture-target',
-                  isFaceCapture ? 'login-page__capture-target--face' : '',
-                ].filter(Boolean).join(' ')}
+              className={[
+                'login-page__capture-target',
+              ].filter(Boolean).join(' ')}
                 aria-hidden="true"
               />
             </button>
@@ -3333,18 +2911,9 @@ export function LoginPage({
   }
 
   const renderVerificationLoading = () => (
-    <section
-      className="login-page__verification login-page__verification--loading"
-      aria-busy="true"
-      aria-live="polite"
-    >
-      <div className="login-page__verification-loading">
-        <span className="login-page__verification-loading-spinner" aria-hidden="true" />
-        <span className="login-page__sr-only">
-          {pendingVerificationStage === 'limits' ? 'Validando identidade' : 'Carregando próxima etapa'}
-        </span>
-      </div>
-    </section>
+    <IdentityVerificationLoading
+      message={pendingVerificationStage === 'limits' ? 'Validando identidade' : 'Carregando próxima etapa'}
+    />
   )
 
   const renderLimitChips = (
