@@ -975,6 +975,33 @@
   margin-top: 3px;
 }
 
+.deposit-panel__saved-account-hint {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.deposit-panel__saved-account-hint img {
+  display: block;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  margin-top: 3px;
+}
+
+.deposit-panel__saved-account-hint span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .deposit-panel__footer {
   display: flex;
   flex: 0 0 auto;
@@ -1297,7 +1324,7 @@
   width: 100%;
   margin: 0;
   padding: 0 16px;
-  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  color: var(--ds-fill-primary, #fbfbfb);
   font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
