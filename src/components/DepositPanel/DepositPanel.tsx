@@ -8,6 +8,7 @@ import iconCadeado from '../../assets/iconsDraftaco/iconCadeado.svg'
 import iconConta from '../../assets/iconsDraftaco/iconConta.svg'
 import iconExpira from '../../assets/iconsDraftaco/iconExpira.svg'
 import iconInfo from '../../assets/iconsDraftaco/iconInfo.svg'
+import iconInfoDeposito from '../../assets/iconsDraftaco/iconInfoDeposito.svg'
 import iconPix from '../../assets/iconsDraftaco/iconPix.svg'
 import iconPixCopiado from '../../assets/iconsDraftaco/iconPixCopiado.svg'
 import iconRemoverPix from '../../assets/iconsDraftaco/iconRemoverPix.svg'
@@ -909,18 +910,25 @@ export function DepositPanel({
                             className="deposit-panel__change-bank"
                             onClick={handleChangeBank}
                           >
-                            <span>Trocar</span>
+                            <span>Alterar</span>
                             <img src={iconSetaTrocarBanco} alt="" aria-hidden="true" />
                           </button>
                         </div>
                       ) : null}
                     </div>
-                    {!hasSavedAccountForSession ? (
+                    {hasSavedAccountForSession && activeAccount ? (
+                      <div className="deposit-panel__saved-account-hint">
+                        <img src={iconInfoDeposito} alt="" aria-hidden="true" />
+                        <span>
+                          Faça o Pix pelo banco selecionado. Vai pagar por outro banco? Toque em "Alterar"
+                        </span>
+                      </div>
+                    ) : (
                       <div className="deposit-panel__saved-account-note">
                         <img src={iconCadeado} alt="" aria-hidden="true" />
                         <span>A conta usada neste depósito ficará salva para os próximos.</span>
                       </div>
-                    ) : null}
+                    )}
                   </section>
                 </main>
 
