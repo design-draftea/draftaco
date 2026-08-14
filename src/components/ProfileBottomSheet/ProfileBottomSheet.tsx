@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
 import backHeaderIcon from '../../assets/iconsDraftaco/backHeader.svg'
 import closeIcon from '../../assets/iconsDraftaco/closeBS.svg'
@@ -88,6 +95,7 @@ interface ProfileBottomSheetProps {
 }
 
 type ProfileSheetMotionState = 'entering' | 'open' | 'closing'
+type ProfileHeaderDragPhase = 'idle' | 'dragging' | 'closing'
 type ProfileRoute = 'profile' | 'deposit' | 'withdrawal'
 type EmbeddedDepositView = 'form' | 'pix'
 type WithdrawalVerificationStage = 'face' | 'loading'
@@ -98,7 +106,16 @@ interface WithdrawalReceipt {
   lastDigits: string
 }
 
+interface ProfileHeaderDragState {
+  captureTarget: HTMLElement
+  pointerId: number
+  startX: number
+  startY: number
+}
+
 const profileSheetMotionDurationMs = 300
+const profileHeaderDragIntentThresholdPx = 8
+const profileHeaderCloseThresholdPx = 48
 const withdrawalVerificationFadeDurationMs = 180
 const withdrawalLoadingFadeDurationMs = 240
 const withdrawalContinueLoadingDurationMs = 1500
@@ -185,6 +202,7 @@ export function ProfileBottomSheet({
 }: ProfileBottomSheetProps) {
   const [shouldRender, setShouldRender] = useState(false)
   const [motionState, setMotionState] = useState<ProfileSheetMotionState>('entering')
+  const [headerDragPhase, setHeaderDragPhase] = useState<ProfileHeaderDragPhase>('idle')
   const shouldRenderRef = useRef(false)
   const openTimerRef = useRef<number | null>(null)
   const closeTimerRef = useRef<number | null>(null)
@@ -195,7 +213,11 @@ export function ProfileBottomSheet({
   const withdrawalVerificationTimerRef = useRef<number | null>(null)
   const withdrawalSuccessDelayTimerRef = useRef<number | null>(null)
   const hasConfirmedWithdrawalRef = useRef(false)
+  const headerDragRef = useRef<ProfileHeaderDragState | null>(null)
+  const shouldSuppressHeaderClickRef = useRef(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const overlayRef = useRef<HTMLDivElement | null>(null)
+  const sheetRef = useRef<HTMLElement | null>(null)
   const withdrawalAmountInputRef = useRef<HTMLInputElement | null>(null)
   const withdrawalNewPixInputRef = useRef<HTMLInputElement | null>(null)
   const [route, setRoute] = useState<ProfileRoute>('profile')
@@ -353,6 +375,107 @@ export function ProfileBottomSheet({
     setWithdrawalAccountPendingRemovalId(null)
     onClose()
   }, [clearWithdrawalContinueTimer, clearWithdrawalSuccessDelayTimer, clearWithdrawalVerificationTimer, motionState, onClose])
+
+  const handleHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (motionState !== 'open') return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+
+    shouldSuppressHeaderClickRef.current = false
+    headerDragRef.current = {
+      captureTarget: event.currentTarget,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    }
+    setHeaderDragPhase('dragging')
+    sheetRef.current?.style.setProperty('--profile-header-drag-y', '0px')
+    overlayRef.current?.style.setProperty('opacity', '1')
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // Pointer capture is optional; events can still finish inside the header.
+    }
+  }, [motionState])
+
+  const handleHeaderPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    const dragOffsetY = Math.max(0, deltaY)
+    const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? window.innerHeight
+    const dragProgress = Math.min(dragOffsetY / Math.max(1, sheetHeight), 1)
+
+    sheetRef.current?.style.setProperty('--profile-header-drag-y', `${dragOffsetY}px`)
+    overlayRef.current?.style.setProperty('opacity', String(1 - dragProgress))
+
+    if (Math.hypot(deltaX, deltaY) >= profileHeaderDragIntentThresholdPx) {
+      shouldSuppressHeaderClickRef.current = true
+    }
+
+    if (deltaY > 0) event.preventDefault()
+  }, [])
+
+  const finishHeaderDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    const shouldClose = deltaY >= profileHeaderCloseThresholdPx
+      && deltaY > Math.abs(deltaX)
+
+    if (drag.captureTarget.hasPointerCapture(event.pointerId)) {
+      drag.captureTarget.releasePointerCapture(event.pointerId)
+    }
+
+    headerDragRef.current = null
+
+    if (shouldSuppressHeaderClickRef.current) {
+      window.setTimeout(() => {
+        shouldSuppressHeaderClickRef.current = false
+      }, 0)
+    }
+
+    if (shouldClose) {
+      setHeaderDragPhase('closing')
+      overlayRef.current?.style.setProperty('opacity', '0')
+      requestClose()
+      return
+    }
+
+    setHeaderDragPhase('idle')
+    sheetRef.current?.style.setProperty('--profile-header-drag-y', '0px')
+    overlayRef.current?.style.removeProperty('opacity')
+  }, [requestClose])
+
+  const cancelHeaderDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    if (drag.captureTarget.hasPointerCapture(event.pointerId)) {
+      drag.captureTarget.releasePointerCapture(event.pointerId)
+    }
+
+    headerDragRef.current = null
+    shouldSuppressHeaderClickRef.current = false
+    setHeaderDragPhase('idle')
+    sheetRef.current?.style.setProperty('--profile-header-drag-y', '0px')
+    overlayRef.current?.style.removeProperty('opacity')
+  }, [])
+
+  const handleHeaderClickCapture = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+    if (!shouldSuppressHeaderClickRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    shouldSuppressHeaderClickRef.current = false
+  }, [])
 
   const handleDepositOpen = useCallback(() => {
     if (!depositFlow || !depositHost || motionState === 'closing' || isRouteTransitioning) return
@@ -709,6 +832,7 @@ export function ProfileBottomSheet({
     if (isOpen) {
       openTimerRef.current = window.setTimeout(() => {
         openTimerRef.current = null
+        setHeaderDragPhase('idle')
         setShouldRender(true)
         setMotionState('entering')
 
@@ -838,19 +962,26 @@ export function ProfileBottomSheet({
       ref={containerRef}
     >
       <div
+        ref={overlayRef}
         className={[
           'deposit-panel__overlay',
+          'profile-bottom-sheet__overlay',
           `deposit-panel__overlay--${motionState}`,
+          headerDragPhase === 'dragging' ? 'profile-bottom-sheet__overlay--dragging' : '',
+          headerDragPhase === 'closing' ? 'profile-bottom-sheet__overlay--drag-closing' : '',
           isWithdrawalBackgroundHidden ? 'profile-bottom-sheet__overlay--withdrawal-complete' : '',
         ].filter(Boolean).join(' ')}
         onClick={requestClose}
       />
       <aside
+        ref={sheetRef}
         className={[
           'deposit-panel',
           'deposit-panel--bottom-sheet',
           'profile-bottom-sheet',
           `deposit-panel--${motionState}`,
+          headerDragPhase === 'dragging' ? 'profile-bottom-sheet--dragging' : '',
+          headerDragPhase === 'closing' ? 'profile-bottom-sheet--drag-closing' : '',
           isWithdrawalNewPixStacked ? 'profile-bottom-sheet--stacked' : '',
           isWithdrawalBackgroundHidden ? 'profile-bottom-sheet--withdrawal-complete' : '',
         ].filter(Boolean).join(' ')}
@@ -859,8 +990,15 @@ export function ProfileBottomSheet({
         aria-label={route === 'profile' ? 'Meu perfil' : route === 'deposit' ? 'Depositar' : 'Sacar'}
         inert={isWithdrawalNewPixSheetOpen || isWithdrawalNewPixSubmitting || withdrawalVerificationStage !== null || isWithdrawalSuccessOpen ? true : undefined}
         onClick={(event) => event.stopPropagation()}
+        onPointerCancel={cancelHeaderDrag}
+        onPointerMove={handleHeaderPointerMove}
+        onPointerUp={finishHeaderDrag}
       >
-        <header className="deposit-panel__header">
+        <header
+          className="deposit-panel__header"
+          onClickCapture={handleHeaderClickCapture}
+          onPointerDown={handleHeaderPointerDown}
+        >
           <button
             type="button"
             className={[
