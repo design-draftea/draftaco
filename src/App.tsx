@@ -225,6 +225,7 @@ const loginMotionDurationMs = 320
 const loggedInInitialWithdrawableBalanceCents = 0
 const signupInitialWithdrawableBalanceCents = 0
 const promotionalBalanceCents = 2000
+const freeBetBalanceCents = 1000
 const nubankDepositAccount: DepositAccount = {
   id: 'nubank',
   bankName: 'Nu Pagamentos S.A.',
@@ -1195,6 +1196,7 @@ function AppContent() {
           onWithdrawalConfirmed={handleWithdrawalConfirmed}
           withdrawableBalanceCents={withdrawableBalanceCents}
           promotionalBalanceCents={promotionalBalanceCents}
+          freeBetBalanceCents={freeBetBalanceCents}
           depositFlow={{
             savedAccounts: savedDepositAccounts,
             activeAccountId: activeDepositAccountId,

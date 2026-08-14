@@ -90,6 +90,7 @@ interface ProfileBottomSheetProps {
   onWithdrawalConfirmed?: (amountCents: number) => void
   withdrawableBalanceCents?: number
   promotionalBalanceCents?: number
+  freeBetBalanceCents?: number
   depositFlow?: ProfileDepositFlowProps
   withdrawalFlow?: ProfileWithdrawalFlowProps
 }
@@ -123,6 +124,7 @@ const withdrawalVerificationLoadingDurationMs = 1500
 const withdrawalSuccessDelayDurationMs = 150
 const defaultWithdrawableBalanceCents = 25000
 const defaultPromotionalBalanceCents = 2000
+const defaultFreeBetBalanceCents = 1000
 const maxWithdrawalInputCents = 999999999
 const maxSavedPixAccounts = 3
 const duplicatePixKeyErrorMessage = 'Você já tem essa chave Pix cadastrada.'
@@ -197,6 +199,7 @@ export function ProfileBottomSheet({
   onWithdrawalConfirmed,
   withdrawableBalanceCents = defaultWithdrawableBalanceCents,
   promotionalBalanceCents = defaultPromotionalBalanceCents,
+  freeBetBalanceCents = defaultFreeBetBalanceCents,
   depositFlow,
   withdrawalFlow,
 }: ProfileBottomSheetProps) {
@@ -279,6 +282,9 @@ export function ProfileBottomSheet({
     : 0
   const availablePromotionalCents = Number.isFinite(promotionalBalanceCents)
     ? Math.max(0, Math.round(promotionalBalanceCents))
+    : 0
+  const availableFreeBetCents = Number.isFinite(freeBetBalanceCents)
+    ? Math.max(0, Math.round(freeBetBalanceCents))
     : 0
   const playableBalanceCents = availableWithdrawalCents + availablePromotionalCents
   const withdrawalAmountCents = parseWithdrawalAmountCents(withdrawalAmountInput)
@@ -1138,7 +1144,7 @@ export function ProfileBottomSheet({
                   <p className="profile-balance__reward-label">Apostas Grátis</p>
                   <div className="profile-balance__reward-value">
                     <img className="profile-balance__reward-icon" src={freeBetIcon} alt="" aria-hidden="true" />
-                    <span>{formatBalance(availablePromotionalCents)}</span>
+                    <span>{formatBalance(availableFreeBetCents)}</span>
                     <img className="profile-balance__reward-chevron" src={chevronRightIcon} alt="" aria-hidden="true" />
                   </div>
                 </div>
