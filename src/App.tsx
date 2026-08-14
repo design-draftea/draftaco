@@ -269,11 +269,26 @@ function AppContent() {
   const playableBalanceCents = withdrawableBalanceCents + promotionalBalanceCents
   const [savedDepositAccounts, setSavedDepositAccounts] = useState<DepositAccount[]>([])
   const [activeDepositAccountId, setActiveDepositAccountId] = useState<DepositAccountId | null>(null)
-  const nextDepositAccountId = useMemo(() => (
+  const [savedWithdrawalAccounts, setSavedWithdrawalAccounts] = useState<DepositAccount[]>([])
+  const [activeWithdrawalAccountId, setActiveWithdrawalAccountId] = useState<DepositAccountId | null>(null)
+  const nextDepositAccountId = useMemo(() => {
+    if (!activeDepositAccountId) return depositAccountCatalog[0]?.id ?? null
+
+    const activeAccountIndex = depositAccountCatalog.findIndex((account) => (
+      account.id === activeDepositAccountId
+    ))
+
+    if (activeAccountIndex < 0) return depositAccountCatalog[0]?.id ?? null
+
+    return depositAccountCatalog[
+      (activeAccountIndex + 1) % depositAccountCatalog.length
+    ]?.id ?? null
+  }, [activeDepositAccountId])
+  const nextWithdrawalAccountId = useMemo(() => (
     depositAccountCatalog.find((account) => (
-      !savedDepositAccounts.some((savedAccount) => savedAccount.id === account.id)
+      !savedWithdrawalAccounts.some((savedAccount) => savedAccount.id === account.id)
     ))?.id ?? null
-  ), [savedDepositAccounts])
+  ), [savedWithdrawalAccounts])
   const [loginMotionState, setLoginMotionState] = useState<LoginMotionState | null>(
     isAuthPath(window.location.pathname) ? 'open' : null
   )
@@ -556,6 +571,8 @@ function AppContent() {
     setWithdrawableBalanceCents(loggedInInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement(null)
     completeLoginExit(nextPath)
@@ -571,6 +588,8 @@ function AppContent() {
     setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement('identity')
     completeLoginExit(nextPath)
@@ -592,6 +611,8 @@ function AppContent() {
     setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement('limits')
     completeLoginExit(nextPath)
@@ -607,6 +628,8 @@ function AppContent() {
     setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement(null)
     setDepositPanelOrigin('signup')
@@ -754,11 +777,33 @@ function AppContent() {
       if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
 
       const accountToSave = depositAccountCatalog.find((account) => account.id === accountId)
-      return accountToSave ? [...currentAccounts, accountToSave] : currentAccounts
+      if (!accountToSave) return currentAccounts
+
+      const activeAccountIndex = currentAccounts.findIndex((account) => (
+        account.id === activeDepositAccountId
+      ))
+
+      if (activeAccountIndex < 0) return [...currentAccounts, accountToSave]
+
+      return currentAccounts.map((account, index) => (
+        index === activeAccountIndex ? accountToSave : account
+      ))
     })
     setActiveDepositAccountId(accountId)
+    const confirmedAccount = depositAccountCatalog.find((account) => account.id === accountId)
+    if (confirmedAccount) {
+      setSavedWithdrawalAccounts((currentAccounts) => {
+        if (
+          currentAccounts.length >= 3
+          || currentAccounts.some((account) => account.id === accountId)
+        ) return currentAccounts
+
+        return [...currentAccounts, confirmedAccount]
+      })
+      setActiveWithdrawalAccountId((currentAccountId) => currentAccountId ?? accountId)
+    }
     setSignupPendingDepositAmountCents(null)
-  }, [])
+  }, [activeDepositAccountId])
 
   const handleWithdrawalConfirmed = useCallback((withdrawalAmountCents: number) => {
     const normalizedWithdrawalAmountCents = Number.isFinite(withdrawalAmountCents)
@@ -770,29 +815,6 @@ function AppContent() {
     setWithdrawableBalanceCents((currentBalanceCents) => (
       Math.max(0, currentBalanceCents - normalizedWithdrawalAmountCents)
     ))
-  }, [])
-
-  const handleDepositAccountAdd = useCallback((
-    accountId: DepositAccountId,
-    pixKeyType: PixKeyType,
-    pixKeyValue: string,
-  ) => {
-    const accountTemplate = depositAccountCatalog.find((account) => account.id === accountId)
-    if (!accountTemplate) return
-
-    setSavedDepositAccounts((currentAccounts) => {
-      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
-
-      return [
-        ...currentAccounts,
-        {
-          ...accountTemplate,
-          pixKeyType,
-          pixKeyValue,
-        },
-      ]
-    })
-    setActiveDepositAccountId(accountId)
   }, [])
 
   const handleDepositAccountSelect = useCallback((accountId: DepositAccountId) => {
@@ -812,6 +834,50 @@ function AppContent() {
         : currentAccountId
     ))
   }, [savedDepositAccounts])
+
+  const handleWithdrawalAccountAdd = useCallback((
+    accountId: DepositAccountId,
+    pixKeyType: PixKeyType,
+    pixKeyValue: string,
+  ) => {
+    const accountTemplate = depositAccountCatalog.find((account) => account.id === accountId)
+    if (!accountTemplate) return
+
+    setSavedWithdrawalAccounts((currentAccounts) => {
+      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
+
+      return [
+        ...currentAccounts,
+        {
+          ...accountTemplate,
+          pixKeyType,
+          pixKeyValue,
+        },
+      ]
+    })
+    setActiveWithdrawalAccountId(accountId)
+  }, [])
+
+  const handleWithdrawalAccountSelect = useCallback((accountId: DepositAccountId) => {
+    setActiveWithdrawalAccountId(accountId)
+  }, [])
+
+  const handleWithdrawalAccountRemove = useCallback((accountId: DepositAccountId) => {
+    const remainingAccounts = savedWithdrawalAccounts.filter((account) => account.id !== accountId)
+
+    if (
+      remainingAccounts.length === 0
+      || remainingAccounts.length === savedWithdrawalAccounts.length
+    ) return
+
+    setSavedWithdrawalAccounts(remainingAccounts)
+    setActiveWithdrawalAccountId((currentAccountId) => (
+      currentAccountId === accountId
+        || !remainingAccounts.some((account) => account.id === currentAccountId)
+        ? remainingAccounts[0].id
+        : currentAccountId
+    ))
+  }, [savedWithdrawalAccounts])
 
   const handleSignupDepositPending = useCallback((pendingAmountCents: number) => {
     setSignupPendingDepositAmountCents(pendingAmountCents)
@@ -1135,8 +1201,15 @@ function AppContent() {
             newBankAccountId: nextDepositAccountId,
             onRemoveAccount: handleDepositAccountRemove,
             onSelectAccount: handleDepositAccountSelect,
-            onAddAccount: handleDepositAccountAdd,
             onDepositConfirmed: handleDepositConfirmed,
+          }}
+          withdrawalFlow={{
+            savedAccounts: savedWithdrawalAccounts,
+            activeAccountId: activeWithdrawalAccountId,
+            newBankAccountId: nextWithdrawalAccountId,
+            onRemoveAccount: handleWithdrawalAccountRemove,
+            onSelectAccount: handleWithdrawalAccountSelect,
+            onAddAccount: handleWithdrawalAccountAdd,
           }}
         />
       ) : null}

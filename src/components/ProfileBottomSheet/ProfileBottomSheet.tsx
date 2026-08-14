@@ -61,12 +61,20 @@ export interface ProfileDepositFlowProps {
   newBankAccountId?: DepositAccountId | null
   onRemoveAccount?: (accountId: DepositAccountId) => void
   onSelectAccount?: (accountId: DepositAccountId) => void
+  onDepositConfirmed?: (amountCents: number, accountId: DepositAccountId) => void
+}
+
+export interface ProfileWithdrawalFlowProps {
+  savedAccounts?: DepositAccount[]
+  activeAccountId?: DepositAccountId | null
+  newBankAccountId?: DepositAccountId | null
+  onRemoveAccount?: (accountId: DepositAccountId) => void
+  onSelectAccount?: (accountId: DepositAccountId) => void
   onAddAccount?: (
     accountId: DepositAccountId,
     pixKeyType: PixKeyType,
     pixKeyValue: string,
   ) => void
-  onDepositConfirmed?: (amountCents: number, accountId: DepositAccountId) => void
 }
 
 interface ProfileBottomSheetProps {
@@ -76,6 +84,7 @@ interface ProfileBottomSheetProps {
   withdrawableBalanceCents?: number
   promotionalBalanceCents?: number
   depositFlow?: ProfileDepositFlowProps
+  withdrawalFlow?: ProfileWithdrawalFlowProps
 }
 
 type ProfileSheetMotionState = 'entering' | 'open' | 'closing'
@@ -172,6 +181,7 @@ export function ProfileBottomSheet({
   withdrawableBalanceCents = defaultWithdrawableBalanceCents,
   promotionalBalanceCents = defaultPromotionalBalanceCents,
   depositFlow,
+  withdrawalFlow,
 }: ProfileBottomSheetProps) {
   const [shouldRender, setShouldRender] = useState(false)
   const [motionState, setMotionState] = useState<ProfileSheetMotionState>('entering')
@@ -211,8 +221,8 @@ export function ProfileBottomSheet({
   const [isWithdrawalNewPixSubmitting, setIsWithdrawalNewPixSubmitting] = useState(false)
   const [recentlyAddedWithdrawalAccountId, setRecentlyAddedWithdrawalAccountId] = useState<DepositAccountId | null>(null)
   const [withdrawalAccountPendingRemovalId, setWithdrawalAccountPendingRemovalId] = useState<DepositAccountId | null>(null)
-  const withdrawalAccounts = depositFlow?.savedAccounts ?? []
-  const activeWithdrawalAccount = withdrawalAccounts.find((account) => account.id === depositFlow?.activeAccountId) ?? null
+  const withdrawalAccounts = withdrawalFlow?.savedAccounts ?? []
+  const activeWithdrawalAccount = withdrawalAccounts.find((account) => account.id === withdrawalFlow?.activeAccountId) ?? null
   const withdrawalAccountPendingRemoval = withdrawalAccounts.find((account) => (
     account.id === withdrawalAccountPendingRemovalId
   )) ?? null
@@ -508,8 +518,8 @@ export function ProfileBottomSheet({
   }, [])
 
   const handleWithdrawalAccountSelect = useCallback((accountId: DepositAccountId) => {
-    depositFlow?.onSelectAccount?.(accountId)
-  }, [depositFlow])
+    withdrawalFlow?.onSelectAccount?.(accountId)
+  }, [withdrawalFlow])
 
   const handleWithdrawalKeySheetOpen = useCallback(() => {
     if (!hasMultipleWithdrawalAccounts) return
@@ -526,8 +536,8 @@ export function ProfileBottomSheet({
   const handleWithdrawalNewPixSheetOpen = useCallback(() => {
     if (
       hasReachedWithdrawalAccountLimit
-      || !depositFlow?.newBankAccountId
-      || !depositFlow.onAddAccount
+      || !withdrawalFlow?.newBankAccountId
+      || !withdrawalFlow.onAddAccount
     ) return
 
     clearWithdrawalNewPixSubmitTimer()
@@ -537,7 +547,7 @@ export function ProfileBottomSheet({
     setIsWithdrawalNewPixSubmitting(false)
     setIsWithdrawalNewPixSheetOpen(true)
     setIsWithdrawalNewPixStacked(true)
-  }, [clearWithdrawalNewPixSubmitTimer, depositFlow, hasReachedWithdrawalAccountLimit])
+  }, [clearWithdrawalNewPixSubmitTimer, hasReachedWithdrawalAccountLimit, withdrawalFlow])
 
   const handleWithdrawalNewPixSheetCloseStart = useCallback(() => {
     setIsWithdrawalNewPixStacked(false)
@@ -554,7 +564,7 @@ export function ProfileBottomSheet({
   }, [clearWithdrawalNewPixSubmitTimer])
 
   const handleWithdrawalNewPixSubmit = useCallback(() => {
-    const accountId = depositFlow?.newBankAccountId
+    const accountId = withdrawalFlow?.newBankAccountId
     const pixKeyType = withdrawalNewPixValidation.type
 
     if (
@@ -563,7 +573,7 @@ export function ProfileBottomSheet({
       || !hasValidWithdrawalNewPixKey
       || !accountId
       || !pixKeyType
-      || !depositFlow?.onAddAccount
+      || !withdrawalFlow?.onAddAccount
     ) {
       setIsWithdrawalNewPixKeyTouched(withdrawalNewPixKey.trim().length > 0)
       return
@@ -572,7 +582,7 @@ export function ProfileBottomSheet({
     clearWithdrawalNewPixSubmitTimer()
     setIsWithdrawalNewPixSubmitting(true)
     setIsWithdrawalNewPixKeyTouched(false)
-    depositFlow.onAddAccount(
+    withdrawalFlow.onAddAccount(
       accountId,
       pixKeyType,
       withdrawalNewPixValidation.normalizedValue,
@@ -590,13 +600,13 @@ export function ProfileBottomSheet({
     }, profileSheetMotionDurationMs)
   }, [
     clearWithdrawalNewPixSubmitTimer,
-    depositFlow,
     hasReachedWithdrawalAccountLimit,
     hasValidWithdrawalNewPixKey,
     isWithdrawalNewPixSubmitting,
     withdrawalNewPixKey,
     withdrawalNewPixValidation.normalizedValue,
     withdrawalNewPixValidation.type,
+    withdrawalFlow,
   ])
 
   const handleWithdrawalMethodCardAnimationEnd = useCallback((accountId: DepositAccountId) => {
@@ -640,13 +650,13 @@ export function ProfileBottomSheet({
   const handleWithdrawalAccountRemovalConfirm = useCallback(() => {
     if (!withdrawalAccountPendingRemovalId || !hasMultipleWithdrawalAccounts) return
 
-    depositFlow?.onRemoveAccount?.(withdrawalAccountPendingRemovalId)
+    withdrawalFlow?.onRemoveAccount?.(withdrawalAccountPendingRemovalId)
     setWithdrawalAccountPendingRemovalId(null)
 
     if (withdrawalAccounts.length <= 2) {
       setIsWithdrawalKeySheetOpen(false)
     }
-  }, [depositFlow, hasMultipleWithdrawalAccounts, withdrawalAccountPendingRemovalId, withdrawalAccounts.length])
+  }, [hasMultipleWithdrawalAccounts, withdrawalAccountPendingRemovalId, withdrawalAccounts.length, withdrawalFlow])
 
   useEffect(() => {
     if (
@@ -1188,8 +1198,8 @@ export function ProfileBottomSheet({
                     className="profile-withdrawal__add-pix"
                     disabled={
                       hasReachedWithdrawalAccountLimit
-                      || !depositFlow?.newBankAccountId
-                      || !depositFlow?.onAddAccount
+                      || !withdrawalFlow?.newBankAccountId
+                      || !withdrawalFlow?.onAddAccount
                     }
                     onClick={handleWithdrawalNewPixSheetOpen}
                   >
@@ -1257,8 +1267,8 @@ export function ProfileBottomSheet({
               !hasValidWithdrawalNewPixKey
               || isWithdrawalNewPixSubmitting
               || hasReachedWithdrawalAccountLimit
-              || !depositFlow?.newBankAccountId
-              || !depositFlow?.onAddAccount
+              || !withdrawalFlow?.newBankAccountId
+              || !withdrawalFlow?.onAddAccount
             }
             aria-busy={isWithdrawalNewPixSubmitting || undefined}
             onClick={handleWithdrawalNewPixSubmit}
