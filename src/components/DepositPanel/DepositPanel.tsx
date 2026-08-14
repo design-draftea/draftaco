@@ -8,7 +8,6 @@ import iconCadeado from '../../assets/iconsDraftaco/iconCadeado.svg'
 import iconConta from '../../assets/iconsDraftaco/iconConta.svg'
 import iconExpira from '../../assets/iconsDraftaco/iconExpira.svg'
 import iconInfo from '../../assets/iconsDraftaco/iconInfo.svg'
-import iconInfoDeposito from '../../assets/iconsDraftaco/iconInfoDeposito.svg'
 import iconPix from '../../assets/iconsDraftaco/iconPix.svg'
 import iconPixCopiado from '../../assets/iconsDraftaco/iconPixCopiado.svg'
 import iconRemoverPix from '../../assets/iconsDraftaco/iconRemoverPix.svg'
@@ -54,6 +53,7 @@ type PanelMotionState = 'entering' | 'open' | 'closing'
 type DepositView = 'form' | 'pix'
 type DepositPanelPresentation = 'fullscreen' | 'bottom-sheet' | 'embedded'
 type DepositOptionId = '50' | '100' | '250' | '1000' | 'custom'
+type DepositMethodChoice = 'saved-account' | 'other-bank'
 type PixCopyFeedback = 'idle' | 'copied' | 'error'
 type DepositConfirmationMode = 'on-pix-generated' | 'on-pix-copy'
 
@@ -252,6 +252,7 @@ export function DepositPanel({
   const [amountCents, setAmountCents] = useState(defaultDepositAmountCents)
   const [amountAnimationKey, setAmountAnimationKey] = useState(0)
   const [selectedDepositOptionId, setSelectedDepositOptionId] = useState<DepositOptionId>('100')
+  const [selectedDepositMethod, setSelectedDepositMethod] = useState<DepositMethodChoice>('saved-account')
   const [hasSavedAccountForSession, setHasSavedAccountForSession] = useState(false)
   const [isBankChangeSheetOpen, setIsBankChangeSheetOpen] = useState(false)
   const [isAccountRemovalMode, setIsAccountRemovalMode] = useState(false)
@@ -419,6 +420,7 @@ export function DepositPanel({
 
   const handleSelectSavedAccount = (accountId: DepositAccountId) => {
     onSelectAccount?.(accountId)
+    setSelectedDepositMethod('saved-account')
     handleBankChangeSheetClose()
   }
 
@@ -503,14 +505,40 @@ export function DepositPanel({
   }
 
   const handleGeneratePix = () => {
+    if (selectedDepositMethod === 'other-bank') {
+      if (newBankAccountId === null) return
+
+      startPixGeneration(newBankAccountId, () => {
+        setHasSavedAccountForSession(false)
+      })
+      return
+    }
+
     startPixGeneration()
+  }
+
+  const handleSelectSavedDepositMethod = () => {
+    if (selectedDepositMethod === 'saved-account' && hasMultipleSavedAccounts) {
+      handleChangeBank()
+      return
+    }
+
+    setSelectedDepositMethod('saved-account')
+  }
+
+  const handleSelectOtherBank = () => {
+    if (newBankAccountId === null) return
+
+    setSelectedDepositMethod('other-bank')
   }
 
   const handleDepositFromAnotherBank = () => {
     if (!amountCents || isGeneratingPix || newBankAccountId === null) return
 
-    setHasSavedAccountForSession(false)
-    startPixGeneration(newBankAccountId, handleBankChangeSheetClose)
+    startPixGeneration(newBankAccountId, () => {
+      setHasSavedAccountForSession(false)
+      handleBankChangeSheetClose()
+    })
   }
 
   useEffect(() => {
@@ -576,6 +604,7 @@ export function DepositPanel({
         setIsAmountEditingInline(false)
         setManualAmountInput(formatDepositAmount(openAmountCents))
         setSelectedDepositOptionId(matchingPreset ?? 'custom')
+        setSelectedDepositMethod('saved-account')
         setHasSavedAccountForSession(savedAccounts.length > 0)
         setIsBankChangeSheetOpen(false)
         setIsAccountRemovalMode(false)
@@ -617,6 +646,7 @@ export function DepositPanel({
         setIsAmountEditingInline(false)
         setManualAmountInput(formatDepositAmount(defaultDepositAmountCents))
         setSelectedDepositOptionId('100')
+        setSelectedDepositMethod('saved-account')
         setIsBankChangeSheetOpen(false)
         setIsAccountRemovalMode(false)
         setRemovingAccountId(null)
@@ -741,6 +771,8 @@ export function DepositPanel({
   const hasAmount = amountCents > 0
   const isSignupDepositFlow = confirmationMode === 'on-pix-copy'
   const pixCountdownMinutes = Math.ceil(pixCountdownSeconds / 60)
+  const isOtherBankSelected = selectedDepositMethod === 'other-bank'
+  const canGeneratePix = hasAmount && (!isOtherBankSelected || newBankAccountId !== null)
 
   return createPortal(
     <>
@@ -893,35 +925,64 @@ export function DepositPanel({
                   </section>
 
                   <section className="deposit-panel__method-section" aria-labelledby="deposit-payment-method-title">
-                    <h3 id="deposit-payment-method-title">Método de depósito</h3>
-                    <div className="deposit-panel__payment-card deposit-panel__payment-card--selected">
-                      <div className="deposit-panel__payment-summary">
-                        <div className="deposit-panel__payment-copy">
-                          <img className="deposit-panel__pix-badge" src={iconPix} alt="Pix" />
-                          <span className="deposit-panel__payment-description">Aprovação imediata</span>
-                        </div>
-                        <span className="deposit-panel__payment-radio" aria-hidden="true" />
-                      </div>
-                      {hasSavedAccountForSession && activeAccount ? (
-                        <div className="deposit-panel__saved-bank">
-                          <span className="deposit-panel__saved-bank-name">{activeAccount.bankName}</span>
-                          <button
-                            type="button"
-                            className="deposit-panel__change-bank"
-                            onClick={handleChangeBank}
-                          >
-                            <span>Alterar</span>
-                            <img src={iconSetaTrocarBanco} alt="" aria-hidden="true" />
-                          </button>
-                        </div>
-                      ) : null}
+                    <div className="deposit-panel__saved-method">
+                      <h3 id="deposit-payment-method-title">Método de depósito</h3>
+                      <button
+                        type="button"
+                        className={[
+                          'deposit-panel__payment-card',
+                          !isOtherBankSelected ? 'deposit-panel__payment-card--selected' : '',
+                        ].filter(Boolean).join(' ')}
+                        aria-pressed={!isOtherBankSelected}
+                        onClick={handleSelectSavedDepositMethod}
+                      >
+                        <span className="deposit-panel__payment-summary">
+                          <span className="deposit-panel__payment-copy">
+                            <img className="deposit-panel__pix-badge" src={iconPix} alt="Pix" />
+                            <span className="deposit-panel__payment-description">Aprovação imediata</span>
+                          </span>
+                          <span
+                            className={[
+                              'deposit-panel__payment-radio',
+                              !isOtherBankSelected ? 'deposit-panel__payment-radio--selected' : '',
+                            ].filter(Boolean).join(' ')}
+                            aria-hidden="true"
+                          />
+                        </span>
+                        {hasSavedAccountForSession && activeAccount ? (
+                          <span className="deposit-panel__saved-bank">
+                            <span className="deposit-panel__saved-bank-name">{activeAccount.bankName}</span>
+                          </span>
+                        ) : null}
+                      </button>
                     </div>
                     {hasSavedAccountForSession && activeAccount ? (
-                      <div className="deposit-panel__saved-account-hint">
-                        <img src={iconInfoDeposito} alt="" aria-hidden="true" />
-                        <span>
-                          Faça o Pix pelo banco selecionado. Vai pagar por outro banco? Toque em "Alterar"
-                        </span>
+                      <div className="deposit-panel__other-bank-group">
+                        <button
+                          type="button"
+                          className={[
+                            'deposit-panel__other-bank-option',
+                            isOtherBankSelected ? 'deposit-panel__other-bank-option--selected' : '',
+                            newBankAccountId === null ? 'deposit-panel__other-bank-option--disabled' : '',
+                          ].filter(Boolean).join(' ')}
+                          aria-pressed={isOtherBankSelected}
+                          disabled={newBankAccountId === null}
+                          onClick={handleSelectOtherBank}
+                        >
+                          <span>Depositar de outro banco</span>
+                          <span
+                            className={[
+                              'deposit-panel__payment-radio',
+                              isOtherBankSelected ? 'deposit-panel__payment-radio--selected' : '',
+                            ].filter(Boolean).join(' ')}
+                            aria-hidden="true"
+                          />
+                        </button>
+                        <p className="deposit-panel__other-bank-hint">
+                          {newBankAccountId === null
+                            ? 'Para depositar de um banco novo, remova uma conta para liberar espaço.'
+                            : 'Ao pagar por outro banco, ele substituirá o que está salvo.'}
+                        </p>
                       </div>
                     ) : (
                       <div className="deposit-panel__saved-account-note">
@@ -939,7 +1000,7 @@ export function DepositPanel({
                       'deposit-panel__confirm',
                       isGeneratingPix ? 'deposit-panel__confirm--loading' : '',
                     ].filter(Boolean).join(' ')}
-                    disabled={!hasAmount || isGeneratingPix}
+                    disabled={!canGeneratePix || isGeneratingPix}
                     aria-busy={isGeneratingPix}
                     onClick={handleGeneratePix}
                   >
