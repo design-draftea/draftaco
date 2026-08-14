@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import backHeaderIcon from '../../assets/iconsDraftaco/backHeader.svg'
 import closePixIcon from '../../assets/iconsDraftaco/closeBS.svg'
@@ -50,6 +58,7 @@ export interface DepositAccount {
 }
 
 type PanelMotionState = 'entering' | 'open' | 'closing'
+type DepositHeaderDragPhase = 'idle' | 'dragging' | 'closing'
 type DepositView = 'form' | 'pix'
 type DepositPanelPresentation = 'fullscreen' | 'bottom-sheet' | 'embedded'
 type DepositOptionId = '50' | '100' | '250' | '1000' | 'custom'
@@ -64,13 +73,21 @@ interface QuickDepositOption {
   recommended?: boolean
 }
 
+interface DepositHeaderDragState {
+  captureTarget: HTMLElement
+  pointerId: number
+  startX: number
+  startY: number
+}
+
 const contentTransitionDurationMs = 180
 const fullscreenPanelMotionDurationMs = 320
 const bottomSheetMotionDurationMs = 300
+const depositHeaderDragIntentThresholdPx = 8
+const depositHeaderCloseThresholdPx = 48
 const pixGenerationDelayMs = 3000
 const pixCountdownInitialSeconds = 30 * 60 - 1
 const maxDepositCents = 99999999
-const animatedDepositAmountDurationMs = 520
 const defaultDepositAmountCents = 10000
 const pixCode = '00020101021226850014br.gov.bcb.pix0123deposito-teste-sem-link'
 const pixCopyFeedbackDurationMs = 2000
@@ -158,71 +175,6 @@ const getPresetOptionIdForAmount = (amountCents: number): DepositOptionId | null
   quickDepositOptions.find((option) => option.amountCents === amountCents)?.id ?? null
 )
 
-const easeOutCubic = (progress: number) => 1 - (1 - progress) ** 3
-
-function AnimatedDepositAmount({
-  animationKey,
-  targetValue,
-}: {
-  animationKey: number
-  targetValue: number
-}) {
-  const valueRef = useRef<HTMLSpanElement>(null)
-  const [initialValue] = useState(targetValue)
-  const displayedValue = useRef(targetValue)
-  const previousAnimationKey = useRef(animationKey)
-
-  useEffect(() => {
-    let frameId: number | null = null
-    const startValue = displayedValue.current
-    const difference = targetValue - startValue
-    const shouldAnimate = animationKey !== previousAnimationKey.current
-    previousAnimationKey.current = animationKey
-
-    const setValue = (value: number) => {
-      displayedValue.current = value
-
-      if (valueRef.current) {
-        valueRef.current.textContent = formatDepositDisplayAmount(Math.round(value))
-      }
-    }
-
-    if (!shouldAnimate || Math.abs(difference) < 0.005) {
-      setValue(targetValue)
-      return undefined
-    }
-
-    const startedAt = performance.now()
-
-    const tick = (timestamp: number) => {
-      const progress = Math.min(1, (timestamp - startedAt) / animatedDepositAmountDurationMs)
-      const easedProgress = easeOutCubic(progress)
-      const jitter = progress < 0.72
-        ? Math.sin(progress * Math.PI * 18) * difference * 0.012
-        : 0
-      const nextValue = startValue + difference * easedProgress + jitter
-
-      setValue(progress >= 1 ? targetValue : nextValue)
-
-      if (progress < 1) {
-        frameId = window.requestAnimationFrame(tick)
-      }
-    }
-
-    frameId = window.requestAnimationFrame(tick)
-
-    return () => {
-      if (frameId !== null) window.cancelAnimationFrame(frameId)
-    }
-  }, [animationKey, targetValue])
-
-  return (
-    <span ref={valueRef} className="deposit-panel__amount deposit-panel__amount--filled">
-      {formatDepositDisplayAmount(initialValue)}
-    </span>
-  )
-}
-
 export function DepositPanel({
   isOpen,
   onClose,
@@ -248,9 +200,9 @@ export function DepositPanel({
       : fullscreenPanelMotionDurationMs
   const [shouldRender, setShouldRender] = useState(false)
   const [motionState, setMotionState] = useState<PanelMotionState>('entering')
+  const [headerDragPhase, setHeaderDragPhase] = useState<DepositHeaderDragPhase>('idle')
   const [view, setView] = useState<DepositView>('form')
   const [amountCents, setAmountCents] = useState(defaultDepositAmountCents)
-  const [amountAnimationKey, setAmountAnimationKey] = useState(0)
   const [selectedDepositOptionId, setSelectedDepositOptionId] = useState<DepositOptionId>('100')
   const [selectedDepositMethod, setSelectedDepositMethod] = useState<DepositMethodChoice>('saved-account')
   const [hasSavedAccountForSession, setHasSavedAccountForSession] = useState(false)
@@ -275,6 +227,9 @@ export function DepositPanel({
   const onDepositPendingRef = useRef(onDepositPending)
   const shouldRenderRef = useRef(false)
   const swapTimerRef = useRef<number | null>(null)
+  const headerDragRef = useRef<DepositHeaderDragState | null>(null)
+  const shouldSuppressHeaderClickRef = useRef(false)
+  const overlayRef = useRef<HTMLDivElement | null>(null)
   const panelRef = useRef<HTMLElement | null>(null)
   const panelContainerRef = useRef<HTMLDivElement | null>(null)
   const pixAmountCentsRef = useRef<number | null>(null)
@@ -361,6 +316,107 @@ export function DepositPanel({
     onClose()
   }, [amountCents, motionState, onClose, view])
 
+  const handleHeaderPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (presentation !== 'bottom-sheet' || motionState !== 'open') return
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+
+    shouldSuppressHeaderClickRef.current = false
+    headerDragRef.current = {
+      captureTarget: event.currentTarget,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    }
+    setHeaderDragPhase('dragging')
+    panelRef.current?.style.setProperty('--deposit-header-drag-y', '0px')
+    overlayRef.current?.style.setProperty('opacity', '1')
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // Pointer capture is optional; events can still finish inside the panel.
+    }
+  }, [motionState, presentation])
+
+  const handleHeaderPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    const dragOffsetY = Math.max(0, deltaY)
+    const panelHeight = panelRef.current?.getBoundingClientRect().height ?? window.innerHeight
+    const dragProgress = Math.min(dragOffsetY / Math.max(1, panelHeight), 1)
+
+    panelRef.current?.style.setProperty('--deposit-header-drag-y', `${dragOffsetY}px`)
+    overlayRef.current?.style.setProperty('opacity', String(1 - dragProgress))
+
+    if (Math.hypot(deltaX, deltaY) >= depositHeaderDragIntentThresholdPx) {
+      shouldSuppressHeaderClickRef.current = true
+    }
+
+    if (deltaY > 0) event.preventDefault()
+  }, [])
+
+  const finishHeaderDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    const shouldClose = deltaY >= depositHeaderCloseThresholdPx
+      && deltaY > Math.abs(deltaX)
+
+    if (drag.captureTarget.hasPointerCapture(event.pointerId)) {
+      drag.captureTarget.releasePointerCapture(event.pointerId)
+    }
+
+    headerDragRef.current = null
+
+    if (shouldSuppressHeaderClickRef.current) {
+      window.setTimeout(() => {
+        shouldSuppressHeaderClickRef.current = false
+      }, 0)
+    }
+
+    if (shouldClose) {
+      setHeaderDragPhase('closing')
+      overlayRef.current?.style.setProperty('opacity', '0')
+      requestClose()
+      return
+    }
+
+    setHeaderDragPhase('idle')
+    panelRef.current?.style.setProperty('--deposit-header-drag-y', '0px')
+    overlayRef.current?.style.removeProperty('opacity')
+  }, [requestClose])
+
+  const cancelHeaderDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    const drag = headerDragRef.current
+
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    if (drag.captureTarget.hasPointerCapture(event.pointerId)) {
+      drag.captureTarget.releasePointerCapture(event.pointerId)
+    }
+
+    headerDragRef.current = null
+    shouldSuppressHeaderClickRef.current = false
+    setHeaderDragPhase('idle')
+    panelRef.current?.style.setProperty('--deposit-header-drag-y', '0px')
+    overlayRef.current?.style.removeProperty('opacity')
+  }, [])
+
+  const handleHeaderClickCapture = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+    if (!shouldSuppressHeaderClickRef.current) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    shouldSuppressHeaderClickRef.current = false
+  }, [])
+
   const focusManualAmountInput = useCallback(() => {
     const input = manualAmountInputRef.current
     if (!input) return
@@ -387,7 +443,6 @@ export function DepositPanel({
 
     setIsAmountEditingInline(false)
     setAmountCents(option.amountCents)
-    setAmountAnimationKey((currentAnimationKey) => currentAnimationKey + 1)
     setManualAmountInput(formatDepositAmount(option.amountCents))
     setSelectedDepositOptionId(option.id)
   }
@@ -598,9 +653,9 @@ export function DepositPanel({
 
       openTimerRef.current = window.setTimeout(() => {
         openTimerRef.current = null
+        setHeaderDragPhase('idle')
         setView(openView)
         setAmountCents(openAmountCents)
-        setAmountAnimationKey(0)
         setIsAmountEditingInline(false)
         setManualAmountInput(formatDepositAmount(openAmountCents))
         setSelectedDepositOptionId(matchingPreset ?? 'custom')
@@ -642,7 +697,6 @@ export function DepositPanel({
         setMotionState('entering')
         setView('form')
         setAmountCents(defaultDepositAmountCents)
-        setAmountAnimationKey(0)
         setIsAmountEditingInline(false)
         setManualAmountInput(formatDepositAmount(defaultDepositAmountCents))
         setSelectedDepositOptionId('100')
@@ -781,7 +835,13 @@ export function DepositPanel({
         ref={panelContainerRef}
       >
       <div
-        className={`deposit-panel__overlay deposit-panel__overlay--${motionState}`}
+        ref={overlayRef}
+        className={[
+          'deposit-panel__overlay',
+          `deposit-panel__overlay--${motionState}`,
+          headerDragPhase === 'dragging' ? 'deposit-panel__overlay--header-dragging' : '',
+          headerDragPhase === 'closing' ? 'deposit-panel__overlay--header-drag-closing' : '',
+        ].filter(Boolean).join(' ')}
         onClick={requestClose}
       />
       <aside
@@ -790,6 +850,8 @@ export function DepositPanel({
           'deposit-panel',
           `deposit-panel--${presentation}`,
           `deposit-panel--${motionState}`,
+          headerDragPhase === 'dragging' ? 'deposit-panel--header-dragging' : '',
+          headerDragPhase === 'closing' ? 'deposit-panel--header-drag-closing' : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -797,12 +859,17 @@ export function DepositPanel({
         aria-modal={presentation === 'embedded' ? undefined : 'true'}
         aria-label={presentation === 'embedded' ? undefined : 'Depositar'}
         onClick={(event) => event.stopPropagation()}
+        onPointerCancel={cancelHeaderDrag}
+        onPointerMove={handleHeaderPointerMove}
+        onPointerUp={finishHeaderDrag}
       >
         <header
           className={[
             'deposit-panel__header',
             view === 'pix' ? 'deposit-panel__header--pix' : '',
           ].filter(Boolean).join(' ')}
+          onClickCapture={handleHeaderClickCapture}
+          onPointerDown={handleHeaderPointerDown}
         >
           {view === 'pix' ? (
             <button
@@ -888,10 +955,9 @@ export function DepositPanel({
                         onClick={handleAmountDisplayClick}
                       >
                         <span className="deposit-panel__currency">R$</span>
-                        <AnimatedDepositAmount
-                          animationKey={amountAnimationKey}
-                          targetValue={amountCents}
-                        />
+                        <span className="deposit-panel__amount deposit-panel__amount--filled">
+                          {formatDepositDisplayAmount(amountCents)}
+                        </span>
                         <span className="deposit-panel__amount-caret" aria-hidden="true" />
                       </button>
                     )}
