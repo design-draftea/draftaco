@@ -28,6 +28,7 @@ import removePixIcon from '../../assets/iconsDraftaco/iconRemoverPixGde.svg'
 import withdrawalNewPixInputIcon from '../../assets/iconsDraftaco/iconInputChavePix.svg'
 import inputErrorIcon from '../../assets/iconsDraftaco/iconError.svg'
 import withdrawalInfoIcon from '../../assets/iconsDraftaco/iconSaqueInfo.svg'
+import promotionalBalanceIcon from '../../assets/iconSports/iconSaldoPromo.svg'
 import withdrawalRemovePixIllustration from '../../assets/iconsDraftaco/iconSaqueRemoverPix.png'
 import withdrawalSuccessIllustration from '../../assets/iconsDraftaco/iconSaqueSucesso.png'
 import withdrawalBankIcon from '../../assets/iconsDraftaco/iconBanco.svg'
@@ -100,6 +101,7 @@ type ProfileHeaderDragPhase = 'idle' | 'dragging' | 'closing'
 type ProfileRoute = 'profile' | 'deposit' | 'withdrawal'
 type EmbeddedDepositView = 'form' | 'pix'
 type WithdrawalVerificationStage = 'face' | 'loading'
+type BalanceInfoContext = 'withdrawal' | 'promotional'
 
 interface WithdrawalReceipt {
   amountCents: number
@@ -178,6 +180,13 @@ const formatWithdrawalAmountInput = (amountCents: number) => (
   })
 )
 
+const formatPromotionalBalance = (amountCents: number) => (
+  (amountCents / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
+)
+
 const formatWithdrawalAvailableLimit = (amountCents: number) => (
   `R$ ${(amountCents / 100).toLocaleString('pt-BR', {
     minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2,
@@ -237,6 +246,7 @@ export function ProfileBottomSheet({
   const [isWithdrawalSuccessOpen, setIsWithdrawalSuccessOpen] = useState(false)
   const [withdrawalReceipt, setWithdrawalReceipt] = useState<WithdrawalReceipt | null>(null)
   const [isWithdrawalInfoOpen, setIsWithdrawalInfoOpen] = useState(false)
+  const [balanceInfoContext, setBalanceInfoContext] = useState<BalanceInfoContext>('withdrawal')
   const [isWithdrawalKeySheetOpen, setIsWithdrawalKeySheetOpen] = useState(false)
   const [isWithdrawalNewPixSheetOpen, setIsWithdrawalNewPixSheetOpen] = useState(false)
   const [isWithdrawalNewPixStacked, setIsWithdrawalNewPixStacked] = useState(false)
@@ -1086,14 +1096,14 @@ export function ProfileBottomSheet({
               ].filter(Boolean).join(' ')}
               aria-label="Resumo do saldo"
             >
-              <button
-                type="button"
-                className="profile-balance__header"
-                aria-expanded={isProfileBalanceExpanded}
-                aria-controls="profile-balance-breakdown"
-                onClick={() => setIsProfileBalanceExpanded((isExpanded) => !isExpanded)}
-              >
-                <span className="profile-balance__summary-row">
+              <div className="profile-balance__header">
+                <button
+                  type="button"
+                  className="profile-balance__summary-row"
+                  aria-expanded={isProfileBalanceExpanded}
+                  aria-controls="profile-balance-breakdown"
+                  onClick={() => setIsProfileBalanceExpanded((isExpanded) => !isExpanded)}
+                >
                   <span className="profile-balance__heading">
                     <span className="profile-balance__amount">{formatBalance(playableBalanceCents)}</span>
                     <span className="profile-balance__subtitle">Disponível para jogar</span>
@@ -1101,7 +1111,7 @@ export function ProfileBottomSheet({
                   <span className="profile-balance__expand" aria-hidden="true">
                     <img src={balanceChevronDownIcon} alt="" />
                   </span>
-                </span>
+                </button>
                 <span
                   className="profile-balance__breakdown"
                   id="profile-balance-breakdown"
@@ -1112,11 +1122,25 @@ export function ProfileBottomSheet({
                     <strong>{formatBalance(availableWithdrawalCents)}</strong>
                   </span>
                   <span className="profile-balance__breakdown-row">
-                    <span>Saldo promocional</span>
-                    <strong>{formatBalance(availablePromotionalCents)}</strong>
+                    <button
+                      type="button"
+                      className="profile-balance__breakdown-info"
+                      aria-label="Ver detalhes do saldo promocional"
+                      onClick={() => {
+                        setBalanceInfoContext('promotional')
+                        setIsWithdrawalInfoOpen(true)
+                      }}
+                    >
+                      <span>Saldo promocional</span>
+                      <img src={withdrawalInfoIcon} alt="" aria-hidden="true" />
+                    </button>
+                    <strong className="profile-balance__promotional-value">
+                      <img src={promotionalBalanceIcon} alt="" aria-hidden="true" />
+                      <span>{formatPromotionalBalance(availablePromotionalCents)}</span>
+                    </strong>
                   </span>
                 </span>
-              </button>
+              </div>
 
               <div className="profile-balance__actions">
                 <button
@@ -1230,7 +1254,10 @@ export function ProfileBottomSheet({
                   <button
                     type="button"
                     className="profile-withdrawal__balance-info"
-                    onClick={() => setIsWithdrawalInfoOpen(true)}
+                    onClick={() => {
+                      setBalanceInfoContext('withdrawal')
+                      setIsWithdrawalInfoOpen(true)
+                    }}
                   >
                     <span>Disponível para saque</span>
                     <img src={withdrawalInfoIcon} alt="" aria-hidden="true" />
@@ -1522,7 +1549,7 @@ export function ProfileBottomSheet({
       <BottomSheet
         isOpen={isWithdrawalInfoOpen}
         onClose={() => setIsWithdrawalInfoOpen(false)}
-        title="Disponível para saque"
+        title={balanceInfoContext === 'promotional' ? 'Saldo Promocional' : 'Disponível para saque'}
         containerClassName="profile-withdrawal-info-sheet-container"
         sheetClassName="profile-withdrawal-info-sheet"
         bodyClassName="profile-withdrawal-info-sheet__body"
@@ -1537,11 +1564,16 @@ export function ProfileBottomSheet({
             </div>
             <div className="profile-withdrawal-info-sheet__breakdown-row">
               <span>Saldo promocional</span>
-              <strong>{formatBalance(availablePromotionalCents)}</strong>
+              <strong className="profile-withdrawal-info-sheet__promotional-value">
+                <img src={promotionalBalanceIcon} alt="" aria-hidden="true" />
+                <span>{formatPromotionalBalance(availablePromotionalCents)}</span>
+              </strong>
             </div>
           </div>
           <p className="profile-withdrawal-info-sheet__description">
-            Esse valor é referente aos seus depósitos e ganhos acumulados. Saldo promocional não pode ser sacado.
+            {balanceInfoContext === 'promotional'
+              ? 'O saldo promocional é relacionado às promoções que o Pitaco atribui à sua conta. Esse saldo não pode ser sacado.'
+              : 'Esse valor é referente aos seus depósitos e ganhos acumulados. Saldo promocional não pode ser sacado.'}
           </p>
         </div>
       </BottomSheet>

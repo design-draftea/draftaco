@@ -642,7 +642,8 @@
 .profile-withdrawal__method-heading button:focus-visible,
 .profile-withdrawal__method-card:focus-visible,
 .profile-withdrawal__add-pix:focus-visible,
-.profile-balance__header:focus-visible,
+.profile-balance__summary-row:focus-visible,
+.profile-balance__breakdown-info:focus-visible,
 .profile-balance__action--secondary:focus-visible {
   outline: 2px solid rgba(210, 255, 114, 0.72);
   outline-offset: 2px;
@@ -714,7 +715,6 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
   transition:
     height 300ms cubic-bezier(0.22, 1, 0.36, 1),
     flex-basis 300ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -733,6 +733,14 @@
   flex: 0 0 61px;
   align-items: center;
   gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .profile-balance__heading {
@@ -807,6 +815,7 @@
 
 .profile-balance--expanded .profile-balance__breakdown {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
@@ -822,6 +831,38 @@
   color: inherit;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.profile-balance__breakdown-info,
+.profile-balance__promotional-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-balance__breakdown-info {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-balance__breakdown-info img {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+}
+
+.profile-balance__promotional-value img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
 }
 
 .profile-balance__actions {
@@ -1478,6 +1519,19 @@
   color: inherit;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.profile-withdrawal-info-sheet__promotional-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-withdrawal-info-sheet__promotional-value img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
 }
 
 .profile-withdrawal-info-sheet__description {
