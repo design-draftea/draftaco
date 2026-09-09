@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type MouseEvent, type ReactNode } from 'react'
 import { BottomSheet } from './BottomSheet'
-import { getBetslipMarketGroupId } from '../../hooks/betslipUtils'
+import {
+  createBetslipSelection,
+  getBetslipEventId,
+  getBetslipMarketGroupId,
+  normalizeBetslipIdPart,
+} from '../../hooks/betslipUtils'
 import { useOddSelection } from '../../hooks/useOddSelection'
 import {
   createGarantidaLewandowskiSelection,
@@ -12,7 +17,11 @@ import closeIcon from '../../assets/iconsDraftaco/garantidaBsClose.svg'
 import glowImage from '../../assets/iconsDraftaco/garantidaBsGlow.svg'
 import infoIcon from '../../assets/iconsDraftaco/garantidaBsInfoIcon.svg'
 import playerImage from '../../assets/iconsDraftaco/garantidaBsPlayer.png'
-import tagIcon from '../../assets/iconsDraftaco/garantidaBsTagIcon.svg'
+import tagIcon from '../../assets/iconsDraftaco/iconBetslipGarantida.svg'
+import aumentadaTagIcon from '../../assets/iconsDraftaco/iconAumentada.svg'
+import superAumentadaTagIcon from '../../assets/iconsDraftaco/iconBetslipSuperAumentada.svg'
+import dembeleImage from '../../assets/iconsDraftaco/imgDembelePromo.png'
+import adebayoImage from '../../assets/iconsDraftaco/imgAdebayoPromo.png'
 
 interface PromoCountdownParts {
   hours: number
@@ -23,51 +32,130 @@ interface GarantidaPromoBottomSheetProps {
   countdown: PromoCountdownParts
   isOpen: boolean
   onClose: () => void
+  variant?: PromoBottomSheetVariant
 }
 
-const promotionRules = [
+export type PromoBottomSheetVariant = 'garantida' | 'aumentada' | 'super-aumentada'
+
+interface PromoBottomSheetConfig {
+  variant: PromoBottomSheetVariant
+  sport: 'futebol' | 'basquete'
+  tag: string
+  playerName: string
+  market: string
+  value: string
+  previousValue?: string
+  matchHome: string
+  matchAway: string
+  selectionTeamName: string
+  odd: string
+  playerImage: string
+  tagIcon: string
+  rules: string[]
+}
+
+const boostedPromotionRules = [
   'Mínimo 3 seleções.',
-  'Permitido usar apenas 1 Pechincha por bilhete.',
-  'Odd mínima do bilhete: 4x.',
-  'Odd máxima do bilhete: 8x.',
-  'Valor de entrada: mínimo de R$10 e máximo de R$500.',
-  'Não é combinável com outras promoções',
-  'Se alguma seleção for cancelada e o bilhete deixar de atingir a odd mínima de 4x, a Pechincha será removida da aposta.',
+  'Permitido usar apenas 1 oferta aumentada por bilhete.',
+  'Odd mínima do bilhete: 3x.',
+  'Odd máxima do bilhete: 5x.',
+  'Valor de entrada: mínimo de R$10 e máximo de R$350.',
+  'Não é combinável com outras promoções.',
+  'Se alguma seleção for cancelada e o bilhete deixar de atingir a odd mínima de 3x, a oferta aumentada será removida da aposta.',
 ]
+
+const promoConfigs: Record<PromoBottomSheetVariant, PromoBottomSheetConfig> = {
+  garantida: {
+    variant: 'garantida',
+    sport: 'futebol',
+    tag: 'IMPERDÍVEL',
+    playerName: 'R. Lewandowski',
+    market: 'Finalizações ao gol',
+    value: '0.5+',
+    previousValue: '3.5',
+    matchHome: 'BAR',
+    matchAway: 'REA',
+    selectionTeamName: 'BAR',
+    odd: '1.85x',
+    playerImage,
+    tagIcon,
+    rules: [
+      'Mínimo 3 seleções.',
+      'Permitido usar apenas 1 oferta Imperdível por bilhete.',
+      'Odd mínima do bilhete: 4x.',
+      'Odd máxima do bilhete: 8x.',
+      'Valor de entrada: mínimo de R$10 e máximo de R$500.',
+      'Não é combinável com outras promoções',
+      'Se alguma seleção for cancelada e o bilhete deixar de atingir a odd mínima de 4x, a oferta Imperdível será removida da aposta.',
+    ],
+  },
+  aumentada: {
+    variant: 'aumentada',
+    sport: 'futebol',
+    tag: 'AUMENTADA',
+    playerName: 'O. Dembélé',
+    market: 'Finalizações ao gol',
+    value: '1.5+',
+    matchHome: 'PSG',
+    matchAway: 'MCI',
+    selectionTeamName: 'PSG',
+    odd: '2.50x',
+    playerImage: dembeleImage,
+    tagIcon: aumentadaTagIcon,
+    rules: boostedPromotionRules,
+  },
+  'super-aumentada': {
+    variant: 'super-aumentada',
+    sport: 'basquete',
+    tag: 'SUPER AUMENTADA',
+    playerName: 'Bam Adebayo',
+    market: 'Pontos',
+    value: '11.5+',
+    matchHome: 'CHI',
+    matchAway: 'MIA',
+    selectionTeamName: 'MIA',
+    odd: '2.50x',
+    playerImage: adebayoImage,
+    tagIcon: superAumentadaTagIcon,
+    rules: boostedPromotionRules,
+  },
+}
 
 const formatSheetCountdown = ({ hours, minutes }: PromoCountdownParts) => (
   `${hours}h : ${String(minutes).padStart(2, '0')}m`
 )
 
-function MatchInfo() {
+function MatchInfo({ promo }: { promo: PromoBottomSheetConfig }) {
   return (
     <div className="garantida-promo-bs__match">
       <span className="garantida-promo-bs__teams">
-        <strong>BAR</strong>
-        <span> vs INT</span>
+        <strong>{promo.matchHome}</strong>
+        <span> vs {promo.matchAway}</span>
       </span>
       <span className="garantida-promo-bs__dot">•</span>
-      <span className="garantida-promo-bs__market">Finalizações ao gol</span>
+      <span className="garantida-promo-bs__market">{promo.market}</span>
     </div>
   )
 }
 
-function OddsInfo() {
+function OddsInfo({ promo }: { promo: PromoBottomSheetConfig }) {
   return (
-    <div className="garantida-promo-bs__odds" aria-label="Odd anterior 3.5, nova odd 0.5 mais">
-      <span className="garantida-promo-bs__previous-odd">3.5</span>
+    <div className="garantida-promo-bs__odds">
+      {promo.previousValue && (
+        <span className="garantida-promo-bs__previous-odd">{promo.previousValue}</span>
+      )}
       <span className="garantida-promo-bs__boosted-odd">
-        <strong>0.5+</strong>
+        <strong>{promo.value}</strong>
       </span>
     </div>
   )
 }
 
-function PromoTag({ children }: { children: ReactNode }) {
+function PromoTag({ children, promo }: { children: ReactNode; promo: PromoBottomSheetConfig }) {
   return (
     <div className="garantida-promo-bs__tag">
-      <img src={tagIcon} alt="" aria-hidden="true" />
-      <strong>GARANTIDA</strong>
+      <img src={promo.tagIcon} alt="" aria-hidden="true" />
+      <strong>{promo.tag}</strong>
       <span className="garantida-promo-bs__tag-separator">-</span>
       <strong>{children}</strong>
     </div>
@@ -78,7 +166,9 @@ export function GarantidaPromoBottomSheet({
   countdown,
   isOpen,
   onClose,
+  variant = 'garantida',
 }: GarantidaPromoBottomSheetProps) {
+  const promo = promoConfigs[variant]
   const getOddButtonProps = useOddSelection('garantida-promo-bs__odd-button')
   const closeTimerRef = useRef<number | null>(null)
 
@@ -87,7 +177,27 @@ export function GarantidaPromoBottomSheet({
   }, [])
 
   // The boosted promo odd, added to / removed from the real betslip on tap.
-  const [oddSelection] = useState(() => createGarantidaLewandowskiSelection())
+  const oddSelection = useMemo(() => (
+    variant === 'garantida'
+      ? createGarantidaLewandowskiSelection()
+      : createBetslipSelection({
+        eventId: getBetslipEventId({ sport: promo.sport, homeTeam: promo.matchHome, awayTeam: promo.matchAway }),
+        marketId: `${promo.variant}-${normalizeBetslipIdPart(promo.market)}-${normalizeBetslipIdPart(promo.playerName)}`,
+        outcomeId: normalizeBetslipIdPart(promo.value),
+        label: promo.value,
+        odd: promo.odd,
+        marketLabel: promo.market,
+        selectionType: 'player',
+        sport: promo.sport,
+        playerName: promo.playerName,
+        selectionTeamName: promo.selectionTeamName,
+        eventName: `${promo.matchHome} vs ${promo.matchAway}`,
+        eventTimeLabel: 'Hoje, 20:00',
+        playerImage: promo.playerImage,
+        badgeType: 'boost',
+        promoVariant: promo.variant,
+      })
+  ), [promo, variant])
   const oddGroupId = oddSelection
     ? getBetslipMarketGroupId({ eventId: oddSelection.eventId, marketId: oddSelection.marketId })
     : GARANTIDA_LEWANDOWSKI_GROUP_ID
@@ -113,7 +223,7 @@ export function GarantidaPromoBottomSheet({
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      sheetClassName="garantida-promo-bs"
+      sheetClassName={`garantida-promo-bs garantida-promo-bs--${promo.variant}`}
       bodyClassName="garantida-promo-bs__body"
       hideScrollIndicator
       blurBackdrop
@@ -130,14 +240,14 @@ export function GarantidaPromoBottomSheet({
 
               <div className="garantida-promo-bs__player-shell" aria-hidden="true">
                 <div className="garantida-promo-bs__player-mask">
-                  <img src={playerImage} alt="" />
+                  <img src={promo.playerImage} alt="" />
                 </div>
               </div>
 
               <div className="garantida-promo-bs__headline">
-                <h2 id="garantida-promo-bs-title">R. Lewandowski</h2>
-                <MatchInfo />
-                <OddsInfo />
+                <h2 id="garantida-promo-bs-title">{promo.playerName}</h2>
+                <MatchInfo promo={promo} />
+                <OddsInfo promo={promo} />
               </div>
             </div>
 
@@ -148,20 +258,20 @@ export function GarantidaPromoBottomSheet({
                 isSelected ? 'garantida-promo-bs__odd-button--selected' : '',
               ].filter(Boolean).join(' ')}
               aria-pressed={isSelected}
-              aria-label="Selecionar odd 1.85x"
+              aria-label={`Selecionar odd ${promo.odd}`}
               onClick={handleToggleOdd}
             >
-              1.85x
+              {promo.odd}
             </button>
 
             <ol className="garantida-promo-bs__rules">
-              {promotionRules.map((rule) => (
+              {promo.rules.map((rule) => (
                 <li key={rule}>{rule}</li>
               ))}
             </ol>
           </div>
 
-          <PromoTag>{formatSheetCountdown(countdown)}</PromoTag>
+          <PromoTag promo={promo}>{formatSheetCountdown(countdown)}</PromoTag>
 
           <button
             type="button"

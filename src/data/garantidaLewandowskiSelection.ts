@@ -8,7 +8,7 @@ import {
 export const GARANTIDA_LEWANDOWSKI_EVENT_ID = getBetslipEventId({
   sport: 'futebol',
   homeTeam: 'BAR',
-  awayTeam: 'INT',
+  awayTeam: 'REA',
 })
 export const GARANTIDA_LEWANDOWSKI_MARKET_ID = 'garantida-finalizacoes-ao-gol-r-lewandowski'
 export const GARANTIDA_LEWANDOWSKI_OUTCOME_ID = '0-5'
@@ -28,7 +28,7 @@ export const createGarantidaLewandowskiSelection = () => createBetslipSelection(
   sport: 'futebol',
   playerName: 'R. Lewandowski',
   selectionTeamName: 'BAR',
-  eventName: 'BAR vs INT',
+  eventName: 'BAR vs REA',
   eventTimeLabel: 'Hoje, 20:00',
   playerImage: lewandowskiCard,
   badgeType: 'boost',

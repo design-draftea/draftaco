@@ -58,6 +58,27 @@
   outline-offset: 2px;
 }
 
+.promo-draftaco__card--garantida {
+  background-image: none;
+}
+
+.promo-draftaco__card--garantida::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-color: rgba(86, 222, 234, 0.4);
+  content: '';
+  pointer-events: none;
+  -webkit-mask-image: var(--promo-draftaco-bg);
+  mask-image: var(--promo-draftaco-bg);
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
 .promo-draftaco__image-shell {
   position: relative;
   z-index: 1;
@@ -74,6 +95,15 @@
   height: 74px;
   object-fit: fill;
   pointer-events: none;
+}
+
+.promo-draftaco__card--boosted .promo-draftaco__image-shell,
+.promo-draftaco__card--boosted .promo-draftaco__image {
+  width: 72px;
+}
+
+.promo-draftaco__card--boosted .promo-draftaco__image-shell {
+  flex-basis: 72px;
 }
 
 .promo-draftaco__market-content {
@@ -144,8 +174,28 @@
   gap: 4px;
 }
 
+.promo-draftaco__card--boosted .promo-draftaco__market-content {
+  padding-right: 8px;
+}
+
+.promo-draftaco__card--boosted .promo-draftaco__title,
+.promo-draftaco__card--boosted .promo-draftaco__market-row {
+  max-width: calc(100% - 112px);
+}
+
 .promo-draftaco__time-row {
   gap: 0;
+}
+
+.promo-draftaco__card--boosted .promo-draftaco__time-row {
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.promo-draftaco__event-time {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
 }
 
 .promo-draftaco__market-name,
@@ -186,6 +236,60 @@
   white-space: nowrap;
 }
 
+.promo-draftaco__market-value {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.promo-draftaco__boost-row {
+  display: flex;
+  height: 18px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.promo-draftaco__boost-previous {
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.promo-draftaco__boost-arrow {
+  display: block;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  background: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  mask: url('../../assets/iconsDraftaco/arrowDuplo.svg') center / contain no-repeat;
+  -webkit-mask: url('../../assets/iconsDraftaco/arrowDuplo.svg') center / contain no-repeat;
+}
+
+.promo-draftaco__boost-value {
+  color: transparent;
+  font-family: var(--font-forma-djr-display, 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif);
+  font-size: 16px;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
+  background-image: var(--promo-draftaco-boost-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
 .promo-draftaco__odds-value {
   font-family: var(--font-forma-djr-display, 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif);
   font-size: 16px;
@@ -199,15 +303,23 @@
 }
 
 .promo-draftaco__card--garantida .promo-draftaco__odds-value {
-  background-image: linear-gradient(156deg, #f0abfc 0%, #6b47ff 100%);
+  background-image: linear-gradient(180deg, #56deea 0%, #9ceff7 100%);
 }
 
 .promo-draftaco__card--aumentada .promo-draftaco__odds-value {
   background-image: linear-gradient(186deg, #ffa34a 8.5%, #ff6b47 86%);
 }
 
+.promo-draftaco__card--aumentada {
+  --promo-draftaco-boost-gradient: linear-gradient(186deg, #ffa34a 8.5%, #ff6b47 86%);
+}
+
 .promo-draftaco__card--super-aumentada .promo-draftaco__odds-value {
   background-image: linear-gradient(180deg, #d2ff72 0%, #56deea 100%);
+}
+
+.promo-draftaco__card--super-aumentada {
+  --promo-draftaco-boost-gradient: linear-gradient(180deg, #d2ff72 0%, #56deea 100%);
 }
 
 .promo-draftaco__odds-previous {
@@ -279,6 +391,13 @@
   white-space: nowrap;
 }
 
+.promo-draftaco__rules--boosted {
+  position: absolute;
+  top: 22px;
+  right: 8px;
+  line-height: 14px;
+}
+
 .promo-draftaco__tag {
   position: absolute;
   z-index: 2;
@@ -301,8 +420,16 @@
   white-space: nowrap;
 }
 
+.promo-draftaco__tag img {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  filter: brightness(0);
+}
+
 .promo-draftaco__card--garantida .promo-draftaco__tag {
-  background-image: linear-gradient(32deg, #4b20ff 0%, #9730ff 100%);
+  background-image: linear-gradient(180deg, #56deea 0%, #98edf7 100%);
 }
 
 .promo-draftaco__card--aumentada .promo-draftaco__tag {

@@ -3,10 +3,12 @@ import { GarantidaPromoBottomSheet } from '../BottomSheet/GarantidaPromoBottomSh
 import './PromoDraftaco.css'
 
 import bgAumentada from '../../assets/iconsDraftaco/bgAumentada.png'
-import bgGarantida from '../../assets/iconsDraftaco/bgGarantida.png'
 import bgPromo from '../../assets/iconsDraftaco/bgPromo.png'
 import bgSuperAumentada from '../../assets/iconsDraftaco/bgSuperAumentada.png'
+import aumentadaTagIcon from '../../assets/iconsDraftaco/iconBetslipAumentada.svg'
+import imperdivelTagIcon from '../../assets/iconsDraftaco/iconBetslipGarantida.svg'
 import iconClock from '../../assets/iconsDraftaco/iconClock.svg'
+import superAumentadaTagIcon from '../../assets/iconsDraftaco/iconBetslipSuperAumentada.svg'
 import imgAdebayoPromo from '../../assets/iconsDraftaco/imgAdebayoPromo.png'
 import imgDembelePromo from '../../assets/iconsDraftaco/imgDembelePromo.png'
 import imgLewandowski from '../../assets/iconsDraftaco/imgLewandowskiPromo.png'
@@ -28,12 +30,15 @@ interface MarketPromoItem {
   type: 'market'
   id: string
   variant: MarketPromoVariant
-  background: string
+  background?: string
   tag: string
   title: string
   market: string
   value: string
   previousValue?: string
+  previousOdd?: string
+  boostedOdd?: string
+  tagIcon?: string
   matchHome: string
   matchAway: string
   matchHighlightedSide?: MatchHighlightedSide
@@ -60,14 +65,15 @@ const promoDraftacoItems: PromoDraftacoItem[] = [
     type: 'market',
     id: 'garantida-lewandowski',
     variant: 'garantida',
-    background: bgGarantida,
-    tag: 'GARANTIDA',
+    background: bgAumentada,
+    tag: 'IMPERDÍVEL',
     title: 'R. LEWANDOWSKI',
     market: 'Finalizações ao gol',
     value: '0.5+',
     previousValue: '3.5',
+    tagIcon: imperdivelTagIcon,
     matchHome: 'BAR',
-    matchAway: 'INT',
+    matchAway: 'REA',
     image: imgLewandowski,
     countdownMinutes: 137,
   },
@@ -80,6 +86,9 @@ const promoDraftacoItems: PromoDraftacoItem[] = [
     title: 'O. DEMBÉLÉ',
     market: 'Finalizações ao gol',
     value: '1.5+',
+    previousOdd: '1.78x',
+    boostedOdd: '2.50x',
+    tagIcon: aumentadaTagIcon,
     matchHome: 'PSG',
     matchAway: 'MCI',
     image: imgDembelePromo,
@@ -91,9 +100,12 @@ const promoDraftacoItems: PromoDraftacoItem[] = [
     variant: 'super-aumentada',
     background: bgSuperAumentada,
     tag: 'SUPER AUMENTADA',
-    title: 'B. ADEBAYO',
+    title: 'BAM ADEBAYO',
     market: 'Pontos',
     value: '11.5+',
+    previousOdd: '1.85x',
+    boostedOdd: '2.50x',
+    tagIcon: superAumentadaTagIcon,
     matchHome: 'CHI',
     matchAway: 'MIA',
     matchHighlightedSide: 'away',
@@ -120,9 +132,11 @@ const promoDraftacoItems: PromoDraftacoItem[] = [
   },
 ]
 
-const getPromoBackgroundStyle = (background: string): CSSProperties => ({
-  '--promo-draftaco-bg': `url(${background})`,
-} as CSSProperties)
+const getPromoBackgroundStyle = (background?: string): CSSProperties | undefined => (
+  background
+    ? ({ '--promo-draftaco-bg': `url(${background})` } as CSSProperties)
+    : undefined
+)
 
 const getCountdownDeadline = (
   promo: PromoDraftacoItem,
@@ -164,34 +178,60 @@ const renderMarketPromoContent = (promo: MarketPromoItem, countdown: PromoCountd
 
         <div className="promo-draftaco__market-row">
           <span className="promo-draftaco__market-name">{promo.market}</span>
-          <span className="promo-draftaco__odds">
-            {promo.previousValue && (
-              <span className="promo-draftaco__odds-previous">{promo.previousValue}</span>
-            )}
-            <span className="promo-draftaco__odds-value">{promo.value}</span>
-          </span>
+          {promo.boostedOdd ? (
+            <span className="promo-draftaco__market-value">{promo.value}</span>
+          ) : (
+            <span className="promo-draftaco__odds">
+              {promo.previousValue && (
+                <span className="promo-draftaco__odds-previous">{promo.previousValue}</span>
+              )}
+              <span className="promo-draftaco__odds-value">{promo.value}</span>
+            </span>
+          )}
         </div>
 
         <div className="promo-draftaco__time-row">
-          <span className="promo-draftaco__match">
-            <span className={getMatchTeamClassName(promo, 'home')}>{promo.matchHome}</span>
-            <span className="promo-draftaco__match-vs">vs</span>
-            <span className={getMatchTeamClassName(promo, 'away')}>{promo.matchAway}</span>
+          <span className="promo-draftaco__event-time">
+            <span className="promo-draftaco__match">
+              <span className={getMatchTeamClassName(promo, 'home')}>{promo.matchHome}</span>
+              <span className="promo-draftaco__match-vs">vs</span>
+              <span className={getMatchTeamClassName(promo, 'away')}>{promo.matchAway}</span>
+            </span>
+            {renderCountdown(countdown)}
           </span>
-          {renderCountdown(countdown)}
+
+          {promo.boostedOdd && (
+            <span
+              className="promo-draftaco__boost-row"
+              aria-label={`Odd aumentada de ${promo.previousOdd} para ${promo.boostedOdd}`}
+            >
+              <span className="promo-draftaco__boost-previous">{promo.previousOdd}</span>
+              <span className="promo-draftaco__boost-arrow" aria-hidden="true" />
+              <strong className="promo-draftaco__boost-value">{promo.boostedOdd}</strong>
+            </span>
+          )}
         </div>
       </div>
 
-      <p className="promo-draftaco__rules">
-        *Mult. mín: 3x
-        <br />
-        Mult. máx: 5x
-        <br />
-        Mín. seleções: 3
-      </p>
+      {promo.boostedOdd ? (
+        <p className="promo-draftaco__rules promo-draftaco__rules--boosted">
+          *Mult. mín: 3x / máx: 5x
+          <br />
+          Mín. seleções: 3
+        </p>
+      ) : (
+        <p className="promo-draftaco__rules">
+          *Mult. mín: 3x
+          <br />
+          Mult. máx: 5x
+          <br />
+          Mín. seleções: 3
+        </p>
+      )}
     </div>
 
     <div className="promo-draftaco__tag">
+      {promo.tagIcon && <img src={promo.tagIcon} alt="" aria-hidden="true" />}
       <span>{promo.tag}</span>
     </div>
   </>
@@ -206,6 +246,7 @@ const renderMarketPromo = (
     'promo-draftaco__card',
     'promo-draftaco__card--market',
     `promo-draftaco__card--${promo.variant}`,
+    promo.boostedOdd ? 'promo-draftaco__card--boosted' : '',
     onOpenDetails ? 'promo-draftaco__card--button' : '',
   ].filter(Boolean).join(' ')
   const cardStyle = getPromoBackgroundStyle(promo.background)
@@ -249,7 +290,7 @@ const renderSimplePromo = (promo: SimplePromoItem, countdown: PromoCountdownPart
 )
 
 export function PromoDraftaco() {
-  const [isGarantidaBottomSheetOpen, setIsGarantidaBottomSheetOpen] = useState(false)
+  const [activeMarketPromo, setActiveMarketPromo] = useState<MarketPromoItem | null>(null)
   const [countdownDeadlines] = useState(() => {
     const createdAt = Date.now()
 
@@ -276,15 +317,13 @@ export function PromoDraftaco() {
         <div className="promo-draftaco__track">
           {promoDraftacoItems.map((promo) => {
             const countdown = getPromoCountdownParts(getCountdownDeadline(promo, countdownDeadlines, now) - now)
-            const shouldOpenGarantidaDetails = promo.id === GARANTIDA_PROMO_ID
-
             return (
               <div className="promo-draftaco__item" key={promo.id}>
                 {promo.type === 'market'
                   ? renderMarketPromo(
                     promo,
                     countdown,
-                    shouldOpenGarantidaDetails ? () => setIsGarantidaBottomSheetOpen(true) : undefined
+                    () => setActiveMarketPromo(promo)
                   )
                   : renderSimplePromo(promo, countdown)}
               </div>
@@ -294,9 +333,12 @@ export function PromoDraftaco() {
       </section>
 
       <GarantidaPromoBottomSheet
-        countdown={getPromoCountdownParts(countdownDeadlines[GARANTIDA_PROMO_ID] - now)}
-        isOpen={isGarantidaBottomSheetOpen}
-        onClose={() => setIsGarantidaBottomSheetOpen(false)}
+        countdown={getPromoCountdownParts(
+          countdownDeadlines[activeMarketPromo?.id ?? GARANTIDA_PROMO_ID] - now
+        )}
+        isOpen={activeMarketPromo !== null}
+        onClose={() => setActiveMarketPromo(null)}
+        variant={activeMarketPromo?.variant ?? 'garantida'}
       />
     </>
   )
