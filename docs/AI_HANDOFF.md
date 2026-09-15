@@ -37,7 +37,10 @@
   constantes nos dois arquivos.
 - Objetivo 4 (pedido na mesma sessão): a troca de foco no lançamento era um corte seco — o
   retrato de quem lançou sumia e o de quem recebe aparecia no mesmo quadro. Agora os dois se
-  cruzam em 220ms (`REPLAY_TIMING.focusSwap`), cada um com a própria haste e o próprio nome.
+  cruzam em dois tempos, cada um com a própria haste e o próprio nome: quem sai apaga em
+  380ms (`REPLAY_TIMING.focusSwap`) e quem entra espera 130ms (`focusSwapDelay`) antes de
+  aparecer, para não disputar o olho com a bola saindo. A primeira versão fazia os dois
+  juntos em 220ms e passava despercebida.
   A cena expõe `leavingFocus`; o retrato que sai fica montado por uma fração do voo
   (`FOCUS_SWAP_SPAN`), e `check:nfl` confere que essa janela cobre a animação no voo mais
   curto. Vale para passe recebido e chute com retorno; não vale quando o foco não troca de
