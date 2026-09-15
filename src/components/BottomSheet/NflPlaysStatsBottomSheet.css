@@ -1,0 +1,1293 @@
+/* Bottom sheet de jogadas e estatísticas da NFL (Figma 1869-59255).
+   Abas, seletor de time e acordeões vêm de componentes compartilhados; aqui ficam só
+   o brilho do topo, o placar por quarter, as tabelas e a comparação entre equipes. */
+
+/* Mesmo brilho do bottom sheet de perfil (.deposit-panel--bottom-sheet::before). */
+.bottom-sheet.nfl-stats-bs {
+  /* Mesma distância do topo do bottom sheet de perfil, que reserva 56px
+     (.deposit-panel--bottom-sheet). O sheet genérico usa 80px. */
+  --bottom-sheet-top-offset: 56px;
+
+  position: relative;
+  /* Mesmo raio do bottom sheet de perfil, no lugar dos 8px do sheet genérico. */
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+}
+
+.bottom-sheet.nfl-stats-bs::before {
+  position: absolute;
+  top: -6px;
+  left: 0;
+  z-index: 0;
+  width: 100%;
+  height: 88px;
+  background: linear-gradient(45deg, #4b20ff 0%, #9730ff 100%);
+  filter: blur(42px);
+  opacity: 0.48;
+  content: '';
+  pointer-events: none;
+}
+
+.bottom-sheet.nfl-stats-bs .bottom-sheet__header,
+.bottom-sheet.nfl-stats-bs .bottom-sheet__body-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Header igual ao do perfil (.deposit-panel__header dentro do bottom sheet): 56px de
+   altura, sem divisória e com o título centralizado sobre o botão de fechar. */
+.bottom-sheet.nfl-stats-bs .bottom-sheet__header {
+  height: 56px;
+  flex: 0 0 56px;
+  justify-content: flex-end;
+  padding: 0 10px;
+  border-bottom: 0;
+}
+
+.bottom-sheet.nfl-stats-bs .bottom-sheet__title {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  justify-content: center;
+  padding: 0 48px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.bottom-sheet.nfl-stats-bs .bottom-sheet__title span {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+/* O trilho de times herda o espaçamento do trilho de esporte; aqui só encosta nas
+   margens do sheet. */
+.nfl-stats-bs__players .sport-rail-shell {
+  margin: 0 -16px 8px;
+}
+
+/* Chips de Jogadas/Estatísticas conforme o Figma 1909:7673 (`Selecionar equipe`):
+   frame de 343px alinhado à margem de 16px do sheet, dois chips iguais de 167.5px com
+   8px de gap. Sem rolagem horizontal: são só dois e eles ocupam a linha inteira. */
+.nfl-stats-bs__chips.content-filter-chips {
+  margin: 0;
+  padding: 0;
+}
+
+.nfl-stats-bs__chips .content-filter-chips__list {
+  gap: 8px;
+  padding: 0;
+  overflow-x: visible;
+}
+
+.nfl-stats-bs__chips .content-filter-chips__item {
+  flex: 1 1 0;
+  height: 40px;
+  padding: 7px 12px;
+  box-sizing: border-box;
+}
+
+/* O chip inativo é o 8% de branco do Figma direto sobre o sheet. A regra do evento ao
+   vivo compõe esse 8% sobre o fundo do app, que aqui é o fundo errado. */
+.bottom-sheet.nfl-stats-bs .nfl-stats-bs__chips .content-filter-chips__item:not(.content-filter-chips__item--active) {
+  border: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
+  background: var(--ds-action-transparency-default, rgb(251 251 251 / 0.08));
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+}
+
+/* O indicador deslizante pinta uma pílula roxa opaca e sem borda. Aqui os dois chips são
+   fixos (a aba Jogadas está inerte), então quem carrega o estado ativo é o próprio chip. */
+.nfl-stats-bs__chips .sliding-chip-indicator {
+  display: none;
+}
+
+/* Ativo: preenchimento a 24% e borda em degradê — no Figma as duas vêm do mesmo par de
+   variáveis (`Action/actionPrimaryOpacity24` e `Action/actionPrimaryDefault`), por isso o
+   mesmo ângulo nas duas camadas. */
+.bottom-sheet.nfl-stats-bs .nfl-stats-bs__chips .content-filter-chips__item--active {
+  position: relative;
+  border: 0;
+  background: linear-gradient(
+    41.94deg,
+    rgb(var(--ds-action-primary-default-start-rgb, 75 32 255) / 0.24) 0%,
+    rgb(var(--ds-action-primary-default-end-rgb, 151 48 255) / 0.24) 100%
+  );
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+/* Anel em degradê de 1px, mesma técnica de máscara já usada no indicador deslizante dos
+   chips da home (`.sliding-chip-indicator::after` em styles/index.css). Aqui precisa ser
+   anel, e não duas camadas `padding-box`/`border-box`: com o preenchimento a 24% o
+   degradê opaco da borda apareceria por baixo e o chip inteiro ficaria roxo sólido. */
+.bottom-sheet.nfl-stats-bs .nfl-stats-bs__chips .content-filter-chips__item--active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    41.94deg,
+    var(--ds-action-primary-default-start, #4b20ff) 0%,
+    var(--ds-action-primary-default-end, #9730ff) 100%
+  );
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(var(--ds-fill-dark, #000000) 0 0) content-box,
+    linear-gradient(var(--ds-fill-dark, #000000) 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(var(--ds-fill-dark, #000000) 0 0) content-box,
+    linear-gradient(var(--ds-fill-dark, #000000) 0 0);
+  mask-composite: exclude;
+}
+
+.nfl-stats-bs__accordion {
+  padding-inline: 0;
+}
+
+/* 16px entre o fim de uma estatística (a divisória do acordeão) e o título da seguinte. */
+.nfl-stats-bs__accordion + .nfl-stats-bs__accordion {
+  margin-top: 16px;
+}
+
+.nfl-stats-bs__body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* Base com respiro maior: a comparação entre equipes é a última seção e encostava no
+     fim do sheet. */
+  padding: 16px 16px 32px;
+}
+
+.nfl-stats-bs__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.nfl-stats-bs__section-title {
+  margin: 0 0 12px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+/* ── Placar por quarter ──────────────────────────────────────────────────── */
+.nfl-stats-bs__scoreboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 24px;
+  margin-bottom: 8px;
+}
+
+.nfl-stats-bs__scoreboard-head h3 {
+  margin: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-stats-bs__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-stats-bs__live-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--ds-feedback-error-default, #f43f5e);
+}
+
+.nfl-stats-bs__score-table,
+.nfl-stats-bs__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-stats-bs__score-table th,
+.nfl-stats-bs__table th,
+.nfl-stats-bs__score-table td,
+.nfl-stats-bs__table td {
+  padding: 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+}
+
+.nfl-stats-bs__score-table thead th,
+.nfl-stats-bs__table thead th {
+  height: 28px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}
+
+.nfl-stats-bs__score-table tbody th,
+.nfl-stats-bs__table tbody th {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-stats-bs__score-table tbody td {
+  height: 36px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+/* A primeira coluna carrega o nome e absorve a sobra (por isso `100%`, e não os 123px
+   do Figma, que só valem na largura de referência); as colunas numéricas ficam fixas e
+   o bloco do placar encosta na margem direita em qualquer largura. */
+.nfl-stats-bs__score-table thead th:first-child,
+.nfl-stats-bs__score-table tbody th {
+  width: 100%;
+}
+
+/* `min-width` junto com `width`: a coluna de porcentagem acima espremeria as demais até
+   a largura do texto se elas declarassem só `width`. */
+.nfl-stats-bs__score-table thead th:not(:first-child),
+.nfl-stats-bs__score-table tbody td {
+  width: 40px;
+  min-width: 40px;
+}
+
+.nfl-stats-bs__score-logo {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  object-fit: contain;
+}
+
+.nfl-stats-bs__score-total span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 100px;
+  background: var(--ds-background-opacity-tertiary, rgb(251 251 251 / 0.08));
+  font-weight: 700;
+}
+
+.nfl-stats-bs__note {
+  margin: 8px 0 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}
+
+/* ── Tabelas de jogador dentro do acordeão ───────────────────────────────── */
+.nfl-stats-bs__table thead th:first-child {
+  text-align: left;
+}
+
+.nfl-stats-bs__table tbody th {
+  height: 40px;
+}
+
+/* Mesmo critério do placar: a coluna do jogador absorve a sobra e o bloco numérico
+   encosta na margem direita em qualquer largura. */
+.nfl-stats-bs__table thead th:first-child,
+.nfl-stats-bs__table tbody th {
+  width: 100%;
+}
+
+.nfl-stats-bs__table thead th:not(:first-child) {
+  width: 44px;
+  min-width: 44px;
+}
+
+.nfl-stats-bs__table tbody td {
+  width: 44px;
+  min-width: 44px;
+  height: 40px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-stats-bs__table tbody tr:not(:last-child) th,
+.nfl-stats-bs__table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08));
+}
+
+.nfl-stats-bs__player-photo {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08));
+}
+
+.nfl-stats-bs__table tbody th span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-stats-bs__empty {
+  margin: 0 0 16px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}
+
+/* ── Comparação entre equipes ────────────────────────────────────────────── */
+.nfl-stats-bs__comparison-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-stats-bs__comparison-scope {
+  font-weight: 500;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}
+
+.nfl-stats-bs__comparison-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nfl-stats-bs__comparison-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-stats-bs__comparison-values strong {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-stats-bs__comparison-values span {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  text-align: center;
+}
+
+.nfl-stats-bs__comparison-bar {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.nfl-stats-bs__comparison-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+
+/* ── Aba Jogadas (Figma 1909:7558) ───────────────────────────────────────── */
+
+/* No Figma os blocos do replay ficam a 8px um do outro, e não nos 24px que separam as
+   seções de estatísticas. O mesmo vale para o espaço entre os chips e o campo, por isso o
+   gap muda no corpo do sheet — só nesta aba, para não mexer em Estatísticas. */
+.nfl-stats-bs__body--plays {
+  gap: 8px;
+}
+
+/* Nesta aba o bloco dos chips tem exatamente os 40px do Figma: o evento ao vivo, de onde
+   vem a classe dos chips, acrescenta 8px abaixo. */
+.bottom-sheet.nfl-stats-bs .nfl-stats-bs__body--plays .nfl-stats-bs__chips.content-filter-chips {
+  padding: 0;
+}
+
+.nfl-plays {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Campo: o frame tem a largura da tela (375) e a arte é maior (389.73), sobrando 7.37px
+   de cada lado. Em porcentagem para acompanhar larguras acima da de referência.
+
+   A altura vem de `aspect-ratio`, não de um valor fixo: com 157px travados só a largura
+   de referência fechava com a proporção do PNG, e em telas mais largas o `cover` cortava
+   o topo da arte — justamente onde estão as traves. 375/157 dá exatamente os 157px do
+   Figma em 375 e escala sem cortar nas demais larguras. */
+/* O frame do replay tem 185 de altura, e não os 157 da arte: os 20px de folga em cima
+   abrem espaço para o retrato e o nome do jogador, que sobem acima do gramado. */
+.nfl-plays__field {
+  position: relative;
+  aspect-ratio: 375 / 185;
+  margin: 0 -16px;
+  overflow: hidden;
+  /* Contexto de container para a palavra TOUCHDOWN acompanhar a largura do campo. A largura
+     vem do pai e a altura do aspect-ratio, então conter o inline-size não muda o layout. */
+  container-type: inline-size;
+}
+
+.nfl-plays__field-art {
+  position: absolute;
+  top: 10.811%;
+  left: -1.9645%;
+  width: 103.929%;
+  height: 84.865%;
+}
+
+/* Palco das jogadas: mesmo viewBox do frame de referência, então bola, sombra, rastro,
+   marcadores e retrato dividem um sistema de coordenadas só com a arte. */
+.nfl-plays__stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  animation: nfl-plays-stage-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Cada lance monta um palco novo (a `key` por lance), então a entrada é o que costura um
+   lance no outro: sem isso a passagem do primeiro para o segundo é um corte seco. O campo
+   e o retrato entram junto, com um leve deslocamento para cima. */
+@keyframes nfl-plays-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* O X do passe que cai entra com a bola sumindo, não de um quadro para o outro. */
+@keyframes nfl-plays-miss-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nfl-plays__stage-miss {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nfl-plays-miss-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* O caminho e o fluxo aparecem junto com o lançamento, não de uma vez. */
+@keyframes nfl-plays-path-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.nfl-plays__stage-path {
+  animation: nfl-plays-path-in 400ms ease both;
+}
+
+/* O card de contexto acompanha a troca de lance com o mesmo tempo do palco. */
+.nfl-plays__context {
+  animation: nfl-plays-stage-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Saída do palco quando o próximo lance vem em seguida. Substitui a animação de entrada,
+   que a essa altura já terminou — por isso é `animation` inteiro, e não só o nome.
+   Espera e duração vêm do componente, escaladas pela velocidade. */
+.nfl-plays__stage--leaving {
+  animation-name: nfl-plays-fade-out;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+/* Selo de jogada anulada. Mesma posição da palavra TOUCHDOWN, mas em cinza e sem festa: a
+   jogada aconteceu, só não conta. Assenta de cima para baixo, como um carimbo. */
+.nfl-plays__field-void {
+  position: absolute;
+  top: 14%;
+  right: 0;
+  left: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 13px;
+  font-size: 3.467cqw;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  text-align: center;
+  color: #9aa0a6;
+  pointer-events: none;
+  animation: nfl-plays-void-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nfl-plays-void-in {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(1.25);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Fogos de artifício do touchdown ─────────────────────────────────────────
+
+   Cada faísca são três camadas aninhadas, e cada uma resolve um eixo:
+
+     span     -> gravidade (ease-in: começa parada e acelera para baixo)
+     span i   -> giro fixo do ângulo da faísca
+     i::before-> disparo para fora (ease-out: sai rápido e desacelera)
+
+   Somar um ease-out para fora com um ease-in para baixo dá uma PARÁBOLA de verdade, que é o
+   que um estilhaço faz. Com uma camada só a faísca anda em linha reta — era o defeito da
+   versão anterior. A gravidade tem de ficar FORA do giro, senão apontaria para a direção da
+   faísca em vez de para baixo.
+
+   As distâncias são em `cqw` nos dois eixos porque `container-type: inline-size` só publica
+   unidades de inline; usar a mesma unidade nos dois também impede o aspect-ratio do campo de
+   deformar a explosão. */
+.nfl-plays__fw {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* O clarão do estouro: a bola de luz do primeiro instante, que some antes das faíscas
+   chegarem longe. É ela que faz a explosão ter um "momento" em vez de só aparecerem riscos. */
+.nfl-plays__fw::before {
+  content: '';
+  position: absolute;
+  top: 21%;
+  left: 50%;
+  width: 26cqw;
+  height: 26cqw;
+  margin: -13cqw 0 0 -13cqw;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgb(255 255 255 / 0.85) 0%,
+    rgb(var(--ds-current-score-rgb, 187 120 255) / 0.5) 32%,
+    rgb(var(--ds-current-score-rgb, 187 120 255) / 0) 70%
+  );
+  animation: nfl-plays-fw-flash var(--fw-flash, 260ms) ease-out both;
+}
+
+@keyframes nfl-plays-fw-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.12);
+  }
+
+  16% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
+}
+
+/* Camada 1: gravidade. Fica fora do giro para puxar sempre para baixo. */
+.nfl-plays__fw span {
+  position: absolute;
+  top: 21%;
+  left: 50%;
+  animation: nfl-plays-fw-gravity var(--fw-dur) cubic-bezier(0.55, 0, 0.9, 0.55) var(--fw-delay) both;
+}
+
+/* Camada 2: a direção da faísca. O giro é estático; aqui rodam só o brilho e a cintilação,
+   que não mexem em `transform` e por isso convivem com ele. */
+.nfl-plays__fw span i {
+  position: absolute;
+  display: block;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--fw-a));
+  animation-name: var(--fw-tw, none), nfl-plays-fw-cool;
+  animation-duration: 150ms, var(--fw-dur);
+  animation-delay: var(--fw-delay), var(--fw-delay);
+  animation-timing-function: steps(2, end), ease-out;
+  animation-iteration-count: infinite, 1;
+  animation-fill-mode: none, both;
+}
+
+/* Camada 3: a faísca. Cápsula deitada com a origem na ponta de trás, então ela aponta para
+   fora sozinha e a cauda fica virada para o centro do estouro — o rastro sai de graça do
+   giro da camada 2. O degradê nasce transparente atrás e termina branco na frente: cabeça
+   quente e cauda esfriando, sem custar uma animação de cor. */
+.nfl-plays__fw span i::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--fw-th) / -2);
+  left: 0;
+  width: var(--fw-len);
+  height: var(--fw-th);
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, var(--fw-c) 55%, #fff 100%);
+  box-shadow: 0 0 calc(var(--fw-th) * 2) var(--fw-c);
+  transform-origin: 0 50%;
+  animation: nfl-plays-fw-travel var(--fw-dur) cubic-bezier(0.05, 0.85, 0.25, 1) var(--fw-delay) both;
+}
+
+@keyframes nfl-plays-fw-gravity {
+  from { transform: translateY(0); }
+  to { transform: translateY(var(--fw-g)); }
+}
+
+/* O rastro estica na saída e encolhe ao apagar, como uma brasa perdendo força. */
+@keyframes nfl-plays-fw-travel {
+  0% {
+    opacity: 0;
+    transform: translateX(0) scale(0.3, 0.6);
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  55% {
+    transform: translateX(calc(var(--fw-d) * 0.82)) scale(1, 1);
+  }
+
+  70% {
+    opacity: 0.85;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(var(--fw-d)) scale(0.45, 0.5);
+  }
+}
+
+/* Sai branca de quente e assenta na própria cor. */
+@keyframes nfl-plays-fw-cool {
+  0% { filter: brightness(2.2) saturate(0.2); }
+  35% { filter: brightness(1.3) saturate(1); }
+  100% { filter: brightness(0.95) saturate(1); }
+}
+
+/* Cintilação de brasa, só em parte das faíscas: em todas viraria ruído. */
+@keyframes nfl-plays-fw-twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* "TOUCHDOWN" sobre o campo. O `top` é percentual do frame de 185: 14% coloca a palavra na
+   faixa escura, abaixo do topo e bem acima do gramado (que começa em 84/185 = 45%).
+
+   A fonte é `cqw` sobre a largura do campo — 16 unidades do frame de 375 dão 4,267cqw — com
+   um valor em px antes, que fica para quem não tiver container queries. */
+.nfl-plays__field-touchdown {
+  position: absolute;
+  top: 14%;
+  right: 0;
+  left: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 16px;
+  font-size: 4.267cqw;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.15em;
+  /* `letter-spacing` sobra depois da última letra e desloca o centro; o recuo devolve. */
+  text-indent: 0.15em;
+  text-align: center;
+  color: #a877ff;
+  pointer-events: none;
+}
+
+.nfl-plays__field-touchdown span {
+  display: inline-block;
+  animation:
+    nfl-plays-td-letter-in var(--td-in, 420ms) cubic-bezier(0.22, 1, 0.36, 1) both,
+    nfl-plays-td-letter-wave var(--td-wave, 1400ms) ease-in-out infinite;
+}
+
+/* Nasce grande e transparente, assenta no tamanho certo. */
+@keyframes nfl-plays-td-letter-in {
+  from {
+    opacity: 0;
+    transform: scale(2);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Onda depois da palavra formada: cresce e volta, letra por letra, em laço até o lance
+   trocar. O movimento ocupa só os primeiros 37% do ciclo; o resto é descanso, senão a
+   palavra pulsaria sem parar. Sem `fill-mode`, para a onda não valer durante a espera e
+   atropelar a entrada — as duas mexem em `transform`. */
+@keyframes nfl-plays-td-letter-wave {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.35); }
+  37% { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
+/* ── Giro da placa no fim do lance ───────────────────────────────────────────
+
+   Duas faces empilhadas: a da frente encolhe na horizontal até virar um risco, a de trás
+   cresce a partir do risco. Não é um flip 3D de verdade — `transform-style: preserve-3d`
+   não é confiável em SVG — mas numa placa redonda o resultado é indistinguível de uma moeda
+   virando, e funciona em qualquer navegador.
+
+   `transform-box: fill-box` é o que faz a escala acontecer em torno do centro da própria
+   placa; sem ele a origem seria o canto do viewBox e a placa voaria para fora. */
+.nfl-plays__badge-front,
+.nfl-plays__badge-back {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* `ease-in` aqui NÃO é escolha estética: a largura projetada de uma moeda girando segue
+   cos(θ), então de 0° a 90° ela sai devagar e acelera. Junto com o `ease-out` da volta, as
+   duas metades formam uma curva in-out contínua. Pôr in-out em CADA metade faria o giro
+   frear quando está de perfil — viraria duas animações em vez de uma. */
+.nfl-plays__badge-front {
+  animation: nfl-plays-badge-hide var(--flip-out) ease-in var(--flip-delay) both;
+}
+
+/* Entra quando a da frente terminou de sumir. A curva passa de 1 (o `1.35` no segundo ponto
+   de controle), então a placa excede o tamanho e assenta — é o momento do giro, e é o que
+   faltava para ele parecer físico em vez de uma troca de imagem. */
+.nfl-plays__badge-back {
+  animation:
+    nfl-plays-badge-show var(--flip-in) cubic-bezier(0.22, 1.35, 0.36, 1) calc(var(--flip-delay) + var(--flip-out)) both,
+    nfl-plays-badge-flare calc(var(--flip-in) * 1.6) ease-out calc(var(--flip-delay) + var(--flip-out)) both;
+}
+
+@keyframes nfl-plays-badge-hide {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@keyframes nfl-plays-badge-show {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Clarão ao assentar, que não volta a zero: sobra um brilho de fundo enquanto o número está
+   na tela, para a placa virada parecer acesa. */
+@keyframes nfl-plays-badge-flare {
+  0% { filter: drop-shadow(0 0 0 rgb(var(--ds-current-score-rgb, 187 120 255) / 0)); }
+  28% { filter: drop-shadow(0 0 5px rgb(var(--ds-current-score-rgb, 187 120 255) / 0.9)); }
+  100% { filter: drop-shadow(0 0 2px rgb(var(--ds-current-score-rgb, 187 120 255) / 0.35)); }
+}
+
+/* Anel que abre no instante da virada. Escala em vez de animar `r`: além de ser mais
+   portável, escalar afina o traço junto, que é o que um anel de impacto faz. */
+.nfl-plays__badge-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: nfl-plays-badge-ring calc(var(--flip-in) * 1.5) ease-out calc(var(--flip-delay) + var(--flip-out)) both;
+}
+
+@keyframes nfl-plays-badge-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.84);
+  }
+
+  25% { opacity: 0.8; }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+.nfl-plays__badge-gain {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  fill: var(--ds-fill-primary, #fbfbfb);
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-plays__badge-unit {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  fill: var(--ds-current-score, #bb78ff);
+}
+
+.nfl-plays__stage-name {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--ds-fill-primary, #fbfbfb);
+}
+
+/* Duas camadas no mesmo lugar: a arte base e o overlay da marca. */
+.nfl-plays__field-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: bottom;
+}
+
+/* Os nomes das end zones são assets prontos, já com a rotação e o skew do Figma. Ficam
+   em porcentagem da arte para escalar junto com ela. */
+.nfl-plays__endzone {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.nfl-plays__endzone--home {
+  top: 62.102%;
+  left: 17.990%;
+  width: 7.441%;
+  aspect-ratio: 29 / 32;
+}
+
+.nfl-plays__endzone--away {
+  top: 62.369%;
+  left: 81.899%;
+  width: 9.750%;
+  aspect-ratio: 38 / 46;
+}
+
+/* ── Jogada em foco ─────────────────────────────────────────────────────── */
+.nfl-plays__context {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nfl-plays__context-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+}
+
+.nfl-plays__context-title {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 21px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-plays__context-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Pílula de velocidade, no lugar onde a referência do Twitter a coloca. */
+.nfl-plays__speed {
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
+  border-radius: 56px;
+  background: var(--ds-action-transparency-default, rgb(251 251 251 / 0.08));
+  color: var(--ds-fill-primary, #fbfbfb);
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-plays__play-gain {
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+/* Touchdown: as letras sobem e descem em onda, uma vez, e assentam. Em branco, como o resto
+   da linha de resultado — o degradê de marca que havia aqui competia com a palavra sobre o
+   campo, que é onde a celebração acontece. */
+.nfl-plays__touchdown {
+  display: inline-flex;
+  color: var(--ds-fill-primary, #fbfbfb);
+  letter-spacing: 0.2px;
+}
+
+.nfl-plays__touchdown-letter {
+  display: inline-block;
+  animation: nfl-plays-touchdown-wave 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Espaço em branco entre palavras não colapsa com inline-block. */
+  white-space: pre;
+}
+
+@keyframes nfl-plays-touchdown-wave {
+  0% {
+    transform: translateY(0);
+  }
+
+  35% {
+    transform: translateY(-6px);
+  }
+
+  70% {
+    transform: translateY(2px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.nfl-plays__context-count {
+  flex: 0 0 auto;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-plays__play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+}
+
+.nfl-plays__play-text {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nfl-plays__play-title {
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  color: var(--ds-fill-primary, #fbfbfb);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-plays__play-detail {
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-plays__play-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.nfl-plays__play-button {
+  display: flex;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 56px;
+  /* Mesmo par de marca do chip ativo, no ângulo do Figma para este botão. */
+  background: linear-gradient(
+    75.11deg,
+    var(--ds-action-primary-default-start, #4b20ff) 0%,
+    var(--ds-action-primary-default-end, #9730ff) 100%
+  );
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nfl-plays__play-button img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+/* ── Linha do tempo ─────────────────────────────────────────────────────── */
+.nfl-plays__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nfl-plays__timeline-track {
+  position: relative;
+  height: 40px;
+}
+
+/* Trilho e progresso recuam 4px de cada lado: é o raio do marcador, então a linha começa
+   e termina no centro do primeiro e do último ponto. */
+.nfl-plays__timeline-rail,
+.nfl-plays__timeline-progress {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  height: 3px;
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.nfl-plays__timeline-rail {
+  right: 4px;
+  background: var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+.nfl-plays__timeline-progress {
+  background: var(--ds-current-score, #bb78ff);
+}
+
+.nfl-plays__timeline-marker {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: #6b6b6b;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Alvo de toque confortável sem mudar o desenho do ponto. */
+.nfl-plays__timeline-marker::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  content: '';
+}
+
+/* Os pontos já percorridos são parte do trecho preenchido: mesma cor da barra, senão dois
+   roxos diferentes apareceriam em cima um do outro. */
+.nfl-plays__timeline-marker--done {
+  background: var(--ds-current-score, #bb78ff);
+}
+
+/* O marcador em foco é um círculo de 14px com anel de 4px POR FORA — 22px no total,
+   conferido no render do Figma (4px de anel, 14px de núcleo, 4px de anel). O código que o
+   Figma gera diz `size-[14px] border-4`, que em `border-box` daria 14px no total com
+   núcleo de 6px; daí o `content-box`. */
+.nfl-plays__timeline-marker--current {
+  width: 14px;
+  height: 14px;
+  /* Anel na própria cor do marcador a 40%: lê como halo do ponto atual, e não como uma
+     borda de outra cor.
+
+     `background-clip: padding-box` é obrigatório aqui. Por padrão o fundo é pintado por
+     baixo da borda também, então o roxo sólido aparecia através dos 40% e o anel ficava
+     indistinguível do núcleo. Mesma armadilha da borda em degradê dos chips. */
+  border: 4px solid rgb(var(--ds-current-score-rgb, 187 120 255) / 0.4);
+  box-sizing: content-box;
+  background: var(--ds-current-score, #bb78ff);
+  background-clip: padding-box;
+}
+
+.nfl-plays__timeline-clock {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+  height: 18px;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Campanhas por quarter ──────────────────────────────────────────────── */
+.nfl-plays__drives {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.nfl-plays__quarter-title {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  margin: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.nfl-plays__drive-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nfl-plays__drive {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 72px;
+  border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+/* A campanha em foco recebe o brilho que no Figma é um asset `light` desfocado no topo
+   da linha. Aqui é gradiente, pela mesma razão do brilho do topo do sheet. */
+.nfl-plays__drive--active {
+  background: linear-gradient(
+    180deg,
+    var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08)) 0%,
+    rgb(251 251 251 / 0) 100%
+  );
+}
+
+.nfl-plays__drive-logo {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  object-fit: contain;
+}
+
+.nfl-plays__drive-info {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  padding-left: 8px;
+}
+
+.nfl-plays__drive-name {
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  color: var(--ds-fill-primary, #fbfbfb);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nfl-plays__drive-stats {
+  margin: 0;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  white-space: nowrap;
+}
+
+.nfl-plays__drive-button {
+  display: flex;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 56px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nfl-plays__drive-button img {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+
+/* A bola (e a sombra dela) some depois de assentar. Duração e espera vêm do componente,
+   escaladas pela velocidade da reprodução.
+
+   O keyframe tem só `to`: assim o `from` implícito é a opacidade computada de cada
+   elemento, e a sombra parte dos seus 0,45 em vez de pular para 1 antes de apagar. */
+.nfl-plays__fade-out {
+  animation-name: nfl-plays-fade-out;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes nfl-plays-fade-out {
+  to { opacity: 0; }
+}

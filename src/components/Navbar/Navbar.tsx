@@ -1,10 +1,11 @@
+import { getBrandConfig } from '../../shared/brand/config'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import './Navbar.css'
 
 import { productNavbarConfigs } from '../../data/homeProducts'
-import { useFeatureFlags } from '../../hooks/useFeatureFlags'
-import type { ProductMode } from '../../types/home'
-import navClubDrafteaIniciante from '../../assets/navClubDrafteaIniciante.png'
+import { useFeatureFlags } from '../../shared/hooks/useFeatureFlags'
+import type { ProductMode } from '../../shared/types/home'
+import navClubDrafteaIniciante from '../../brands/draftea/assets/navClubDrafteaIniciante.png'
 
 interface NavbarProps {
   activeProduct?: ProductMode
@@ -52,6 +53,7 @@ export function Navbar({
 }: NavbarProps = {}) {
   const { brandMode } = useFeatureFlags()
   const baseNavbarConfig = productNavbarConfigs[activeProduct]
+  const isCasinoEnabled = getBrandConfig(brandMode).features.casino
   const navbarConfig = brandMode === 'draftea'
     ? {
         ...baseNavbarConfig,
@@ -86,7 +88,7 @@ export function Navbar({
   const panelClassName = ['navbar__panel', 'navbar__panel--liquid-v2']
     .filter(Boolean)
     .join(' ')
-  const isItemDisabled = (itemId: string) => disabledItemIds.includes(itemId)
+  const isItemDisabled = (itemId: string) => disabledItemIds.includes(itemId) || (itemId === 'ao-vivo' && !isCasinoEnabled)
 
   const clearPointerItemSelectionResetTimer = useCallback(() => {
     if (pointerItemSelectionResetTimerRef.current === null) return
@@ -96,7 +98,7 @@ export function Navbar({
   }, [])
 
   const selectNavbarItem = useCallback((itemId: string) => {
-    if (disabledItemIds.includes(itemId)) return
+    if (disabledItemIds.includes(itemId) || (itemId === 'ao-vivo' && !isCasinoEnabled)) return
 
     if (itemId !== activeItemId) {
       previousActiveRectRef.current = itemRefs.current[activeItemId]?.getBoundingClientRect() ?? null
@@ -106,7 +108,7 @@ export function Navbar({
       setSelectedItemId(itemId)
     }
     onItemSelect?.(itemId)
-  }, [activeItemId, disabledItemIds, isControlledActiveItem, onItemSelect])
+  }, [activeItemId, disabledItemIds, isCasinoEnabled, isControlledActiveItem, onItemSelect])
 
   useEffect(() => {
     setSelectedItemId(configuredActiveItemId)

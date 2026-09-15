@@ -20,15 +20,16 @@ import {
   getMatchOddBetslipKey,
   getPlayerPropBetslipKey,
   normalizeBetslipIdPart,
-} from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { updateLiveClock } from '../../utils/liveClock'
+} from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { updateLiveClock } from '../../shared/utils/liveClock'
 import { TeamLogo } from '../TeamLogo'
 import chevronDown from '../../assets/iconsDraftaco/chevronDown.svg'
 import chevronRight from '../../assets/iconsDraftaco/chevronRight.svg'
 import flagFallback from '../../assets/iconsDraftaco/flagFallback.svg'
 import iconStatistic from '../../assets/iconsDraftaco/iconStatistic.svg'
 import playerAvatarBasquete from '../../assets/playerAvatarBasquete.svg'
+import playerAvatarNFL from '../../assets/playerAvatarNFL.svg'
 import playerAvatarFutebol from '../../assets/playerAvatarFutebol.svg'
 import type {
   HomeCompetitionHighlight,
@@ -37,7 +38,7 @@ import type {
   HomeCompetitionMatch,
   HomeCompetitionOdd,
   HomeCompetitionPlayerProp,
-} from '../../types/home'
+} from '../../shared/types/home'
 import './HomeCompetitionSection.css'
 
 const emptyMarketChips: HomeCompetitionMarketChip[] = []
@@ -103,7 +104,7 @@ export type HomeCompetitionPlayerPropOddRenderer = (
   }
 ) => ReactNode
 
-type HomeCompetitionMatchOddRenderer = (
+export type HomeCompetitionMatchOddRenderer = (
   odd: HomeCompetitionOddDisplay,
   context: {
     match: HomeCompetitionMatch
@@ -120,9 +121,12 @@ const teamLogoAliases: Record<string, string> = {
 
 const getLogoSource = (teamName: string) => getTeamLogo(teamLogoAliases[teamName] ?? teamName, flagFallback)
 
-const getPlayerPropAvatar = (sport: HomeCompetitionPlayerProp['sport']) => (
-  sport === 'basquete' ? playerAvatarBasquete : playerAvatarFutebol
-)
+const getPlayerPropAvatar = (sport: HomeCompetitionPlayerProp['sport']) => {
+  if (sport === 'basquete') return playerAvatarBasquete
+  if (sport === 'nfl') return playerAvatarNFL
+
+  return playerAvatarFutebol
+}
 
 const getInitialOddIndex = (odds: HomeCompetitionOdd[]) => Math.floor(odds.length / 2)
 
@@ -198,7 +202,7 @@ const formatMarketLine = (line: number) => `${line > 0 ? '+' : ''}${line}`
 
 const getMatchOddLabels = (match: HomeCompetitionMatch) => ({
   home: match.odds[0]?.label ?? match.homeTeam,
-  away: match.sport === 'basquete'
+  away: match.sport === 'basquete' || match.sport === 'nfl'
     ? match.odds[1]?.label ?? match.awayTeam
     : match.odds[2]?.label ?? match.awayTeam,
 })
@@ -1046,16 +1050,20 @@ function BasketballMarketButton({ odd }: { odd: HomeCompetitionOdd }) {
   )
 }
 
-function BasketballMatchCard({
+// Card com colunas de mercado (Vencer/RF + Handicap + Total). Nasceu no basquete e é
+// reaproveitado pela NFL, que tem a mesma estrutura de 3 colunas x 2 linhas.
+export function HomeCompetitionMarketColumnsMatchCard({
   match,
   liveTime,
   activeMarket,
+  hideFooter = false,
   renderOddButton,
   onClick,
 }: {
   match: HomeCompetitionMatch
   liveTime?: string
   activeMarket?: string
+  hideFooter?: boolean
   renderOddButton?: HomeCompetitionMatchOddRenderer
   onClick?: () => void
 }) {
@@ -1077,6 +1085,7 @@ function BasketballMatchCard({
       className={[
         'home-competition__match-card',
         'home-competition__match-card--basketball',
+        hideFooter ? 'home-competition__match-card--no-footer' : '',
         isClickable ? 'home-competition__match-card--clickable' : '',
       ].filter(Boolean).join(' ')}
       role={isClickable ? 'button' : undefined}
@@ -1129,7 +1138,8 @@ function BasketballMatchCard({
                           match,
                           index,
                           marketId: columnMarketId,
-                          marketLabel: column.label,
+                          // O cabeçalho usa o rótulo curto; quem recebe isto (betslip) usa o nome real.
+                          marketLabel: column.fullLabel ?? column.label,
                           outcomeId: getOddOutcomeId(odd.label, index, prefix),
                         })}
                       </Fragment>
@@ -1143,21 +1153,23 @@ function BasketballMatchCard({
           })}
         </div>
       </div>
-      <div className="home-competition__match-footer">
-        <div className="home-competition__status">
-          {match.live && (
-            <span className="home-competition__live-badge">
-              <span className="home-competition__live-dot" />
-              AO VIVO
-            </span>
-          )}
-          <span className="home-competition__footer-label">{footerLabel}</span>
+      {!hideFooter && (
+        <div className="home-competition__match-footer">
+          <div className="home-competition__status">
+            {match.live && (
+              <span className="home-competition__live-badge">
+                <span className="home-competition__live-dot" />
+                AO VIVO
+              </span>
+            )}
+            <span className="home-competition__footer-label">{footerLabel}</span>
+          </div>
+          <span className="home-competition__more">
+            Ver mais
+            <img src={chevronRight} alt="" className="home-competition__chevron home-competition__chevron--secondary" />
+          </span>
         </div>
-        <span className="home-competition__more">
-          Ver mais
-          <img src={chevronRight} alt="" className="home-competition__chevron home-competition__chevron--secondary" />
-        </span>
-      </div>
+      )}
     </article>
   )
 }
@@ -1190,9 +1202,9 @@ function MatchCard({
     onClick()
   }
 
-  if (match.sport === 'basquete' && match.marketColumns) {
+  if ((match.sport === 'basquete' || match.sport === 'nfl') && match.marketColumns) {
     return (
-      <BasketballMatchCard
+      <HomeCompetitionMarketColumnsMatchCard
         match={match}
         liveTime={liveTime}
         activeMarket={activeMarket}
@@ -1279,6 +1291,32 @@ function MatchCard({
   )
 }
 
+function PlayerPropSingleOdd({
+  prop,
+  renderOddButton,
+}: {
+  prop: HomeCompetitionPlayerProp
+  renderOddButton?: HomeCompetitionPlayerPropOddRenderer
+}) {
+  const odd = prop.odds[0]
+  if (!odd) return null
+
+  return (
+    <div className="home-competition__player-odds-frame home-competition__player-odds-frame--single">
+      <div className="home-competition__player-odds home-competition__player-odds--single">
+        {renderOddButton
+          ? renderOddButton(odd, {
+              prop,
+              index: 0,
+              isActive: true,
+              className: 'home-competition__odd--center',
+            })
+          : <HomeCompetitionOddButton odd={odd} className="home-competition__odd--center" />}
+      </div>
+    </div>
+  )
+}
+
 export function HomeCompetitionPlayerPropCard({
   prop,
   className = '',
@@ -1286,6 +1324,7 @@ export function HomeCompetitionPlayerPropCard({
   timeLabel,
   showTimeLabel = true,
   showMarketLabel = true,
+  oddsLayout = 'slider',
   renderOddButton,
 }: {
   prop: HomeCompetitionPlayerProp
@@ -1294,6 +1333,9 @@ export function HomeCompetitionPlayerPropCard({
   timeLabel?: ReactNode
   showTimeLabel?: boolean
   showMarketLabel?: boolean
+  // 'single' renderiza um único botão de largura total, para mercados sem linha
+  // (ex.: Touchdown a qualquer momento).
+  oddsLayout?: 'slider' | 'single'
   renderOddButton?: HomeCompetitionPlayerPropOddRenderer
 }) {
   const resolvedTimeLabel = timeLabel ?? prop.timeLabel
@@ -1322,7 +1364,11 @@ export function HomeCompetitionPlayerPropCard({
         </p>
         {showMarketLabel && <small>{prop.marketLabel}</small>}
       </div>
-      <PlayerPropOddSlider prop={prop} renderOddButton={renderOddButton} />
+      {oddsLayout === 'single' ? (
+        <PlayerPropSingleOdd prop={prop} renderOddButton={renderOddButton} />
+      ) : (
+        <PlayerPropOddSlider prop={prop} renderOddButton={renderOddButton} />
+      )}
     </article>
   )
 }

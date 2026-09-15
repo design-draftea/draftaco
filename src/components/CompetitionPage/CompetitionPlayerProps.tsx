@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent, type WheelEvent } from 'react'
 import './CompetitionPlayerProps.css'
 import { getLocalPlayerImageByName } from '../../data/playerImages'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 
 import type { PlayerPropCard, PlayerPropOption } from './competitionData'
 

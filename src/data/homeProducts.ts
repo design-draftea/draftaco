@@ -9,7 +9,7 @@ import type {
   ProductMode,
   ProductRailSection,
   Promotion,
-} from '../types/home'
+} from '../shared/types/home'
 
 import imgPromoPiggy from '../assets/img-promo-piggy.png'
 import imgPromoRabbit from '../assets/img-promo-rabbit.webp'
@@ -56,7 +56,7 @@ import navApostas from '../assets/navApostas.svg'
 import navBusca from '../assets/navBusca.svg'
 import navCassino from '../assets/navCassino.svg'
 import navEntrada from '../assets/navEntrada.svg'
-import navPitacoClubIniciante from '../assets/navPitacoClubIniciante.png'
+import navPitacoClubIniciante from '../brands/pitaco/assets/navPitacoClubIniciante.png'
 
 export const productLabels: Record<ProductMode, string> = {
   apostas: 'APOSTAS',

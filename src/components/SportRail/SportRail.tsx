@@ -11,16 +11,17 @@ import iconCsgo from '../../assets/iconSports/csgo.png'
 import iconEsoccer from '../../assets/iconSports/e-soccer.png'
 import iconFutebol from '../../assets/iconSports/soccer.png'
 import iconLibertadores from '../../assets/iconSports/libertadores.png'
+import iconNfl from '../../assets/iconSports/football.png'
 import iconMore from '../../assets/iconsDraftaco/iconDotDefault.png'
 import iconPremier from '../../assets/iconSports/premier.png'
 import iconTenis from '../../assets/iconSports/tennis.png'
 import lineFavorito from '../../assets/iconsDraftaco/lineFavorito.svg'
 import { getCompetitionRailBadge } from '../../data/competitionBadges'
-import { useFavoriteCompetitions } from '../../hooks/useFavoriteCompetitions'
-import { useFeatureFlags } from '../../hooks/useFeatureFlags'
+import { useFavoriteCompetitions } from '../../shared/hooks/useFavoriteCompetitions'
+import { useFeatureFlags } from '../../shared/hooks/useFeatureFlags'
 import { isCompetitionEnabled, isCompetitionRailClickable } from '../SportFilterBar/competicaoData'
-import type { ProductRailBaseItem, ProductRailSection } from '../../types/home'
-import { getRailCompetitionId, type CompetitionLinkTarget } from '../../utils/competitionNavigation'
+import type { ProductRailBaseItem, ProductRailSection } from '../../shared/types/home'
+import { getRailCompetitionId, type CompetitionLinkTarget } from '../../shared/utils/competitionNavigation'
 import { MoreSportsBottomSheet, MoreSportsBottomSheetV2 } from '../BottomSheet'
 
 interface SportRailBaseItem extends ProductRailBaseItem {
@@ -178,6 +179,22 @@ const competitionRailSections: ProductRailSection<SportRailItem>[] = [
     ],
   },
   {
+    id: 'nfl',
+    className: 'sport-rail__section--divided',
+    items: [
+      {
+        id: 'competition:nfl-liga',
+        type: 'competition',
+        sportId: 'nfl',
+        competitionId: 'nfl-liga',
+        competitionName: 'NFL',
+        icon: getCompetitionRailBadge('nfl-liga', iconNfl),
+        label: 'NFL',
+        clickable: true,
+      },
+    ],
+  },
+  {
     id: 'tenis',
     className: 'sport-rail__section--divided',
     items: [
@@ -319,6 +336,7 @@ const getSportRailFallbackIcon = (sportId: string) => {
   if (sportId === 'basquete') return iconBasquete
   if (sportId === 'tenis') return iconTenis
   if (sportId === 'futebol') return iconFutebol
+  if (sportId === 'nfl') return iconNfl
   return ''
 }
 

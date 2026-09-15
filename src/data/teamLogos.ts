@@ -167,6 +167,24 @@ export const TEAM_LOGOS: Record<string, string> = {
   'Spurs':            'https://r2.thesportsdb.com/images/media/team/badge/obucan1611859537.png',
   'Clippers':         'https://r2.thesportsdb.com/images/media/team/badge/3gtb8s1719303125.png',
   'Kings':            'https://r2.thesportsdb.com/images/media/team/badge/5d3dpz1611859587.png',
+
+  // ─── NFL ───
+  'KC Chiefs':             'https://r2.thesportsdb.com/images/media/team/badge/n58gp51784720929.png',
+  'Kansas City Chiefs':    'https://r2.thesportsdb.com/images/media/team/badge/n58gp51784720929.png',
+  'MIA Dolphins':          'https://r2.thesportsdb.com/images/media/team/badge/e803xt1784722221.png',
+  'Miami Dolphins':        'https://r2.thesportsdb.com/images/media/team/badge/e803xt1784722221.png',
+  'PIT Steelers':          'https://r2.thesportsdb.com/images/media/team/badge/2975411515853129.png',
+  'Pittsburgh Steelers':   'https://r2.thesportsdb.com/images/media/team/badge/2975411515853129.png',
+  'CIN Bengals':           'https://r2.thesportsdb.com/images/media/team/badge/h1ce8y1784717263.png',
+  'Cincinnati Bengals':    'https://r2.thesportsdb.com/images/media/team/badge/h1ce8y1784717263.png',
+  'BUF Bills':             'https://r2.thesportsdb.com/images/media/team/badge/j4r1tn1784714823.png',
+  'Buffalo Bills':         'https://r2.thesportsdb.com/images/media/team/badge/j4r1tn1784714823.png',
+  'NE Patriots':           'https://r2.thesportsdb.com/images/media/team/badge/xtwxyt1421431860.png',
+  'New England Patriots':  'https://r2.thesportsdb.com/images/media/team/badge/xtwxyt1421431860.png',
+  'PHI Eagles':            'https://r2.thesportsdb.com/images/media/team/badge/pnpybf1515852421.png',
+  'Philadelphia Eagles':   'https://r2.thesportsdb.com/images/media/team/badge/pnpybf1515852421.png',
+  'DAL Cowboys':           'https://r2.thesportsdb.com/images/media/team/badge/76ew3c1784718447.png',
+  'Dallas Cowboys':        'https://r2.thesportsdb.com/images/media/team/badge/76ew3c1784718447.png',
 }
 
 /**

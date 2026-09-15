@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CaretRightIcon } from '@phosphor-icons/react'
-import { createBetslipSelection, getBetslipEventId, getBetslipMarketGroupId, normalizeBetslipIdPart } from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
+import { createBetslipSelection, getBetslipEventId, getBetslipMarketGroupId, normalizeBetslipIdPart } from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
 import {
   createGarantidaLewandowskiSelection,
   GARANTIDA_LEWANDOWSKI_GROUP_ID,

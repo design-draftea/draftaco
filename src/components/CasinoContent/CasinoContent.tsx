@@ -1,6 +1,6 @@
 import { CaretRightIcon } from '@phosphor-icons/react'
 import iconAoVivo from '../../assets/iconAoVivo.png'
-import type { CasinoCategoryId } from '../../types/home'
+import type { CasinoCategoryId } from '../../shared/types/home'
 import { casinoCarouselSections } from './casinoCarouselSections'
 import './CasinoContent.css'
 

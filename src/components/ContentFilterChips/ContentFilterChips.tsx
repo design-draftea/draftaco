@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 import './ContentFilterChips.css'
 
 const contentFilters = [

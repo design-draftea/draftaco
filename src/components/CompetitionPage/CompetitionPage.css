@@ -493,3 +493,22 @@
 .competition-player-props__load-more {
   border-bottom: 0;
 }
+
+/* Card de colunas de mercado (NFL) reaproveitado dentro do carrossel da competição:
+   o card traz seu próprio tamanho (183px), aqui só ajustamos largura e snap. */
+.competition-match-carousel__track > .home-competition__match-card {
+  flex: 0 0 calc(100vw - 24px);
+  width: calc(100vw - 24px);
+  scroll-snap-align: start;
+}
+
+/* Subtítulo do acordeão de player props ("(ganha se for maior ou igual)"). */
+.competition-player-props__market-subtitle {
+  margin-left: 4px;
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: 0;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}

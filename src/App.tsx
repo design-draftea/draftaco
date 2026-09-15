@@ -1,5 +1,7 @@
+import { brandBasePath, parseBrandPath } from './shared/brand/routing'
+import { getBrandConfig } from './shared/brand/config'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { LiveEventOpenPayload } from './pages/LiveEventPage'
+import type { LiveEventOpenPayload } from './features/sports/LiveEventPage'
 import { MobileOnly } from './components/MobileOnly'
 import { Navbar } from './components/Navbar'
 import { Betslip } from './components/Betslip'
@@ -12,30 +14,30 @@ import {
 import { FeatureFlagsPanel } from './components/FeatureFlagsPanel'
 import { ProfileBottomSheet } from './components/ProfileBottomSheet'
 import { LocationPermissionGate } from './components/LocationPermissionGate'
-import { BetslipProvider } from './hooks/BetslipProvider'
-import { FeatureFlagsProvider } from './hooks/FeatureFlagsProvider'
-import { useFeatureFlags } from './hooks/useFeatureFlags'
-import { useBetslip } from './hooks/useBetslip'
-import { getBetslipTurboEligibleSelectionCount } from './hooks/betslipTurboBonus'
-import type { ProductMode } from './types/home'
-import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './utils/betslipLiveEvent'
-import { BrandLocalizationEffect } from './i18n/brandLocalization'
-import { LoginPage } from './pages/LoginPage'
-import type { BetSuccessReceipt } from './pages/BetSuccessPage'
+import { BetslipProvider } from './shared/hooks/BetslipProvider'
+import { FeatureFlagsProvider } from './shared/hooks/FeatureFlagsProvider'
+import { useFeatureFlags } from './shared/hooks/useFeatureFlags'
+import { useBetslip } from './shared/hooks/useBetslip'
+import { getBetslipTurboEligibleSelectionCount } from './shared/hooks/betslipTurboBonus'
+import type { ProductMode } from './shared/types/home'
+import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './shared/utils/betslipLiveEvent'
+import type { PixKeyType } from './shared/utils/pixKeyValidation'
+import { LoginPage } from './features/auth/LoginPage'
+import type { BetSuccessReceipt } from './features/betslip/BetSuccessPage'
 
-const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })))
-const SportsPageV2 = lazy(() => import('./pages/SportsPageV2').then((m) => ({ default: m.SportsPageV2 })))
-const PromotionsPage = lazy(() => import('./pages/PromotionsPage').then((m) => ({ default: m.PromotionsPage })))
-const BetslipPageV2 = lazy(() => import('./pages/BetslipPageV2').then((m) => ({ default: m.BetslipPageV2 })))
-const BetSuccessPage = lazy(() => import('./pages/BetSuccessPage').then((m) => ({ default: m.BetSuccessPage })))
-const CamisaPremiadaStaticPreviewPage = lazy(() => import('./pages/BetSuccessPage').then((m) => ({
+const Home = lazy(() => import('./features/home/Home').then((m) => ({ default: m.Home })))
+const SportsPageV2 = lazy(() => import('./features/sports/SportsPageV2').then((m) => ({ default: m.SportsPageV2 })))
+const PromotionsPage = lazy(() => import('./features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })))
+const BetslipPageV2 = lazy(() => import('./features/betslip/BetslipPageV2').then((m) => ({ default: m.BetslipPageV2 })))
+const BetSuccessPage = lazy(() => import('./features/betslip/BetSuccessPage').then((m) => ({ default: m.BetSuccessPage })))
+const CamisaPremiadaStaticPreviewPage = lazy(() => import('./features/betslip/BetSuccessPage').then((m) => ({
   default: m.CamisaPremiadaStaticPreviewPage,
 })))
-const LiveEventPage = lazy(() => import('./pages/LiveEventPage').then((m) => ({ default: m.LiveEventPage })))
-const HandoffPage = lazy(() => import('./pages/Handoff').then((m) => ({ default: m.HandoffPage })))
-const EmbaixadinhaPage = lazy(() => import('./pages/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
-const MemoriaPage = lazy(() => import('./pages/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
-const PongPage = lazy(() => import('./pages/PongPage').then((m) => ({ default: m.PongPage })))
+const LiveEventPage = lazy(() => import('./features/sports/LiveEventPage').then((m) => ({ default: m.LiveEventPage })))
+const HandoffPage = lazy(() => import('./features/handoff/Handoff').then((m) => ({ default: m.HandoffPage })))
+const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
+const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
+const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
 
 const RouteFallback = () => (
   <div
@@ -56,29 +58,12 @@ const camisaPremiadaRouteSegment = 'camisa-premiada'
 const penaltiPremiadoRouteSegment = 'penalti-premiado'
 const loginRouteSegment = 'entrar'
 const signupRouteSegment = 'criar-conta'
-const deployedBasePath = '/draftaco-v0'
 const ENABLE_APP_PROMOTIONS_NAV_LINK = false
 const brasileiraoLeagueIdPattern = /(?:brasil-serie-a|fut-brasileir|fut-brasileirao-a)/
 const brasileiraoLeagueNamePattern = /(?:brasileir|brasileir[aã]o|brasil\s*-\s*s[eé]rie\s*a|s[eé]rie\s*a)/i
 
-const getBasePath = () => {
-  const baseUrl = import.meta.env.BASE_URL || '/'
-  if (baseUrl !== '/') return baseUrl.replace(/\/+$/, '')
-
-  return window.location.pathname === deployedBasePath || window.location.pathname.startsWith(`${deployedBasePath}/`)
-    ? deployedBasePath
-    : ''
-}
-
-const stripBasePath = (pathname: string) => {
-  const basePath = getBasePath()
-  if (!basePath) return pathname || '/'
-
-  if (pathname === basePath) return '/'
-  if (pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || '/'
-
-  return pathname || '/'
-}
+const getBasePath = brandBasePath
+const stripBasePath = (pathname: string) => parseBrandPath(pathname).path
 
 const getNormalizedAppPath = (pathname: string) => stripBasePath(pathname).replace(/\/+$/, '') || '/'
 
@@ -144,7 +129,7 @@ const isLoginPath = (pathname: string) => {
 const isSignupPath = (pathname: string) => {
   const routeSegments = getRouteSegments(pathname)
 
-  return routeSegments.length === 1 && routeSegments[0] === signupRouteSegment
+  return getBrandConfig().features.signup && routeSegments.length === 1 && routeSegments[0] === signupRouteSegment
 }
 
 const isAuthPath = (pathname: string) => isLoginPath(pathname) || isSignupPath(pathname)
@@ -157,7 +142,8 @@ const isCanonicalPromotionsPath = (pathname: string) => {
 const resolveProductFromPath = (pathname: string) => {
   const routeSegments = getRouteSegments(pathname)
   const routeProduct = productRoutes.find((route) => route === routeSegments[0])
-  const product = routeProduct ?? defaultProduct
+  const product = routeProduct === 'cassino' && !getBrandConfig().features.casino
+    ? defaultProduct : routeProduct ?? defaultProduct
   const isCanonicalProductRoute = routeSegments.length === 1 && routeSegments[0] === product
 
   return {
@@ -221,22 +207,30 @@ type AuthScrollLockState = {
 }
 
 const loginMotionDurationMs = 320
-const loggedInInitialBalanceCents = 0
-const signupInitialBalanceCents = 0
+const loggedInInitialWithdrawableBalanceCents = 0
+const signupInitialWithdrawableBalanceCents = 0
+const promotionalBalanceCents = 2000
+const freeBetBalanceCents = 1000
 const nubankDepositAccount: DepositAccount = {
   id: 'nubank',
   bankName: 'Nu Pagamentos S.A.',
   lastDigits: '548',
+  pixKeyType: 'cpf',
+  pixKeyValue: '12345678909',
 }
 const santanderDepositAccount: DepositAccount = {
   id: 'santander',
   bankName: 'Banco Santander (Brasil) S.A.',
   lastDigits: '217',
+  pixKeyType: 'phone',
+  pixKeyValue: '+5511982736451',
 }
 const caixaDepositAccount: DepositAccount = {
   id: 'caixa',
   bankName: 'Caixa Econômica Federal',
   lastDigits: '234',
+  pixKeyType: 'email',
+  pixKeyValue: 'usuario@exemplo.com',
 }
 const depositAccountCatalog: DepositAccount[] = [
   nubankDepositAccount,
@@ -257,20 +251,36 @@ function AppContent() {
   const signupDepositExitPathRef = useRef<string | null>(null)
   const authScrollLockRef = useRef<AuthScrollLockState | null>(null)
   const [authVariant, setAuthVariant] = useState<AuthVariant>('logged-out')
-  const [balanceCents, setBalanceCents] = useState(0)
+  const [withdrawableBalanceCents, setWithdrawableBalanceCents] = useState(0)
+  const playableBalanceCents = withdrawableBalanceCents + promotionalBalanceCents
   const [savedDepositAccounts, setSavedDepositAccounts] = useState<DepositAccount[]>([])
   const [activeDepositAccountId, setActiveDepositAccountId] = useState<DepositAccountId | null>(null)
-  const nextDepositAccountId = useMemo(() => (
+  const [savedWithdrawalAccounts, setSavedWithdrawalAccounts] = useState<DepositAccount[]>([])
+  const [activeWithdrawalAccountId, setActiveWithdrawalAccountId] = useState<DepositAccountId | null>(null)
+  const nextDepositAccountId = useMemo(() => {
+    if (!activeDepositAccountId) return depositAccountCatalog[0]?.id ?? null
+
+    const activeAccountIndex = depositAccountCatalog.findIndex((account) => (
+      account.id === activeDepositAccountId
+    ))
+
+    if (activeAccountIndex < 0) return depositAccountCatalog[0]?.id ?? null
+
+    return depositAccountCatalog[
+      (activeAccountIndex + 1) % depositAccountCatalog.length
+    ]?.id ?? null
+  }, [activeDepositAccountId])
+  const nextWithdrawalAccountId = useMemo(() => (
     depositAccountCatalog.find((account) => (
-      !savedDepositAccounts.some((savedAccount) => savedAccount.id === account.id)
+      !savedWithdrawalAccounts.some((savedAccount) => savedAccount.id === account.id)
     ))?.id ?? null
-  ), [savedDepositAccounts])
+  ), [savedWithdrawalAccounts])
   const [loginMotionState, setLoginMotionState] = useState<LoginMotionState | null>(
     isAuthPath(window.location.pathname) ? 'open' : null
   )
   const [authOverlayOrigin, setAuthOverlayOrigin] = useState<AuthOverlayOrigin>('default')
   const { selections: betslipSelections, summary: betslipSummary } = useBetslip()
-  const { brandMode, isFeatureEnabled } = useFeatureFlags()
+  const { isFeatureEnabled } = useFeatureFlags()
   const betslipTurboEligibleSelectionCount = useMemo(
     () => getBetslipTurboEligibleSelectionCount(betslipSelections),
     [betslipSelections]
@@ -349,7 +359,7 @@ function AppContent() {
   const depositPanelInitialAmountCents = depositPanelOrigin === 'signup'
     ? signupPendingDepositAmountCents
     : null
-  const isDepositRequiredForBetting = authVariant === 'logged-in' && balanceCents <= 0
+  const isDepositRequiredForBetting = authVariant === 'logged-in' && playableBalanceCents <= 0
 
   const syncBrowserLocation = useCallback(() => {
     const nextPathname = window.location.pathname
@@ -404,6 +414,7 @@ function AppContent() {
   }, [syncBrowserLocation])
 
   const handleProductChange = useCallback((product: ProductMode) => {
+    if (product === 'cassino' && !getBrandConfig().features.casino) return
     if (isPromotionsPage) {
       setPromotionsProduct(product)
       const nextPath = withSearch(buildProductPath(product), getGarantidaBannerSearch(search))
@@ -436,6 +447,7 @@ function AppContent() {
   }, [search, syncBrowserLocation])
 
   const handleAuthOpen = useCallback((nextPath: string) => {
+    if (!getBrandConfig().features.signup && parseBrandPath(nextPath).path === '/criar-conta') return
     const isCurrentlyAuthPath = isAuthPath(window.location.pathname)
 
     if (!isCurrentlyAuthPath) {
@@ -544,9 +556,11 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(loggedInInitialBalanceCents)
+    setWithdrawableBalanceCents(loggedInInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement(null)
     completeLoginExit(nextPath)
@@ -559,9 +573,11 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement('identity')
     completeLoginExit(nextPath)
@@ -580,9 +596,11 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement('limits')
     completeLoginExit(nextPath)
@@ -595,9 +613,11 @@ function AppContent() {
     const nextPath = loginReturnPathRef.current ?? fallbackPath
 
     setAuthVariant('logged-in')
-    setBalanceCents(signupInitialBalanceCents)
+    setWithdrawableBalanceCents(signupInitialWithdrawableBalanceCents)
     setSavedDepositAccounts([])
     setActiveDepositAccountId(null)
+    setSavedWithdrawalAccounts([])
+    setActiveWithdrawalAccountId(null)
     setSignupPendingDepositAmountCents(null)
     setSignupPendingRequirement(null)
     setDepositPanelOrigin('signup')
@@ -646,6 +666,10 @@ function AppContent() {
   }, [])
 
   const handleNavbarItemSelect = useCallback((itemId: string) => {
+    if (itemId === 'home' || itemId === 'ao-vivo') {
+      handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
+      return
+    }
     if (itemId === promotionsRouteSegment) {
       if (!ENABLE_APP_PROMOTIONS_NAV_LINK) return
 
@@ -659,17 +683,7 @@ function AppContent() {
       syncBrowserLocation()
       return
     }
-
-    if (isPromotionsPage && itemId === 'home') {
-      const nextPath = withSearch(buildProductPath(activeProduct), getGarantidaBannerSearch(search))
-
-      if (getCurrentPathWithSearch() !== nextPath) {
-        window.history.pushState({}, '', nextPath)
-      }
-
-      syncBrowserLocation()
-    }
-  }, [activeProduct, isPromotionsPage, search, syncBrowserLocation])
+  }, [activeProduct, handleProductChange, search, syncBrowserLocation])
 
   const handleBetslipClose = useCallback(() => {
     setIsFullBetslipOpen(false)
@@ -740,15 +754,49 @@ function AppContent() {
     depositAmountCents: number,
     accountId: DepositAccountId,
   ) => {
-    setBalanceCents((currentBalanceCents) => currentBalanceCents + depositAmountCents)
+    setWithdrawableBalanceCents((currentBalanceCents) => currentBalanceCents + depositAmountCents)
     setSavedDepositAccounts((currentAccounts) => {
-      const savedAccountIds = new Set(currentAccounts.map((account) => account.id))
-      savedAccountIds.add(accountId)
+      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
 
-      return depositAccountCatalog.filter((account) => savedAccountIds.has(account.id))
+      const accountToSave = depositAccountCatalog.find((account) => account.id === accountId)
+      if (!accountToSave) return currentAccounts
+
+      const activeAccountIndex = currentAccounts.findIndex((account) => (
+        account.id === activeDepositAccountId
+      ))
+
+      if (activeAccountIndex < 0) return [...currentAccounts, accountToSave]
+
+      return currentAccounts.map((account, index) => (
+        index === activeAccountIndex ? accountToSave : account
+      ))
     })
     setActiveDepositAccountId(accountId)
+    const confirmedAccount = depositAccountCatalog.find((account) => account.id === accountId)
+    if (confirmedAccount) {
+      setSavedWithdrawalAccounts((currentAccounts) => {
+        if (
+          currentAccounts.length >= 3
+          || currentAccounts.some((account) => account.id === accountId)
+        ) return currentAccounts
+
+        return [...currentAccounts, confirmedAccount]
+      })
+      setActiveWithdrawalAccountId((currentAccountId) => currentAccountId ?? accountId)
+    }
     setSignupPendingDepositAmountCents(null)
+  }, [activeDepositAccountId])
+
+  const handleWithdrawalConfirmed = useCallback((withdrawalAmountCents: number) => {
+    const normalizedWithdrawalAmountCents = Number.isFinite(withdrawalAmountCents)
+      ? Math.max(0, Math.round(withdrawalAmountCents))
+      : 0
+
+    if (normalizedWithdrawalAmountCents <= 0) return
+
+    setWithdrawableBalanceCents((currentBalanceCents) => (
+      Math.max(0, currentBalanceCents - normalizedWithdrawalAmountCents)
+    ))
   }, [])
 
   const handleDepositAccountSelect = useCallback((accountId: DepositAccountId) => {
@@ -768,6 +816,50 @@ function AppContent() {
         : currentAccountId
     ))
   }, [savedDepositAccounts])
+
+  const handleWithdrawalAccountAdd = useCallback((
+    accountId: DepositAccountId,
+    pixKeyType: PixKeyType,
+    pixKeyValue: string,
+  ) => {
+    const accountTemplate = depositAccountCatalog.find((account) => account.id === accountId)
+    if (!accountTemplate) return
+
+    setSavedWithdrawalAccounts((currentAccounts) => {
+      if (currentAccounts.some((account) => account.id === accountId)) return currentAccounts
+
+      return [
+        ...currentAccounts,
+        {
+          ...accountTemplate,
+          pixKeyType,
+          pixKeyValue,
+        },
+      ]
+    })
+    setActiveWithdrawalAccountId(accountId)
+  }, [])
+
+  const handleWithdrawalAccountSelect = useCallback((accountId: DepositAccountId) => {
+    setActiveWithdrawalAccountId(accountId)
+  }, [])
+
+  const handleWithdrawalAccountRemove = useCallback((accountId: DepositAccountId) => {
+    const remainingAccounts = savedWithdrawalAccounts.filter((account) => account.id !== accountId)
+
+    if (
+      remainingAccounts.length === 0
+      || remainingAccounts.length === savedWithdrawalAccounts.length
+    ) return
+
+    setSavedWithdrawalAccounts(remainingAccounts)
+    setActiveWithdrawalAccountId((currentAccountId) => (
+      currentAccountId === accountId
+        || !remainingAccounts.some((account) => account.id === currentAccountId)
+        ? remainingAccounts[0].id
+        : currentAccountId
+    ))
+  }, [savedWithdrawalAccounts])
 
   const handleSignupDepositPending = useCallback((pendingAmountCents: number) => {
     setSignupPendingDepositAmountCents(pendingAmountCents)
@@ -861,7 +953,7 @@ function AppContent() {
   useEffect(() => {
     if (!betslipSummary.hasSelections) return
 
-    void import('./pages/BetslipPageV2')
+    void import('./features/betslip/BetslipPageV2')
   }, [betslipSummary.hasSelections])
 
   const showCompactBetslip = activeProduct === 'apostas'
@@ -925,7 +1017,6 @@ function AppContent() {
 
   return (
     <div className="app-shell">
-      <BrandLocalizationEffect brandMode={brandMode} />
       <LocationPermissionGate isEnabled={!isStandalonePage} />
       {!isHandoffPage && !isCamisaPremiadaStaticPreview ? <MobileOnly /> : null}
       <Suspense fallback={<RouteFallback />}>
@@ -943,7 +1034,7 @@ function AppContent() {
           <PromotionsPage
             activeProduct={activeProduct}
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             HeaderComponent={HeaderV2}
             isProfileOpen={isProfileOpen}
@@ -958,7 +1049,7 @@ function AppContent() {
         ) : isSportsV2Page ? (
           <SportsPageV2
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             isProfileOpen={isProfileOpen}
             onLoginClick={handleLoginOpen}
@@ -974,7 +1065,7 @@ function AppContent() {
           <Home
             activeProduct={activeProduct}
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             HeaderComponent={HeaderV2}
             isLiveEventSuppressed={isFullBetslipOpen}
@@ -1015,7 +1106,7 @@ function AppContent() {
         <Suspense fallback={null}>
           <BetslipPageV2
             authVariant={authVariant}
-            balanceCents={balanceCents}
+            balanceCents={playableBalanceCents}
             camisaPremiadaOutcomeOverride={camisaPremiadaOutcomeOverride}
             isCamisaPremiadaMode={isPremiadaMode}
             premiadaFeatureName={premiadaFeatureName}
@@ -1082,7 +1173,10 @@ function AppContent() {
         <ProfileBottomSheet
           isOpen={isProfileOpen}
           onClose={handleProfileClose}
-          balanceCents={balanceCents}
+          onWithdrawalConfirmed={handleWithdrawalConfirmed}
+          withdrawableBalanceCents={withdrawableBalanceCents}
+          promotionalBalanceCents={promotionalBalanceCents}
+          freeBetBalanceCents={freeBetBalanceCents}
           depositFlow={{
             savedAccounts: savedDepositAccounts,
             activeAccountId: activeDepositAccountId,
@@ -1090,6 +1184,14 @@ function AppContent() {
             onRemoveAccount: handleDepositAccountRemove,
             onSelectAccount: handleDepositAccountSelect,
             onDepositConfirmed: handleDepositConfirmed,
+          }}
+          withdrawalFlow={{
+            savedAccounts: savedWithdrawalAccounts,
+            activeAccountId: activeWithdrawalAccountId,
+            newBankAccountId: nextWithdrawalAccountId,
+            onRemoveAccount: handleWithdrawalAccountRemove,
+            onSelectAccount: handleWithdrawalAccountSelect,
+            onAddAccount: handleWithdrawalAccountAdd,
           }}
         />
       ) : null}
@@ -1122,7 +1224,7 @@ function AppContent() {
       {!isStandalonePage ? (
         <Navbar
           activeProduct={activeProduct}
-          activeItemId={isPromotionsPage ? promotionsRouteSegment : undefined}
+          activeItemId={isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
           onItemSelect={handleNavbarItemSelect}
         />
       ) : null}

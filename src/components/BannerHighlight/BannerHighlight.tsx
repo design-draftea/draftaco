@@ -1,6 +1,6 @@
 import { BannerCarousel } from '../BannerCarousel'
 import './BannerHighlight.css'
-import type { Banner } from '../../types/home'
+import type { Banner } from '../../shared/types/home'
 
 interface BannerHighlightProps {
   hideBanner?: boolean

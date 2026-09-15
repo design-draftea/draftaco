@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import locationAndroidImage from '../../assets/imgAndroid.png'
 import locationIOSImage from '../../assets/imgiOS.png'
-import { LOCATION_PERMISSION_REQUIRED_EVENT } from '../../utils/locationPermissionGate'
+import { LOCATION_PERMISSION_REQUIRED_EVENT } from '../../shared/utils/locationPermissionGate'
 import './LocationPermissionGate.css'
 
 interface LocationPermissionGateProps {

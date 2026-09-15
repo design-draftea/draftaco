@@ -1,10 +1,8 @@
+import { getBrandConfig } from '../../shared/brand/config'
 import { useLayoutEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import './HeaderV2.css'
-import logoDraftea from '../../assets/logoDraftea.svg'
-import logoReidoPitaco from '../../assets/logoReidoPitaco.svg'
-import logoReidoPitacoLight from '../../assets/logoReidoPitacoLight.svg'
-import type { ProductMode } from '../../types/home'
-import { useFeatureFlags } from '../../hooks/useFeatureFlags'
+import type { ProductMode } from '../../shared/types/home'
+import { useFeatureFlags } from '../../shared/hooks/useFeatureFlags'
 
 interface HeaderV2Props {
   activeProduct?: ProductMode
@@ -65,7 +63,8 @@ export function HeaderV2({
   const { brandMode } = useFeatureFlags()
   const isSportPage = !!activeSport && activeSport !== 'destaques'
   const isLoggedOut = authVariant === 'logged-out'
-  const isDrafteaBrand = brandMode === 'draftea'
+  const brand = getBrandConfig(brandMode)
+  const isDrafteaBrand = brand.id === 'draftea'
   const isDepositPending = depositStatus === 'deposit-pending'
   const isIdentityPending = depositStatus === 'identity-pending'
   const isLimitsPending = depositStatus === 'limits-pending'
@@ -85,9 +84,9 @@ export function HeaderV2({
     : isDepositPending
     ? `Saldo disponível: ${balanceDisplayValue}; depósito pendente`
     : `Saldo disponível: ${balanceDisplayValue}`
-  const logoAlt = isDrafteaBrand ? 'Draftea' : 'Rei do Pitaco'
-  const logoDark = isDrafteaBrand ? logoDraftea : logoReidoPitaco
-  const logoLight = isDrafteaBrand ? logoDraftea : logoReidoPitacoLight
+  const logoAlt = brand.name
+  const logoDark = brand.assets.logo
+  const logoLight = brand.assets.logoLight
   const lastLogoTapTimeRef = useRef(0)
   const lastLogoActivationTimeRef = useRef(0)
   const logoLongPressTimerRef = useRef<number | null>(null)
@@ -239,14 +238,14 @@ export function HeaderV2({
                 className="header__auth-btn header__auth-btn--primary"
                 onClick={onCreateAccountClick}
               >
-                Criar conta
+                {brand.messages.createAccount}
               </button>
               <button
                 type="button"
                 className="header__auth-btn header__auth-btn--secondary"
                 onClick={onLoginClick}
               >
-                Entrar
+                {brand.messages.login}
               </button>
             </>
           ) : (

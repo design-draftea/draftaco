@@ -1,6 +1,7 @@
 import iconBasquete from '../../assets/iconSports/basketball.png'
 import iconEsoccer from '../../assets/iconSports/e-soccer.png'
 import iconFutebol from '../../assets/iconSports/soccer.png'
+import iconNfl from '../../assets/iconSports/football.png'
 import iconTenis from '../../assets/iconSports/tennis.png'
 import iconVolei from '../../assets/iconSports/volleyball.png'
 
@@ -205,6 +206,30 @@ const basqueteConfig: CompeticaoConfig = {
   ],
 }
 
+const nflConfig: CompeticaoConfig = {
+  sportLabel: 'NFL',
+  sportIcon: iconNfl,
+  featuredCompetitions: [
+    { id: 'nfl-liga', name: 'NFL' },
+  ],
+  topCompetitions: [
+    { id: 'nfl-liga', name: 'NFL' },
+  ],
+  unifiedTopCompetitions: [
+    { id: 'nfl-liga', name: 'NFL' },
+  ],
+  countries: [
+    {
+      id: 'nfl-eua',
+      name: 'Estados Unidos',
+      flag: flagEstadosUnidos,
+      competitions: [
+        { id: 'nfl-liga', name: 'NFL' },
+      ],
+    },
+  ],
+}
+
 const tenisConfig: CompeticaoConfig = {
   sportLabel: 'Tênis',
   sportIcon: iconTenis,
@@ -271,6 +296,7 @@ const esoccerConfig: CompeticaoConfig = {
 export const competicaoConfigBySport: Record<string, CompeticaoConfig> = {
   futebol: futebolConfig,
   basquete: basqueteConfig,
+  nfl: nflConfig,
   tenis: tenisConfig,
   volei: voleiConfig,
   esoccer: esoccerConfig,
@@ -293,6 +319,7 @@ const enabledCompetitionIds = new Set([
   'bsq-nbb',
   'bsq-br-nbb',
   'bsq-euro-cup',
+  'nfl-liga',
   'ten-roma-masters',
   'ten-roma-f',
   'ten-parma-f',

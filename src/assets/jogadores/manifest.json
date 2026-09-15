@@ -3520,6 +3520,246 @@
       ],
       "providerId": "37151",
       "file": "inter/mkhitaryan.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Patrick Mahomes",
+      "file": "nfl/patrick-mahomes.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Travis Kelce",
+      "file": "nfl/travis-kelce.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Rashee Rice",
+      "file": "nfl/rashee-rice.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Xavier Worthy",
+      "file": "nfl/xavier-worthy.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Isiah Pacheco",
+      "file": "nfl/isiah-pacheco.png"
+    },
+    {
+      "team": "KC Chiefs",
+      "name": "Kareem Hunt",
+      "file": "nfl/kareem-hunt.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "Tua Tagovailoa",
+      "file": "nfl/tua-tagovailoa.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "Tyreek Hill",
+      "file": "nfl/tyreek-hill.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "Jaylen Waddle",
+      "file": "nfl/jaylen-waddle.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "Darren Waller",
+      "file": "nfl/darren-waller.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "De'Von Achane",
+      "file": "nfl/de-von-achane.png"
+    },
+    {
+      "team": "MIA Dolphins",
+      "name": "Jaylen Wright",
+      "file": "nfl/jaylen-wright.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "Aaron Rodgers",
+      "file": "nfl/aaron-rodgers.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "DK Metcalf",
+      "file": "nfl/dk-metcalf.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "Pat Freiermuth",
+      "file": "nfl/pat-freiermuth.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "Calvin Austin III",
+      "file": "nfl/calvin-austin-iii.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "Jaylen Warren",
+      "file": "nfl/jaylen-warren.png"
+    },
+    {
+      "team": "PIT Steelers",
+      "name": "Kenneth Gainwell",
+      "file": "nfl/kenneth-gainwell.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Joe Burrow",
+      "file": "nfl/joe-burrow.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Ja'Marr Chase",
+      "file": "nfl/ja-marr-chase.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Tee Higgins",
+      "file": "nfl/tee-higgins.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Mike Gesicki",
+      "file": "nfl/mike-gesicki.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Chase Brown",
+      "file": "nfl/chase-brown.png"
+    },
+    {
+      "team": "CIN Bengals",
+      "name": "Samaje Perine",
+      "file": "nfl/samaje-perine.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "Josh Allen",
+      "file": "nfl/josh-allen.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "Khalil Shakir",
+      "file": "nfl/khalil-shakir.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "Keon Coleman",
+      "file": "nfl/keon-coleman.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "Dalton Kincaid",
+      "file": "nfl/dalton-kincaid.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "James Cook",
+      "file": "nfl/james-cook.png"
+    },
+    {
+      "team": "BUF Bills",
+      "name": "Ray Davis",
+      "file": "nfl/ray-davis.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "Drake Maye",
+      "file": "nfl/drake-maye.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "Stefon Diggs",
+      "file": "nfl/stefon-diggs.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "DeMario Douglas",
+      "file": "nfl/demario-douglas.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "Hunter Henry",
+      "file": "nfl/hunter-henry.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "Rhamondre Stevenson",
+      "file": "nfl/rhamondre-stevenson.png"
+    },
+    {
+      "team": "NE Patriots",
+      "name": "TreVeyon Henderson",
+      "file": "nfl/treveyon-henderson.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "Jalen Hurts",
+      "file": "nfl/jalen-hurts.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "A.J. Brown",
+      "file": "nfl/a-j-brown.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "DeVonta Smith",
+      "file": "nfl/devonta-smith.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "Dallas Goedert",
+      "file": "nfl/dallas-goedert.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "Saquon Barkley",
+      "file": "nfl/saquon-barkley.png"
+    },
+    {
+      "team": "PHI Eagles",
+      "name": "Will Shipley",
+      "file": "nfl/will-shipley.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "Dak Prescott",
+      "file": "nfl/dak-prescott.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "CeeDee Lamb",
+      "file": "nfl/ceedee-lamb.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "George Pickens",
+      "file": "nfl/george-pickens.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "Jake Ferguson",
+      "file": "nfl/jake-ferguson.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "Javonte Williams",
+      "file": "nfl/javonte-williams.png"
+    },
+    {
+      "team": "DAL Cowboys",
+      "name": "Jaydon Blue",
+      "file": "nfl/jaydon-blue.png"
     }
   ]
 }

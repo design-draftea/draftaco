@@ -10,16 +10,16 @@ import {
   normalizeBetslipIdPart,
   type BetslipPromoVariant,
   type BetslipSelection,
-} from '../../hooks/betslipUtils'
-import { requestLocationPermissionGate } from '../../utils/locationPermissionGate'
-import { useBetslip } from '../../hooks/useBetslip'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+} from '../../shared/hooks/betslipUtils'
+import { requestLocationPermissionGate } from '../../shared/utils/locationPermissionGate'
+import { useBetslip } from '../../shared/hooks/useBetslip'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 import {
   BETSLIP_PECHINCHA_MAX_STAKE_RULE_LABEL,
   BETSLIP_PECHINCHA_SELECTION_RULE_LABEL,
   BETSLIP_PECHINCHA_TOTAL_ODDS_RULE_LABEL,
-} from '../../hooks/betslipPechinchaRules'
+} from '../../shared/hooks/betslipPechinchaRules'
 import { getTennisPlayerCountryIcon } from '../../data/tennisCountryIcons'
 
 import iconCombinada from '../../assets/iconCombinada.png'

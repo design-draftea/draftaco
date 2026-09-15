@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:brands": "node scripts/check-brand-contracts.mjs",
     "check:player-props": "node scripts/check-player-props-coverage.mjs",
     "lint": "eslint .",
     "preview": "vite preview"

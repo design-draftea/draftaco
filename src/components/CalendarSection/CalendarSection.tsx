@@ -10,24 +10,25 @@ import {
   type PlayerPropOption,
   type TeamPlayerProfile,
 } from '../PreMatchSection/PreMatchSection'
-import type { LiveEventMatch, LiveEventOpenPayload } from '../../pages/LiveEventPage'
+import type { LiveEventMatch, LiveEventOpenPayload } from '../../features/sports/LiveEventPage'
 import { getTeamLogo } from '../../data/teamLogos'
 import { getLocalPlayerImage } from '../../data/playerImages'
-import { useHomeMarketStickyState } from '../../hooks/useHomeMarketStickyVisible'
-import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey } from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { useSportsDbTeamLogo } from '../../hooks/useSportsDbTeamLogo'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useHomeMarketStickyState } from '../../shared/hooks/useHomeMarketStickyVisible'
+import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey } from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { useSportsDbTeamLogo } from '../../shared/hooks/useSportsDbTeamLogo'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 import {
   getCompetitionLinkTarget,
   type CompetitionLinkTarget,
-} from '../../utils/competitionNavigation'
+} from '../../shared/utils/competitionNavigation'
 
 import pagamentoAntecipado from '../../assets/pagamentoAntecipado.png'
 import iconFutebol from '../../assets/iconSports/soccer.png'
 import iconTenis from '../../assets/iconSports/tennis.png'
 import playerAvatarFutebol from '../../assets/playerAvatarFutebol.svg'
 import playerAvatarBasquete from '../../assets/playerAvatarBasquete.svg'
+import playerAvatarNFL from '../../assets/playerAvatarNFL.svg'
 import { getCompetitionBadge } from '../../data/competitionBadges'
 import { getTennisPlayerCountryIcon } from '../../data/tennisCountryIcons'
 import {
@@ -82,6 +83,7 @@ import escudoJazz from '../../assets/escudoJazz.png'
 import escudoThunder from '../../assets/escudoThunder.png'
 import escudoCaxias from '../../assets/escudoCaxias.png'
 import escudoDefaultBasquete from '../../assets/escudoDefaultBasquete.png'
+import nflLiveGame from '../../data/nflLiveGame.json'
 
 interface MarketChip {
   id: string
@@ -110,6 +112,16 @@ const basketballMarketChips: MarketChip[] = [
   { id: 'q4-total', label: '4° Quarto - Total de Pontos' },
 ]
 
+const nflMarketChips: MarketChip[] = [
+  { id: 'resultado-final', label: 'Resultado Final' },
+  { id: 'jardas-passe', label: 'Jardas de Passe' },
+  { id: 'recepcoes', label: 'Recepções' },
+  { id: 'touchdowns', label: 'Touchdowns' },
+  { id: 'jardas-corrida', label: 'Jardas de Corrida' },
+  { id: 'total-pontos', label: 'Total de Pontos' },
+  { id: 'handicap', label: 'Handicap' },
+]
+
 const tennisMarketChips: MarketChip[] = [
   { id: 'vencedor', label: 'Vencedor' },
   { id: 'handicap-games', label: 'Handicap de Games' },
@@ -117,7 +129,7 @@ const tennisMarketChips: MarketChip[] = [
 ]
 
 const SHORT_COMPETITION_EVENT_LIMIT = 3
-const liveEventSports = new Set(['futebol', 'basquete'])
+const liveEventSports = new Set(['futebol', 'basquete', 'nfl'])
 const CALENDAR_FOOTBALL_PLAYER_PROPS_PER_EVENT = 3
 const CALENDAR_BASKETBALL_PLAYER_PROPS_PER_EVENT = 8
 const CALENDAR_FOOTBALL_FINISHING_MARKET_ID = 'finalizacao-gol'
@@ -125,6 +137,12 @@ const CALENDAR_FOOTBALL_GOALS_MARKET_ID = 'gols'
 const CALENDAR_FOOTBALL_ASSISTS_MARKET_ID = 'assistencias'
 const CALENDAR_BASKETBALL_POINTS_MARKET_ID = 'pontos-jogador'
 const CALENDAR_BASKETBALL_ASSISTS_MARKET_ID = 'assistencias'
+const CALENDAR_NFL_PLAYER_PROPS_PER_EVENT = 6
+const CALENDAR_NFL_PASSING_YARDS_MARKET_ID = 'jardas-passe'
+const CALENDAR_NFL_RECEPTIONS_MARKET_ID = 'recepcoes'
+const CALENDAR_NFL_TOUCHDOWNS_MARKET_ID = 'touchdowns'
+const CALENDAR_NFL_RUSHING_YARDS_MARKET_ID = 'jardas-corrida'
+const CALENDAR_NFL_ANYTIME_TOUCHDOWN_MARKET_ID = 'td-qualquer-momento'
 
 const getDefaultMarketId = (sport?: string | null) =>
   sport === 'basquete' || sport === 'tenis' ? 'vencedor' : 'resultado-final'
@@ -134,7 +152,9 @@ const getMarketChipsForSport = (sport?: string | null) =>
     ? basketballMarketChips
     : sport === 'tenis'
       ? tennisMarketChips
-      : footballMarketChips
+      : sport === 'nfl'
+        ? nflMarketChips
+        : footballMarketChips
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const getCalendarMarketChipsForSport = (sport?: string | null): CalendarMarketChip[] =>
@@ -172,6 +192,188 @@ const calendarBasketballAssistOptionSets = [
   calendarPlayerPropOptions([['1.0+', '1.62x'], ['2.0+', '1.95x'], ['3.0+', '2.90x']]),
   calendarPlayerPropOptions([['1.0+', '1.54x'], ['2.0+', '1.82x'], ['3.0+', '2.55x']]),
 ]
+
+const calendarNflPassingYardsOptionSets = [
+  calendarPlayerPropOptions([['199.5+', '1.58x'], ['224.5+', '1.92x'], ['249.5+', '2.70x']]),
+  calendarPlayerPropOptions([['224.5+', '1.62x'], ['249.5+', '1.95x'], ['274.5+', '2.85x']]),
+  calendarPlayerPropOptions([['174.5+', '1.54x'], ['199.5+', '1.88x'], ['224.5+', '2.55x']]),
+]
+
+const calendarNflReceptionsOptionSets = [
+  calendarPlayerPropOptions([['2.5+', '1.55x'], ['3.5+', '1.92x'], ['4.5+', '2.70x']]),
+  calendarPlayerPropOptions([['3.5+', '1.62x'], ['4.5+', '2.05x'], ['5.5+', '3.10x']]),
+  calendarPlayerPropOptions([['1.5+', '1.48x'], ['2.5+', '1.85x'], ['3.5+', '2.60x']]),
+]
+
+const calendarNflTouchdownOptionSets = [
+  calendarPlayerPropOptions([['0.5+', '1.95x'], ['1.5+', '4.20x'], ['2.5+', '11.00x']]),
+  calendarPlayerPropOptions([['0.5+', '2.15x'], ['1.5+', '5.00x'], ['2.5+', '14.00x']]),
+  calendarPlayerPropOptions([['0.5+', '1.78x'], ['1.5+', '3.60x'], ['2.5+', '9.50x']]),
+]
+
+// Touchdown a qualquer momento: aposta de resultado único, sem linha.
+const calendarNflAnytimeTouchdownOptionSets: PlayerPropOption[][] = [
+  [{ label: '', odd: '1.85x', active: true }],
+  [{ label: '', odd: '2.20x', active: true }],
+  [{ label: '', odd: '2.75x', active: true }],
+]
+
+const calendarNflRushingYardsOptionSets = [
+  calendarPlayerPropOptions([['39.5+', '1.58x'], ['49.5+', '1.88x'], ['59.5+', '2.45x']]),
+  calendarPlayerPropOptions([['49.5+', '1.62x'], ['59.5+', '1.95x'], ['69.5+', '2.60x']]),
+  calendarPlayerPropOptions([['24.5+', '1.50x'], ['34.5+', '1.82x'], ['44.5+', '2.40x']]),
+]
+
+// Escalações NFL usadas nos player props. As posições seguem a notação padrão
+// (QB / RB / WR / TE), idêntica em pt-BR e es-MX.
+const calendarNflPassingYardsPlayersByTeam: Record<string, TeamPlayerProfile[]> = {
+  'KC Chiefs': [
+    { name: 'Patrick Mahomes', position: 'QB' },
+  ],
+  'MIA Dolphins': [
+    { name: 'Tua Tagovailoa', position: 'QB' },
+  ],
+  'PIT Steelers': [
+    { name: 'Aaron Rodgers', position: 'QB' },
+  ],
+  'CIN Bengals': [
+    { name: 'Joe Burrow', position: 'QB' },
+  ],
+  'BUF Bills': [
+    { name: 'Josh Allen', position: 'QB' },
+  ],
+  'NE Patriots': [
+    { name: 'Drake Maye', position: 'QB' },
+  ],
+  'PHI Eagles': [
+    { name: 'Jalen Hurts', position: 'QB' },
+  ],
+  'DAL Cowboys': [
+    { name: 'Dak Prescott', position: 'QB' },
+  ],
+}
+
+const calendarNflReceptionsPlayersByTeam: Record<string, TeamPlayerProfile[]> = {
+  'KC Chiefs': [
+    { name: 'Travis Kelce', position: 'TE' },
+    { name: 'Rashee Rice', position: 'WR' },
+    { name: 'Xavier Worthy', position: 'WR' },
+  ],
+  'MIA Dolphins': [
+    { name: 'Tyreek Hill', position: 'WR' },
+    { name: 'Jaylen Waddle', position: 'WR' },
+    { name: 'Darren Waller', position: 'TE' },
+  ],
+  'PIT Steelers': [
+    { name: 'DK Metcalf', position: 'WR' },
+    { name: 'Pat Freiermuth', position: 'TE' },
+    { name: 'Calvin Austin III', position: 'WR' },
+  ],
+  'CIN Bengals': [
+    { name: "Ja'Marr Chase", position: 'WR' },
+    { name: 'Tee Higgins', position: 'WR' },
+    { name: 'Mike Gesicki', position: 'TE' },
+  ],
+  'BUF Bills': [
+    { name: 'Khalil Shakir', position: 'WR' },
+    { name: 'Keon Coleman', position: 'WR' },
+    { name: 'Dalton Kincaid', position: 'TE' },
+  ],
+  'NE Patriots': [
+    { name: 'Stefon Diggs', position: 'WR' },
+    { name: 'DeMario Douglas', position: 'WR' },
+    { name: 'Hunter Henry', position: 'TE' },
+  ],
+  'PHI Eagles': [
+    { name: 'A.J. Brown', position: 'WR' },
+    { name: 'DeVonta Smith', position: 'WR' },
+    { name: 'Dallas Goedert', position: 'TE' },
+  ],
+  'DAL Cowboys': [
+    { name: 'CeeDee Lamb', position: 'WR' },
+    { name: 'George Pickens', position: 'WR' },
+    { name: 'Jake Ferguson', position: 'TE' },
+  ],
+}
+
+const calendarNflRushingYardsPlayersByTeam: Record<string, TeamPlayerProfile[]> = {
+  'KC Chiefs': [
+    { name: 'Isiah Pacheco', position: 'RB' },
+    { name: 'Kareem Hunt', position: 'RB' },
+  ],
+  'MIA Dolphins': [
+    { name: "De'Von Achane", position: 'RB' },
+    { name: 'Jaylen Wright', position: 'RB' },
+  ],
+  'PIT Steelers': [
+    { name: 'Jaylen Warren', position: 'RB' },
+    { name: 'Kenneth Gainwell', position: 'RB' },
+  ],
+  'CIN Bengals': [
+    { name: 'Chase Brown', position: 'RB' },
+    { name: 'Samaje Perine', position: 'RB' },
+  ],
+  'BUF Bills': [
+    { name: 'James Cook', position: 'RB' },
+    { name: 'Ray Davis', position: 'RB' },
+  ],
+  'NE Patriots': [
+    { name: 'Rhamondre Stevenson', position: 'RB' },
+    { name: 'TreVeyon Henderson', position: 'RB' },
+  ],
+  'PHI Eagles': [
+    { name: 'Saquon Barkley', position: 'RB' },
+    { name: 'Will Shipley', position: 'RB' },
+  ],
+  'DAL Cowboys': [
+    { name: 'Javonte Williams', position: 'RB' },
+    { name: 'Jaydon Blue', position: 'RB' },
+  ],
+}
+
+// Touchdowns combinam o corredor principal com os recebedores de maior volume.
+const calendarNflTouchdownsPlayersByTeam: Record<string, TeamPlayerProfile[]> = {
+  'KC Chiefs': [
+    { name: 'Isiah Pacheco', position: 'RB' },
+    { name: 'Travis Kelce', position: 'TE' },
+    { name: 'Rashee Rice', position: 'WR' },
+  ],
+  'MIA Dolphins': [
+    { name: "De'Von Achane", position: 'RB' },
+    { name: 'Tyreek Hill', position: 'WR' },
+    { name: 'Jaylen Waddle', position: 'WR' },
+  ],
+  'PIT Steelers': [
+    { name: 'Jaylen Warren', position: 'RB' },
+    { name: 'DK Metcalf', position: 'WR' },
+    { name: 'Pat Freiermuth', position: 'TE' },
+  ],
+  'CIN Bengals': [
+    { name: "Ja'Marr Chase", position: 'WR' },
+    { name: 'Tee Higgins', position: 'WR' },
+    { name: 'Chase Brown', position: 'RB' },
+  ],
+  'BUF Bills': [
+    { name: 'James Cook', position: 'RB' },
+    { name: 'Khalil Shakir', position: 'WR' },
+    { name: 'Dalton Kincaid', position: 'TE' },
+  ],
+  'NE Patriots': [
+    { name: 'Rhamondre Stevenson', position: 'RB' },
+    { name: 'Stefon Diggs', position: 'WR' },
+    { name: 'Hunter Henry', position: 'TE' },
+  ],
+  'PHI Eagles': [
+    { name: 'Saquon Barkley', position: 'RB' },
+    { name: 'A.J. Brown', position: 'WR' },
+    { name: 'DeVonta Smith', position: 'WR' },
+  ],
+  'DAL Cowboys': [
+    { name: 'CeeDee Lamb', position: 'WR' },
+    { name: 'George Pickens', position: 'WR' },
+    { name: 'Javonte Williams', position: 'RB' },
+  ],
+}
 
 const calendarFootballFinishingPlayersByTeam: Record<string, TeamPlayerProfile[]> = {
   Flamengo: [
@@ -1413,6 +1615,14 @@ const calendarPlayerTeamAliases: Record<string, string> = {
   'Los Angeles Clippers': 'Clippers',
   'LA Clippers': 'Clippers',
   'Sacramento Kings': 'Kings',
+  'Kansas City Chiefs': 'KC Chiefs',
+  'Miami Dolphins': 'MIA Dolphins',
+  'Pittsburgh Steelers': 'PIT Steelers',
+  'Cincinnati Bengals': 'CIN Bengals',
+  'Buffalo Bills': 'BUF Bills',
+  'New England Patriots': 'NE Patriots',
+  'Philadelphia Eagles': 'PHI Eagles',
+  'Dallas Cowboys': 'DAL Cowboys',
 }
 
 const getCalendarTeamPlayerProfiles = (
@@ -1434,10 +1644,19 @@ const isCalendarBasketballPlayerPropsMarket = (marketId: string) =>
   marketId === CALENDAR_BASKETBALL_POINTS_MARKET_ID ||
   marketId === CALENDAR_BASKETBALL_ASSISTS_MARKET_ID
 
+const isCalendarNflPlayerPropsMarket = (marketId: string) =>
+  marketId === CALENDAR_NFL_PASSING_YARDS_MARKET_ID ||
+  marketId === CALENDAR_NFL_RECEPTIONS_MARKET_ID ||
+  marketId === CALENDAR_NFL_TOUCHDOWNS_MARKET_ID ||
+  marketId === CALENDAR_NFL_ANYTIME_TOUCHDOWN_MARKET_ID ||
+  marketId === CALENDAR_NFL_RUSHING_YARDS_MARKET_ID
+
 const isCalendarPlayerPropsMarket = (sport: string, marketId: string) =>
   sport === 'basquete'
     ? isCalendarBasketballPlayerPropsMarket(marketId)
-    : sport === 'futebol' && isCalendarFootballPlayerPropsMarket(marketId)
+    : sport === 'nfl'
+      ? isCalendarNflPlayerPropsMarket(marketId)
+      : sport === 'futebol' && isCalendarFootballPlayerPropsMarket(marketId)
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const isCalendarPlayerPropsMarketForSport = isCalendarPlayerPropsMarket
@@ -1540,6 +1759,73 @@ const getCalendarBasketballPlayerProps = (
   }, [])
 }
 
+const getCalendarNflPlayersByTeam = (marketId: string) => {
+  if (marketId === CALENDAR_NFL_RECEPTIONS_MARKET_ID) return calendarNflReceptionsPlayersByTeam
+  if (
+    marketId === CALENDAR_NFL_TOUCHDOWNS_MARKET_ID ||
+    marketId === CALENDAR_NFL_ANYTIME_TOUCHDOWN_MARKET_ID
+  ) return calendarNflTouchdownsPlayersByTeam
+  if (marketId === CALENDAR_NFL_RUSHING_YARDS_MARKET_ID) return calendarNflRushingYardsPlayersByTeam
+
+  return calendarNflPassingYardsPlayersByTeam
+}
+
+const getCalendarNflOptionSets = (marketId: string) => {
+  if (marketId === CALENDAR_NFL_RECEPTIONS_MARKET_ID) return calendarNflReceptionsOptionSets
+  if (marketId === CALENDAR_NFL_TOUCHDOWNS_MARKET_ID) return calendarNflTouchdownOptionSets
+  if (marketId === CALENDAR_NFL_ANYTIME_TOUCHDOWN_MARKET_ID) return calendarNflAnytimeTouchdownOptionSets
+  if (marketId === CALENDAR_NFL_RUSHING_YARDS_MARKET_ID) return calendarNflRushingYardsOptionSets
+
+  return calendarNflPassingYardsOptionSets
+}
+
+const getCalendarNflPlayerProps = (
+  event: CompetitionEvent,
+  marketId: string,
+  homeIcon: string,
+  awayIcon: string
+): MatchPlayerProp[] => {
+  const optionSets = getCalendarNflOptionSets(marketId)
+  const playersByTeam = getCalendarNflPlayersByTeam(marketId)
+  const homePlayers = getCalendarTeamPlayerProfiles(playersByTeam, event.homeName)
+  const awayPlayers = getCalendarTeamPlayerProfiles(playersByTeam, event.awayName)
+  const maxPlayersPerTeam = Math.max(homePlayers.length, awayPlayers.length)
+  // Intercala casa/visitante para o grid de 2 colunas alternar os times.
+  const orderedPlayers = Array.from({ length: maxPlayersPerTeam }).flatMap((_, index) => [
+    ...homePlayers.slice(index, index + 1).map((player) => ({
+      ...player,
+      teamName: event.homeName,
+      teamIcon: homeIcon,
+      teamSide: 'home' as const,
+    })),
+    ...awayPlayers.slice(index, index + 1).map((player) => ({
+      ...player,
+      teamName: event.awayName,
+      teamIcon: awayIcon,
+      teamSide: 'away' as const,
+    })),
+  ])
+  const uniquePlayerNames = new Set<string>()
+
+  return orderedPlayers.reduce<MatchPlayerProp[]>((players, player) => {
+    if (players.length >= CALENDAR_NFL_PLAYER_PROPS_PER_EVENT || uniquePlayerNames.has(player.name)) return players
+
+    uniquePlayerNames.add(player.name)
+    players.push({
+      id: `${event.id}-${marketId}-${player.teamName}-${player.name}`,
+      playerName: player.name,
+      teamName: player.teamName,
+      teamIcon: player.teamIcon,
+      teamSide: player.teamSide,
+      sport: 'nfl',
+      position: player.position,
+      image: getLocalPlayerImage(player.teamName, player.name) ?? playerAvatarNFL,
+      options: optionSets[players.length % optionSets.length],
+    })
+    return players
+  }, [])
+}
+
 const getCalendarPlayerProps = (
   event: CompetitionEvent,
   sport: string,
@@ -1549,7 +1835,9 @@ const getCalendarPlayerProps = (
 ) =>
   sport === 'basquete'
     ? getCalendarBasketballPlayerProps(event, marketId, homeIcon, awayIcon)
-    : getCalendarFootballPlayerProps(event, marketId, homeIcon, awayIcon)
+    : sport === 'nfl'
+      ? getCalendarNflPlayerProps(event, marketId, homeIcon, awayIcon)
+      : getCalendarFootballPlayerProps(event, marketId, homeIcon, awayIcon)
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const getCalendarPlayerPropsForEvent = (
@@ -1647,6 +1935,14 @@ export interface CompetitionEvent {
     line: number
     under: string
     over: string
+  }
+  // Situação de campo do futebol americano ao vivo: descida, jardas para a próxima
+  // descida, onde a bola está e quem tem a posse. Não existe nos outros esportes.
+  footballSituation?: {
+    down: number
+    distance: number
+    ballOn: string
+    possession: 'home' | 'away'
   }
 }
 
@@ -1771,6 +2067,32 @@ const getMarketOdds = (event: CompetitionEvent, sport: string): MarketOdds => {
         line: quarterTotal + 1,
         under: formatOdd(1.80 + variation),
         over: formatOdd(2.02 - variation),
+      },
+    }
+  }
+
+  if (sport === 'nfl') {
+    const baseTotal = 40.5 + (seed % 7)
+    const favoriteIsHome = homeOdd < awayOdd
+    const handicapLine = Number((1.5 + (seed % 7)).toFixed(1))
+    const eventHandicapLine = event.handicapOdds?.line
+
+    return {
+      totalPoints: event.totalPointsOdds ?? {
+        line: baseTotal,
+        under: formatOdd(1.86 + variation),
+        over: formatOdd(1.94 - variation),
+      },
+      handicap: event.handicapOdds ? {
+        homeLine: eventHandicapLine ?? 0,
+        awayLine: eventHandicapLine ? -eventHandicapLine : 0,
+        home: event.handicapOdds.home,
+        away: event.handicapOdds.away,
+      } : {
+        homeLine: favoriteIsHome ? -handicapLine : handicapLine,
+        awayLine: favoriteIsHome ? handicapLine : -handicapLine,
+        home: formatOdd(1.88 + variation),
+        away: formatOdd(1.92 - variation),
       },
     }
   }
@@ -2906,6 +3228,76 @@ export const championships: Championship[] = [
       },
     ],
   },
+  // Futebol americano
+  {
+    id: 'nfl',
+    name: 'NFL',
+    flag: flagUSA,
+    sport: 'nfl',
+    events: [
+      {
+        id: 'nfl-1',
+        // Jogo ao vivo com dado real: placar, relógio e situação de campo vêm do recorte
+        // do play-by-play do nflverse (KC x MIA, wild card de 2024-01-13), acumulado até a
+        // jogada de corte. O mesmo fixture alimenta o bottom sheet de estatísticas, então
+        // header e detalhe não conseguem divergir.
+        dateTime: `Q${nflLiveGame.live.quarter} ${nflLiveGame.live.clock}`,
+        isLive: true,
+        earlyPayout: false,
+        homeScore: nflLiveGame.live.homeScore,
+        awayScore: nflLiveGame.live.awayScore,
+        homeName: 'KC Chiefs',
+        homeIcon: '',
+        awayName: 'MIA Dolphins',
+        awayIcon: '',
+        odds: { home: '1.53x', away: '2.50x' },
+        totalPointsOdds: { line: 41.5, under: '1.90x', over: '1.90x' },
+        handicapOdds: { line: 3.5, home: '1.88x', away: '1.92x' },
+        footballSituation: {
+          down: nflLiveGame.live.down ?? 1,
+          distance: nflLiveGame.live.distance ?? 10,
+          ballOn: nflLiveGame.live.ballOn ?? '',
+          possession: nflLiveGame.live.possession as 'home' | 'away',
+        },
+      },
+      {
+        id: 'nfl-2',
+        dateTime: 'Amanhã, 17:00',
+        earlyPayout: true,
+        homeName: 'PIT Steelers',
+        homeIcon: '',
+        awayName: 'CIN Bengals',
+        awayIcon: '',
+        odds: { home: '2.10x', away: '1.72x' },
+        totalPointsOdds: { line: 44.5, under: '1.88x', over: '1.92x' },
+        handicapOdds: { line: 2.5, home: '1.90x', away: '1.90x' },
+      },
+      {
+        id: 'nfl-3',
+        dateTime: 'Amanhã, 14:00',
+        earlyPayout: false,
+        homeName: 'BUF Bills',
+        homeIcon: '',
+        awayName: 'NE Patriots',
+        awayIcon: '',
+        odds: { home: '1.28x', away: '3.90x' },
+        totalPointsOdds: { line: 46.5, under: '1.92x', over: '1.88x' },
+        handicapOdds: { line: 7.5, home: '1.87x', away: '1.93x' },
+      },
+      {
+        id: 'nfl-4',
+        dateTime: 'Amanhã, 20:00',
+        earlyPayout: true,
+        homeName: 'PHI Eagles',
+        homeIcon: '',
+        awayName: 'DAL Cowboys',
+        awayIcon: '',
+        odds: { home: '1.62x', away: '2.35x' },
+        totalPointsOdds: { line: 48.5, under: '1.90x', over: '1.90x' },
+        handicapOdds: { line: 4.5, home: '1.89x', away: '1.91x' },
+      },
+    ],
+  },
 ]
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -2924,6 +3316,7 @@ export const competitionToChampionship: Record<string, string> = {
   'bsq-nbb': 'brasil-nbb',
   'bsq-br-nbb': 'brasil-nbb',
   'bsq-euro-cup': 'euro-cup',
+  'nfl-liga': 'nfl',
   'ten-roma-masters': 'ten-roma-masters',
   'ten-roma-f': 'ten-roma-f',
   'ten-parma-f': 'ten-parma-f',
@@ -3161,6 +3554,7 @@ export const getCompetitionLiveEventMatch = (
     handicapOdds,
     q3TotalOdds: marketOdds.q3Total,
     q4TotalOdds: marketOdds.q4Total,
+    footballSituation: event.footballSituation,
   }
 }
 
@@ -3736,7 +4130,7 @@ export function CalendarSection({
               {renderOddButton('under-games', `Menos de ${marketOdds.totalGames?.line}`, marketOdds.totalGames?.under)}
               {renderOddButton('over-games', `Mais de ${marketOdds.totalGames?.line}`, marketOdds.totalGames?.over)}
             </>
-          ) : league.sport === 'basquete' || league.sport === 'tenis' ? (
+          ) : league.sport === 'basquete' || league.sport === 'tenis' || league.sport === 'nfl' ? (
             <>
               {renderOddButton('home', event.homeName, event.odds.home)}
               {renderOddButton('away', event.awayName, event.odds.away)}

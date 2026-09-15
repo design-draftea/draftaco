@@ -2,17 +2,17 @@ import { useCallback, useState, useEffect, useLayoutEffect, useRef, type Pointer
 import { CaretRightIcon, CaretUpIcon } from '@phosphor-icons/react'
 import './PreMatchSection.css'
 import { getTeamLogo } from '../../data/teamLogos'
-import { useHomeMarketStickyState } from '../../hooks/useHomeMarketStickyVisible'
-import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey, getPlayerPropBetslipKey } from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { useSportsDbTeamLogo } from '../../hooks/useSportsDbTeamLogo'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useHomeMarketStickyState } from '../../shared/hooks/useHomeMarketStickyVisible'
+import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey, getPlayerPropBetslipKey } from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { useSportsDbTeamLogo } from '../../shared/hooks/useSportsDbTeamLogo'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 import { getLocalPlayerImage } from '../../data/playerImages'
 import {
   getCompetitionLinkTarget,
   type CompetitionLinkTarget,
-} from '../../utils/competitionNavigation'
-import type { LiveEventMatch, LiveEventOpenPayload } from '../../pages/LiveEventPage'
+} from '../../shared/utils/competitionNavigation'
+import type { LiveEventMatch, LiveEventOpenPayload } from '../../features/sports/LiveEventPage'
 
 import iconBasquete from '../../assets/iconSports/basketball.png'
 import iconEsoccer from '../../assets/iconSports/e-soccer.png'

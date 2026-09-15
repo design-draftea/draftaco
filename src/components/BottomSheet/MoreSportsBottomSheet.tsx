@@ -34,7 +34,7 @@ import {
   isCompetitionEnabled,
   type CompeticaoConfig,
 } from '../SportFilterBar/competicaoData'
-import type { CompetitionLinkTarget } from '../../utils/competitionNavigation'
+import type { CompetitionLinkTarget } from '../../shared/utils/competitionNavigation'
 
 interface MoreSportsBottomSheetProps {
   isOpen: boolean
