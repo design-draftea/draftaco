@@ -4,10 +4,10 @@
 
 - Atualizado em: 2026-09-15.
 - Checkout: pasta principal `draftaco`, na branch `fix/campo-nfl-altura-safari`
-  (commit `b34f368`, a partir de `main`). **Tarefa em andamento**: a correção está
-  implementada e conferida localmente, aguardando validação da pessoa responsável pelo
-  protótipo no iPhone. Sem Pull Request aberta.
-- Objetivo: no Safari do iPhone, os elementos desenhados sobre o campo do replay da NFL
+  (commits `b34f368`, `cf0c65e` e `20c5074`, a partir de `main`). **Tarefa em andamento**:
+  as duas mudanças estão implementadas e conferidas localmente, aguardando validação da
+  pessoa responsável pelo protótipo no iPhone. Sem Pull Request aberta.
+- Objetivo 1: no Safari do iPhone, os elementos desenhados sobre o campo do replay da NFL
   (retrato, nome, rastro, bola e as linhas de scrimmage e de primeira descida) saíam de
   registro com a arte. Causa: `.nfl-plays__field` tirava a altura de `aspect-ratio` sem
   largura declarada, e o Safari transfere a proporção a partir da largura do CONTÊINER,
@@ -19,6 +19,16 @@
   largura — a altura do frame passa a bater com a proporção e a escala do palco volta a ser
   largura/375, sem deslocamento horizontal; medição no Chromium inalterada; `npm run build`,
   `npm run check:nfl` e `npm run check:brands` passando.
+- Objetivo 2 (pedido na mesma sessão): no passe recebido, a bola caía no gramado e só depois
+  subia para o selo sobre o retrato. Agora ela tem curva própria, com destino na mão, e sobe
+  da linha de scrimmage até o selo sem descer em momento nenhum — decisão explícita da pessoa
+  responsável pelo protótipo: a bola não pode cair e subir, e divergir do tracejado não é
+  problema. O tracejado continua mirando o gramado, com a corcova inteira, e emenda no trecho
+  rasteiro; levá-lo junto com a bola larga um degrau entre o fim do arco e a linha da corrida.
+  As duas alternativas (tracejado até a mão, e o mesmo com um fio no ponto da recepção) foram
+  implementadas, comparadas quadro a quadro e descartadas — não estão no código. Só passe
+  recebido mudou: chute com retorno, corrida, passe incompleto e chute ao gol seguem
+  idênticos, conferidos nas 47 jogadas do fixture.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
