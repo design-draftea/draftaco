@@ -5,8 +5,8 @@ import {
   getBetslipEventId,
   getBetslipMarketGroupId,
   normalizeBetslipIdPart,
-} from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
+} from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
 import {
   createGarantidaLewandowskiSelection,
   GARANTIDA_LEWANDOWSKI_GROUP_ID,

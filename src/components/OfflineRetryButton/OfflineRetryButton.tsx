@@ -1,3 +1,4 @@
+import { brandPath } from '../../shared/brand/routing'
 import { useState } from 'react'
 import './OfflineRetryButton.css'
 
@@ -19,7 +20,6 @@ export function OfflineRetryButton() {
     setConnectionRetryState('checking')
 
     const baseUrl = import.meta.env.BASE_URL || '/'
-    const normalizedBasePath = baseUrl === '/' ? '' : baseUrl.replace(/\/+$/, '')
     const [response] = await Promise.all([
       fetch(baseUrl, { cache: 'no-store' }).catch(() => null),
       wait(CONNECTION_RETRY_MINIMUM_MS),
@@ -30,7 +30,7 @@ export function OfflineRetryButton() {
       return
     }
 
-    window.location.assign(`${normalizedBasePath}/apostas`)
+    window.location.assign(brandPath('apostas'))
   }
 
   return (

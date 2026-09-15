@@ -2,8 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useState, useRef, type ReactNo
 import { createPortal } from 'react-dom'
 import { CaretUpIcon } from '@phosphor-icons/react'
 import closeBS from '../../assets/iconsDraftaco/closeBS.svg'
-import { useStableKeyboardViewport } from '../../hooks/useStableKeyboardViewport'
-import { useTouchScrollFence } from '../../hooks/useTouchScrollFence'
+import { useStableKeyboardViewport } from '../../shared/hooks/useStableKeyboardViewport'
+import { useTouchScrollFence } from '../../shared/hooks/useTouchScrollFence'
 import './BottomSheet.css'
 
 type BottomSheetKeyboardBehavior = 'follow-viewport' | 'stable-scroll'
@@ -70,12 +70,16 @@ export function BottomSheet({
     setShowScrollIndicator(!isAtBottom)
   }
 
-  // Check if content is scrollable on mount/update
+  // Reavalia o indicador quando o conteúdo muda. Usa a mesma conta do `handleScroll`, e
+  // não só "há scroll?": `children` muda de identidade a cada render do conteúdo (uma
+  // sheet com relógio ao vivo re-renderiza a cada segundo), e checar apenas a existência
+  // de scroll devolvia o fade mesmo com a pessoa parada no fim. Sem conteúdo rolável
+  // `isAtBottom` já é verdadeiro, então esse caso continua coberto.
   useEffect(() => {
     if (shouldRender && bodyRef.current) {
-      const { scrollHeight, clientHeight } = bodyRef.current
-      const hasScroll = scrollHeight > clientHeight
-      setShowScrollIndicator(hasScroll)
+      const { scrollTop, scrollHeight, clientHeight } = bodyRef.current
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
+      setShowScrollIndicator(!isAtBottom)
     }
   }, [shouldRender, children])
 

@@ -3,7 +3,7 @@ import { CaretRightIcon, MonitorPlayIcon } from '@phosphor-icons/react'
 import iconAoVivo from '../../assets/iconAoVivo.png'
 import { getTennisPlayerCountryIcon } from '../../data/tennisCountryIcons'
 import { getLocalPlayerImage } from '../../data/playerImages'
-import { useSportsDbTeamLogo } from '../../hooks/useSportsDbTeamLogo'
+import { useSportsDbTeamLogo } from '../../shared/hooks/useSportsDbTeamLogo'
 import playerAvatarFutebol from '../../assets/playerAvatarFutebol.svg'
 import playerAvatarBasquete from '../../assets/playerAvatarBasquete.svg'
 import arrascaetaProps from '../../assets/arrascaetaProps.png'
@@ -24,8 +24,8 @@ import {
   type PlayerPropOption,
   type TeamPlayerProfile,
 } from '../PreMatchSection/PreMatchSection'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey } from '../../hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { createBetslipSelection, getBetslipEventId, getMatchOddBetslipKey } from '../../shared/hooks/betslipUtils'
 import '../LiveSection/LiveSection.css'
 
 export interface LiveMatchCardMatch {

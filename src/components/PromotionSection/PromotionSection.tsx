@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react'
 import { CaretRightIcon } from '@phosphor-icons/react'
 import './PromotionSection.css'
 import { sportsPromotions } from '../../data/homeProducts'
-import type { Promotion } from '../../types/home'
+import type { Promotion } from '../../shared/types/home'
 
 const MINUTE_IN_MS = 60_000
 

@@ -3,7 +3,7 @@ import {
   createBetslipSelection,
   getBetslipEventId,
   getBetslipMarketGroupId,
-} from '../hooks/betslipUtils'
+} from '../shared/hooks/betslipUtils'
 
 export const GARANTIDA_LEWANDOWSKI_EVENT_ID = getBetslipEventId({
   sport: 'futebol',

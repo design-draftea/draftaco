@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import '../../pages/LoginPage/LoginPage.css'
+import '../../features/auth/LoginPage/LoginPage.css'
 
 type VerificationCameraStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 

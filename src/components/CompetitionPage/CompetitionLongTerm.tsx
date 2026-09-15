@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { CaretRightIcon } from '@phosphor-icons/react'
 import './CompetitionLongTerm.css'
 import { TeamLogo } from '../TeamLogo'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 
 import type { LongTermOdd } from './competitionData'
 

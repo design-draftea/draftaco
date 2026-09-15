@@ -39,7 +39,7 @@ import iconFavorito from '../../assets/iconsDraftaco/iconFavorito.svg'
 import iconFavoritoAtivo from '../../assets/iconsDraftaco/iconFavoritoAtivo.svg'
 import iconOrdenacao from '../../assets/iconsDraftaco/iconOrdenacao.svg'
 import marcacao from '../../assets/iconsDraftaco/marcacao.svg'
-import type { CompetitionLinkTarget } from '../../utils/competitionNavigation'
+import type { CompetitionLinkTarget } from '../../shared/utils/competitionNavigation'
 import {
   isCompetitionEnabled,
   isCompetitionRailClickable,

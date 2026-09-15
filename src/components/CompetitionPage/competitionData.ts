@@ -19,7 +19,7 @@ import playerLeBronJames from '../../assets/playerLeBronJames.png'
 import playerStephenCurry from '../../assets/playerStephenCurry.png'
 import playerLukaDoncic from '../../assets/playerLukaDoncic.png'
 import playerJimmyButler from '../../assets/playerJimmyButler.png'
-import { TEAM_LOGO_FALLBACK } from '../../utils/teamLogoFallback'
+import { TEAM_LOGO_FALLBACK } from '../../shared/utils/teamLogoFallback'
 
 export interface CompetitionMatch {
   id: string

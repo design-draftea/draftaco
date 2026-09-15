@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ProductRail } from '../SportRail'
 import { casinoRailSections } from '../../data/homeProducts'
 import { MoreCasinoBottomSheet } from '../BottomSheet'
-import type { CasinoCategoryId, CasinoRailItem } from '../../types/home'
+import type { CasinoCategoryId, CasinoRailItem } from '../../shared/types/home'
 
 interface CasinoRailProps {
   activeCategory: CasinoCategoryId

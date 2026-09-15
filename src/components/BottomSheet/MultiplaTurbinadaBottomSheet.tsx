@@ -5,7 +5,7 @@ import iconMultiplaGde from '../../assets/iconMultiplaGde.png'
 import {
   getBetslipTurboBonusPercent,
   getBetslipTurboMaxSelectionCount,
-} from '../../hooks/betslipTurboBonus'
+} from '../../shared/hooks/betslipTurboBonus'
 
 interface MultiplaTurbinadaBottomSheetProps {
   isOpen: boolean

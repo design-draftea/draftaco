@@ -7,13 +7,13 @@ import {
   formatBetslipCurrency,
   formatBetslipOdd,
   type BetslipSummary,
-} from '../../hooks/betslipUtils'
+} from '../../shared/hooks/betslipUtils'
 import {
   getBetslipTurboBonusCents,
   getBetslipTurboBonusPercent,
-} from '../../hooks/betslipTurboBonus'
-import { useAnimatedBetslipNumber } from '../../hooks/useAnimatedBetslipNumber'
-import { useFeatureFlags } from '../../hooks/useFeatureFlags'
+} from '../../shared/hooks/betslipTurboBonus'
+import { useAnimatedBetslipNumber } from '../../shared/hooks/useAnimatedBetslipNumber'
+import { useFeatureFlags } from '../../shared/hooks/useFeatureFlags'
 
 interface BetslipProps {
   summary?: BetslipSummary

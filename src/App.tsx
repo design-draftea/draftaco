@@ -1,5 +1,7 @@
+import { brandBasePath, parseBrandPath } from './shared/brand/routing'
+import { getBrandConfig } from './shared/brand/config'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { LiveEventOpenPayload } from './pages/LiveEventPage'
+import type { LiveEventOpenPayload } from './features/sports/LiveEventPage'
 import { MobileOnly } from './components/MobileOnly'
 import { Navbar } from './components/Navbar'
 import { Betslip } from './components/Betslip'
@@ -12,31 +14,30 @@ import {
 import { FeatureFlagsPanel } from './components/FeatureFlagsPanel'
 import { ProfileBottomSheet } from './components/ProfileBottomSheet'
 import { LocationPermissionGate } from './components/LocationPermissionGate'
-import { BetslipProvider } from './hooks/BetslipProvider'
-import { FeatureFlagsProvider } from './hooks/FeatureFlagsProvider'
-import { useFeatureFlags } from './hooks/useFeatureFlags'
-import { useBetslip } from './hooks/useBetslip'
-import { getBetslipTurboEligibleSelectionCount } from './hooks/betslipTurboBonus'
-import type { ProductMode } from './types/home'
-import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './utils/betslipLiveEvent'
-import type { PixKeyType } from './utils/pixKeyValidation'
-import { BrandLocalizationEffect } from './i18n/brandLocalization'
-import { LoginPage } from './pages/LoginPage'
-import type { BetSuccessReceipt } from './pages/BetSuccessPage'
+import { BetslipProvider } from './shared/hooks/BetslipProvider'
+import { FeatureFlagsProvider } from './shared/hooks/FeatureFlagsProvider'
+import { useFeatureFlags } from './shared/hooks/useFeatureFlags'
+import { useBetslip } from './shared/hooks/useBetslip'
+import { getBetslipTurboEligibleSelectionCount } from './shared/hooks/betslipTurboBonus'
+import type { ProductMode } from './shared/types/home'
+import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './shared/utils/betslipLiveEvent'
+import type { PixKeyType } from './shared/utils/pixKeyValidation'
+import { LoginPage } from './features/auth/LoginPage'
+import type { BetSuccessReceipt } from './features/betslip/BetSuccessPage'
 
-const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })))
-const SportsPageV2 = lazy(() => import('./pages/SportsPageV2').then((m) => ({ default: m.SportsPageV2 })))
-const PromotionsPage = lazy(() => import('./pages/PromotionsPage').then((m) => ({ default: m.PromotionsPage })))
-const BetslipPageV2 = lazy(() => import('./pages/BetslipPageV2').then((m) => ({ default: m.BetslipPageV2 })))
-const BetSuccessPage = lazy(() => import('./pages/BetSuccessPage').then((m) => ({ default: m.BetSuccessPage })))
-const CamisaPremiadaStaticPreviewPage = lazy(() => import('./pages/BetSuccessPage').then((m) => ({
+const Home = lazy(() => import('./features/home/Home').then((m) => ({ default: m.Home })))
+const SportsPageV2 = lazy(() => import('./features/sports/SportsPageV2').then((m) => ({ default: m.SportsPageV2 })))
+const PromotionsPage = lazy(() => import('./features/promotions/PromotionsPage').then((m) => ({ default: m.PromotionsPage })))
+const BetslipPageV2 = lazy(() => import('./features/betslip/BetslipPageV2').then((m) => ({ default: m.BetslipPageV2 })))
+const BetSuccessPage = lazy(() => import('./features/betslip/BetSuccessPage').then((m) => ({ default: m.BetSuccessPage })))
+const CamisaPremiadaStaticPreviewPage = lazy(() => import('./features/betslip/BetSuccessPage').then((m) => ({
   default: m.CamisaPremiadaStaticPreviewPage,
 })))
-const LiveEventPage = lazy(() => import('./pages/LiveEventPage').then((m) => ({ default: m.LiveEventPage })))
-const HandoffPage = lazy(() => import('./pages/Handoff').then((m) => ({ default: m.HandoffPage })))
-const EmbaixadinhaPage = lazy(() => import('./pages/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
-const MemoriaPage = lazy(() => import('./pages/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
-const PongPage = lazy(() => import('./pages/PongPage').then((m) => ({ default: m.PongPage })))
+const LiveEventPage = lazy(() => import('./features/sports/LiveEventPage').then((m) => ({ default: m.LiveEventPage })))
+const HandoffPage = lazy(() => import('./features/handoff/Handoff').then((m) => ({ default: m.HandoffPage })))
+const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
+const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
+const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
 
 const RouteFallback = () => (
   <div
@@ -57,29 +58,12 @@ const camisaPremiadaRouteSegment = 'camisa-premiada'
 const penaltiPremiadoRouteSegment = 'penalti-premiado'
 const loginRouteSegment = 'entrar'
 const signupRouteSegment = 'criar-conta'
-const deployedBasePath = '/draftaco-v0'
 const ENABLE_APP_PROMOTIONS_NAV_LINK = false
 const brasileiraoLeagueIdPattern = /(?:brasil-serie-a|fut-brasileir|fut-brasileirao-a)/
 const brasileiraoLeagueNamePattern = /(?:brasileir|brasileir[aã]o|brasil\s*-\s*s[eé]rie\s*a|s[eé]rie\s*a)/i
 
-const getBasePath = () => {
-  const baseUrl = import.meta.env.BASE_URL || '/'
-  if (baseUrl !== '/') return baseUrl.replace(/\/+$/, '')
-
-  return window.location.pathname === deployedBasePath || window.location.pathname.startsWith(`${deployedBasePath}/`)
-    ? deployedBasePath
-    : ''
-}
-
-const stripBasePath = (pathname: string) => {
-  const basePath = getBasePath()
-  if (!basePath) return pathname || '/'
-
-  if (pathname === basePath) return '/'
-  if (pathname.startsWith(`${basePath}/`)) return pathname.slice(basePath.length) || '/'
-
-  return pathname || '/'
-}
+const getBasePath = brandBasePath
+const stripBasePath = (pathname: string) => parseBrandPath(pathname).path
 
 const getNormalizedAppPath = (pathname: string) => stripBasePath(pathname).replace(/\/+$/, '') || '/'
 
@@ -145,7 +129,7 @@ const isLoginPath = (pathname: string) => {
 const isSignupPath = (pathname: string) => {
   const routeSegments = getRouteSegments(pathname)
 
-  return routeSegments.length === 1 && routeSegments[0] === signupRouteSegment
+  return getBrandConfig().features.signup && routeSegments.length === 1 && routeSegments[0] === signupRouteSegment
 }
 
 const isAuthPath = (pathname: string) => isLoginPath(pathname) || isSignupPath(pathname)
@@ -158,7 +142,8 @@ const isCanonicalPromotionsPath = (pathname: string) => {
 const resolveProductFromPath = (pathname: string) => {
   const routeSegments = getRouteSegments(pathname)
   const routeProduct = productRoutes.find((route) => route === routeSegments[0])
-  const product = routeProduct ?? defaultProduct
+  const product = routeProduct === 'cassino' && !getBrandConfig().features.casino
+    ? defaultProduct : routeProduct ?? defaultProduct
   const isCanonicalProductRoute = routeSegments.length === 1 && routeSegments[0] === product
 
   return {
@@ -295,7 +280,7 @@ function AppContent() {
   )
   const [authOverlayOrigin, setAuthOverlayOrigin] = useState<AuthOverlayOrigin>('default')
   const { selections: betslipSelections, summary: betslipSummary } = useBetslip()
-  const { brandMode, isFeatureEnabled } = useFeatureFlags()
+  const { isFeatureEnabled } = useFeatureFlags()
   const betslipTurboEligibleSelectionCount = useMemo(
     () => getBetslipTurboEligibleSelectionCount(betslipSelections),
     [betslipSelections]
@@ -429,6 +414,7 @@ function AppContent() {
   }, [syncBrowserLocation])
 
   const handleProductChange = useCallback((product: ProductMode) => {
+    if (product === 'cassino' && !getBrandConfig().features.casino) return
     if (isPromotionsPage) {
       setPromotionsProduct(product)
       const nextPath = withSearch(buildProductPath(product), getGarantidaBannerSearch(search))
@@ -461,6 +447,7 @@ function AppContent() {
   }, [search, syncBrowserLocation])
 
   const handleAuthOpen = useCallback((nextPath: string) => {
+    if (!getBrandConfig().features.signup && parseBrandPath(nextPath).path === '/criar-conta') return
     const isCurrentlyAuthPath = isAuthPath(window.location.pathname)
 
     if (!isCurrentlyAuthPath) {
@@ -679,6 +666,10 @@ function AppContent() {
   }, [])
 
   const handleNavbarItemSelect = useCallback((itemId: string) => {
+    if (itemId === 'home' || itemId === 'ao-vivo') {
+      handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
+      return
+    }
     if (itemId === promotionsRouteSegment) {
       if (!ENABLE_APP_PROMOTIONS_NAV_LINK) return
 
@@ -692,17 +683,7 @@ function AppContent() {
       syncBrowserLocation()
       return
     }
-
-    if (isPromotionsPage && itemId === 'home') {
-      const nextPath = withSearch(buildProductPath(activeProduct), getGarantidaBannerSearch(search))
-
-      if (getCurrentPathWithSearch() !== nextPath) {
-        window.history.pushState({}, '', nextPath)
-      }
-
-      syncBrowserLocation()
-    }
-  }, [activeProduct, isPromotionsPage, search, syncBrowserLocation])
+  }, [activeProduct, handleProductChange, search, syncBrowserLocation])
 
   const handleBetslipClose = useCallback(() => {
     setIsFullBetslipOpen(false)
@@ -972,7 +953,7 @@ function AppContent() {
   useEffect(() => {
     if (!betslipSummary.hasSelections) return
 
-    void import('./pages/BetslipPageV2')
+    void import('./features/betslip/BetslipPageV2')
   }, [betslipSummary.hasSelections])
 
   const showCompactBetslip = activeProduct === 'apostas'
@@ -1036,7 +1017,6 @@ function AppContent() {
 
   return (
     <div className="app-shell">
-      <BrandLocalizationEffect brandMode={brandMode} />
       <LocationPermissionGate isEnabled={!isStandalonePage} />
       {!isHandoffPage && !isCamisaPremiadaStaticPreview ? <MobileOnly /> : null}
       <Suspense fallback={<RouteFallback />}>
@@ -1244,7 +1224,7 @@ function AppContent() {
       {!isStandalonePage ? (
         <Navbar
           activeProduct={activeProduct}
-          activeItemId={isPromotionsPage ? promotionsRouteSegment : undefined}
+          activeItemId={isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
           onItemSelect={handleNavbarItemSelect}
         />
       ) : null}

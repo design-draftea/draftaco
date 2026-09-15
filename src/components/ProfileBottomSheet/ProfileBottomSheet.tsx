@@ -40,16 +40,16 @@ import supportIcon from '../../assets/iconsDraftaco/iconMenuSuporte.svg'
 import termsIcon from '../../assets/iconsDraftaco/iconMenuTermos.svg'
 import balanceChevronDownIcon from '../../assets/iconsDraftaco/profileBalanceChevronDown.svg'
 import profileCardLight from '../../assets/iconsDraftaco/profileCardLight.svg'
-import { useStableKeyboardViewport } from '../../hooks/useStableKeyboardViewport'
-import { useTapFocusScrollGuard } from '../../hooks/useTapFocusScrollGuard'
-import { useTouchScrollFence } from '../../hooks/useTouchScrollFence'
+import { useStableKeyboardViewport } from '../../shared/hooks/useStableKeyboardViewport'
+import { useTapFocusScrollGuard } from '../../shared/hooks/useTapFocusScrollGuard'
+import { useTouchScrollFence } from '../../shared/hooks/useTouchScrollFence'
 import {
   formatPixKeyInput,
   getAmbiguousPixKeyTypes,
   validatePixKey,
   type PixKeyNumericType,
   type PixKeyType,
-} from '../../utils/pixKeyValidation'
+} from '../../shared/utils/pixKeyValidation'
 import {
   DepositPanel,
   type DepositAccount,

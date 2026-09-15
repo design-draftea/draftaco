@@ -21,14 +21,14 @@ import {
   getMatchOddBetslipKey,
   type BetslipPromoVariant,
   type BetslipSelection,
-} from '../../hooks/betslipUtils'
-import { requestLocationPermissionGate } from '../../utils/locationPermissionGate'
-import { useBetslip } from '../../hooks/useBetslip'
-import { useOddSelection } from '../../hooks/useOddSelection'
-import { useSportsDbTeamLogo } from '../../hooks/useSportsDbTeamLogo'
-import type { Banner, MarketBanner, MarketBannerPlayerProp, MarketBannerTeam } from '../../types/home'
-import { updateLiveClock } from '../../utils/liveClock'
-import { getTeamAbbreviation } from '../../utils/teamAbbreviations'
+} from '../../shared/hooks/betslipUtils'
+import { requestLocationPermissionGate } from '../../shared/utils/locationPermissionGate'
+import { useBetslip } from '../../shared/hooks/useBetslip'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { useSportsDbTeamLogo } from '../../shared/hooks/useSportsDbTeamLogo'
+import type { Banner, MarketBanner, MarketBannerPlayerProp, MarketBannerTeam } from '../../shared/types/home'
+import { updateLiveClock } from '../../shared/utils/liveClock'
+import { getTeamAbbreviation } from '../../shared/utils/teamAbbreviations'
 
 import iconSuperCombinada from '../../assets/iconSuperCombinada.png'
 import iconAoVivo from '../../assets/iconAoVivo.png'

@@ -1057,3 +1057,44 @@
     transform: translateY(0);
   }
 }
+
+/* Card de colunas de mercado sem rodapé: usado no detalhe do evento, onde a data e o
+   "Ver mais" não fazem sentido (Figma leagueMarkets de 155px). */
+.home-competition__match-card--no-footer {
+  height: 155px;
+}
+
+/* Odd única de largura total, para mercados sem linha (Touchdown a qualquer momento). */
+.home-competition__player-odds-frame--single::before,
+.home-competition__player-odds-frame--single::after {
+  content: none;
+}
+
+.home-competition__player-odds--single {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding-inline: 0;
+  overflow: visible;
+  scroll-snap-type: none;
+  touch-action: auto;
+  cursor: default;
+}
+
+.home-competition__player-odds--single .home-competition__odd {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 4px 8px;
+  scroll-snap-align: none;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.home-competition__player-odds--single .home-competition__odd span:empty {
+  display: none;
+}

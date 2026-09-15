@@ -19,6 +19,7 @@ const STORAGE_PREFIX = 'draftaco:sportsdb-team-logo:v1'
 const SPORTS_DB_SPORT_BY_APP_SPORT: Record<string, string> = {
   futebol: 'Soccer',
   basquete: 'Basketball',
+  nfl: 'American Football',
 }
 
 const TEAM_SEARCH_ALIASES: Record<string, string> = {

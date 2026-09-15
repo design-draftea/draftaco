@@ -1,0 +1,138 @@
+/* Acordeão de mercado. Vive aqui, e não em LiveEventPage.css, porque a tela do evento
+   e o bottom sheet de estatísticas da NFL usam o mesmo componente — e importar um do
+   outro criaria ciclo. As classes seguem com o prefixo original para não mexer em
+   nada que já dependia delas. */
+
+.live-event-inline__market-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+  transition:
+    gap 180ms ease,
+    padding-bottom 180ms ease;
+}
+
+.live-event-inline__market-section--player-props {
+  border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+.live-event-inline__market-section--player-props .home-competition__load-more {
+  border-bottom: 0;
+}
+
+.live-event-inline__market-section--collapsed {
+  gap: 0;
+  padding-bottom: 4px;
+}
+
+.live-event-inline__market-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms ease;
+}
+
+.live-event-inline__market-body-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.live-event-inline__market-section--collapsed .live-event-inline__market-body {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.live-event-inline__market-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.live-event-inline__market-header h3 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--tokens-text-text-01);
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-event-inline__market-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.live-event-inline__market-badges {
+  flex: 0 0 auto;
+}
+
+.live-event-inline__market-toggle {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--ds-fill-opacity-secondary, rgb(251 251 251 / 0.24));
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: transparent;
+  color: #9ca6b5;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.live-event-inline__market-chevron {
+  width: 16px;
+  height: 16px;
+  display: block;
+  transform-origin: center;
+  transform: rotate(90deg);
+  transition: transform 160ms ease;
+}
+
+.live-event-inline__market-section--collapsed .live-event-inline__market-chevron {
+  transform: rotate(-90deg);
+}
+
+.live-event-inline__market-body-inner > .home-competition__odds,
+.live-event-inline__line-list > .home-competition__odds {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.live-event-inline__market-body-inner > .home-competition__odds .home-competition__odd,
+.live-event-inline__line-list > .home-competition__odds .home-competition__odd {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  height: 44px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.live-event-inline__market-subtitle {
+  margin-left: 4px;
+  font-family: 'Red Hat Display', 'Red Hat Text', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: 0;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}

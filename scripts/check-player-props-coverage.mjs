@@ -122,6 +122,10 @@ const footballFinishingTeams = getObjectKeys(calendarSource, 'calendarFootballFi
 const footballAssistTeams = getObjectKeys(calendarSource, 'calendarFootballAssistPlayersByTeam', calendarDeclarations)
 const basketballPointTeams = getObjectKeys(calendarSource, 'calendarBasketballPointPlayersByTeam', calendarDeclarations)
 const basketballAssistTeams = getObjectKeys(calendarSource, 'calendarBasketballAssistPlayersByTeam', calendarDeclarations)
+const nflPassingYardsTeams = getObjectKeys(calendarSource, 'calendarNflPassingYardsPlayersByTeam', calendarDeclarations)
+const nflReceptionsTeams = getObjectKeys(calendarSource, 'calendarNflReceptionsPlayersByTeam', calendarDeclarations)
+const nflTouchdownsTeams = getObjectKeys(calendarSource, 'calendarNflTouchdownsPlayersByTeam', calendarDeclarations)
+const nflRushingYardsTeams = getObjectKeys(calendarSource, 'calendarNflRushingYardsPlayersByTeam', calendarDeclarations)
 const basketballAliases = getStringMap(calendarSource, 'calendarPlayerTeamAliases', calendarDeclarations)
 const competitionToChampionship = getStringMap(calendarSource, 'competitionToChampionship', calendarDeclarations)
 const enabledCompetitionIds = getStringSet(competitionsSource, 'enabledCompetitionIds', competitionDeclarations)
@@ -163,6 +167,25 @@ const basketballMarkets = [
   },
 ]
 
+const nflMarkets = [
+  {
+    id: 'jardas-passe',
+    hasEventProps: (event) => hasBasketballTeam(nflPassingYardsTeams, event.homeName) || hasBasketballTeam(nflPassingYardsTeams, event.awayName),
+  },
+  {
+    id: 'recepcoes',
+    hasEventProps: (event) => hasBasketballTeam(nflReceptionsTeams, event.homeName) || hasBasketballTeam(nflReceptionsTeams, event.awayName),
+  },
+  {
+    id: 'touchdowns',
+    hasEventProps: (event) => hasBasketballTeam(nflTouchdownsTeams, event.homeName) || hasBasketballTeam(nflTouchdownsTeams, event.awayName),
+  },
+  {
+    id: 'jardas-corrida',
+    hasEventProps: (event) => hasBasketballTeam(nflRushingYardsTeams, event.homeName) || hasBasketballTeam(nflRushingYardsTeams, event.awayName),
+  },
+]
+
 const seenChampionshipIds = new Set()
 const failures = []
 const summaries = []
@@ -172,11 +195,15 @@ for (const competitionId of enabledCompetitionIds) {
   const championship = championshipsById.get(championshipId)
 
   if (!championship || seenChampionshipIds.has(championship.id)) continue
-  if (championship.sport !== 'futebol' && championship.sport !== 'basquete') continue
+  if (championship.sport !== 'futebol' && championship.sport !== 'basquete' && championship.sport !== 'nfl') continue
 
   seenChampionshipIds.add(championship.id)
 
-  const markets = championship.sport === 'basquete' ? basketballMarkets : footballMarkets
+  const markets = championship.sport === 'basquete'
+    ? basketballMarkets
+    : championship.sport === 'nfl'
+      ? nflMarkets
+      : footballMarkets
   const marketSummaries = markets.map((market) => {
     const coveredEvents = championship.events.filter(market.hasEventProps)
     const missingEvents = championship.events.filter((event) => !market.hasEventProps(event))

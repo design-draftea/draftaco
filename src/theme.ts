@@ -1,3 +1,4 @@
+import { brandStorage } from './shared/brand/storage'
 export type AppTheme = 'dark' | 'light'
 export type AppThemePreference = AppTheme | 'system'
 
@@ -38,12 +39,12 @@ export const setAppThemePreference = (themePreference: AppThemePreference) => {
   applyAppThemePreference(themePreference)
 
   try {
-    window.localStorage.setItem(appThemePreferenceStorageKey, themePreference)
+    brandStorage.setItem(appThemePreferenceStorageKey, themePreference)
 
     if (themePreference === 'system') {
-      window.localStorage.removeItem(appThemeStorageKey)
+      brandStorage.removeItem(appThemeStorageKey)
     } else {
-      window.localStorage.setItem(appThemeStorageKey, themePreference)
+      brandStorage.setItem(appThemeStorageKey, themePreference)
     }
   } catch {
     // Theme still applies for the current session when storage is unavailable.
@@ -61,11 +62,11 @@ const getThemeFromUrl = () => {
 
 export const getStoredAppThemePreference = (): AppThemePreference => {
   try {
-    const themePreference = window.localStorage.getItem(appThemePreferenceStorageKey)
+    const themePreference = brandStorage.getItem(appThemePreferenceStorageKey)
 
     if (isAppThemePreference(themePreference)) return themePreference
 
-    const theme = window.localStorage.getItem(appThemeStorageKey)
+    const theme = brandStorage.getItem(appThemeStorageKey)
     if (isAppTheme(theme)) return theme
   } catch {
     return defaultAppThemePreference

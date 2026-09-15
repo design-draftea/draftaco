@@ -1,7 +1,7 @@
 import { getTeamLogo } from '../../data/teamLogos'
-import { useSportsDbTeamLogo } from '../../hooks/useSportsDbTeamLogo'
+import { useSportsDbTeamLogo } from '../../shared/hooks/useSportsDbTeamLogo'
 import { getTennisPlayerCountryIcon } from '../../data/tennisCountryIcons'
-import { isTeamLogoFallback } from '../../utils/teamLogoFallback'
+import { isTeamLogoFallback } from '../../shared/utils/teamLogoFallback'
 
 interface TeamLogoProps {
   teamName: string

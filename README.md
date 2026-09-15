@@ -1,6 +1,6 @@
-# Pitaquinho
+# Draftaco
 
-Protótipo mobile em React para explorar a experiência do Rei do Pitaco com apostas esportivas, cassino, promoções, betslip e regras de handoff de produto.
+Protótipo mobile em React para explorar a experiência de Pitaco e Draftea com apostas esportivas, cassino, promoções, betslip e regras de handoff de produto.
 
 O projeto também funciona como uma camada prática de validação dos tokens exportados do Figma. A intenção é aproximar decisões de produto, comportamento de interface e uso real dos tokens em componentes navegáveis.
 
@@ -16,13 +16,15 @@ npm run dev
 O Vite abre o app localmente em:
 
 ```text
-https://localhost:5173/
+http://localhost:5173/pitaco
+http://localhost:5173/draftea
 ```
 
 Para testar a câmera no celular, acesse pela rede local usando HTTPS:
 
 ```text
-https://<IP-da-máquina>:5173/
+VITE_DEV_HTTPS=1 npm run dev -- --host 0.0.0.0
+https://<IP-da-máquina>:5173/pitaco
 ```
 
 O navegador pode pedir confirmação do certificado local na primeira abertura. Use sempre `https://`; em `http://<IP>:<porta>/`, navegadores móveis bloqueiam `getUserMedia` e a câmera fica indisponível.
@@ -32,13 +34,16 @@ Scripts úteis:
 ```bash
 npm run dev      # servidor local
 npm run build    # typecheck + build de produção
+npm run check:brands # contratos das marcas
 npm run lint     # ESLint
 npm run preview  # preview do build
 ```
 
-Em produção, o app usa o base path `/draftaco-v0`.
+Em produção, o app usa o base path `/draftaco`.
 
 ## Fluxo de colaboração e deploy
+
+Leia [o guia de colaboração](docs/COLLABORATION.md). O destino é `design-draftea/draftaco`; permissões, proteção de branch e publicação no novo repositório ainda serão configuradas na etapa remota. Os workflows herdados descrevem o fluxo esperado após essa configuração.
 
 - `main` é a versão oficial e publicada do protótipo.
 - Cada mudança deve começar em uma branch própria e chegar à `main` por Pull Request.
@@ -49,10 +54,14 @@ O lint permanece disponível para acompanhamento, mas ainda possui erros preexis
 
 ## Rotas principais
 
-- `/apostas`: home de apostas esportivas.
-- `/cassino`: home de cassino.
-- `/promocoes`: página de promoções.
-- `/handoff`: documentação viva de regras de produto e comportamento.
+Cassino está desativado nas duas marcas (`features.casino: false`): item visível e sem ação na navbar, sem filtro/cards de promoções de cassino ou acesso pela rota. A implementação está preservada para reativação futura.
+
+`<marca>` é `pitaco` ou `draftea`; a URL determina o idioma. Draftea mantém “Crear cuenta” visível e sem ação, inclusive com bloqueio da URL de cadastro. Pitaco preserva o cadastro.
+
+- `/<marca>/apostas`: home de apostas esportivas.
+- `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
+- `/<marca>/promocoes`: página de promoções.
+- `/<marca>/handoff`: documentação viva de regras de produto e comportamento.
 
 Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 
@@ -60,14 +69,14 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 
 ```text
 src/
-  assets/        imagens, ícones e logos usados no protótipo
-  components/    blocos reutilizáveis da experiência
-  data/          dados mockados de banners, jogos, promoções e navegação
-  hooks/         estado compartilhado, betslip e feature flags
-  pages/         telas principais
-  services/      integrações auxiliares, como TheSportsDB
-  styles/        tokens, reset global e estilos base
-  utils/         regras de navegação e formatação
+  brands/        configuração, logos e textos por marca
+  features/      auth, home, sports, casino, betslip, promotions, games, handoff
+  shared/        brand, i18n, hooks, utils e types reutilizáveis
+  assets/        recursos comuns existentes
+  components/    biblioteca de componentes comuns
+  data/          dados mockados compartilhados
+  services/      integrações auxiliares existentes
+  styles/        tokens, reset e estilos globais
 ```
 
 ## Tokens e tema
@@ -90,7 +99,7 @@ Ao alterar tokens, valide pelo menos:
 
 ## Handoff de produto
 
-A rota `/handoff` registra regras de ordem, curadoria e comportamento para Home, Esporte e Competição. Use essa página como contrato de produto antes de alterar a arquitetura da experiência.
+A rota `/<marca>/handoff` registra regras de ordem, curadoria e comportamento para Home, Esporte e Competição. Use essa página como contrato de produto antes de alterar a arquitetura da experiência.
 
 Ainda faltam completar as abas de Evento, Promoções e Cassino. Essas telas devem documentar:
 

@@ -6,7 +6,7 @@ import {
   updateCompetitionMatchTime,
   type DisplayedCompetitionEvent,
 } from '../CalendarSection'
-import type { LiveEventOpenPayload, LiveEventRailItem } from '../../pages/LiveEventPage'
+import type { LiveEventOpenPayload, LiveEventRailItem } from '../../features/sports/LiveEventPage'
 import { getTeamLogo } from '../../data/teamLogos'
 import { TeamLogo } from '../TeamLogo'
 import iconAoVivo from '../../assets/iconAoVivo.png'

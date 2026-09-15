@@ -3,7 +3,7 @@ import { homeOfferCarouselItems } from '../../data/homeProducts'
 import arrowDuplo from '../../assets/iconsDraftaco/arrowDuplo.svg'
 import chevronDown from '../../assets/iconsDraftaco/chevronDown.svg'
 import iconTotalGols from '../../assets/iconsDraftaco/iconTotalGols.png'
-import type { HomeOfferCarouselItem, HomeOfferLeg } from '../../types/home'
+import type { HomeOfferCarouselItem, HomeOfferLeg } from '../../shared/types/home'
 import './HomeOfferCarousel.css'
 
 function OfferLeg({ leg, isLast }: { leg: HomeOfferLeg; isLast: boolean }) {

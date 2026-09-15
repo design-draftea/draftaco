@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 import { CaretRightIcon, CaretUpIcon } from '@phosphor-icons/react'
 import './LiveSection.css'
 import { LiveMatchCard } from '../LiveMatchCard'
-import type { LiveEventMatch, LiveEventOpenPayload } from '../../pages/LiveEventPage'
+import type { LiveEventMatch, LiveEventOpenPayload } from '../../features/sports/LiveEventPage'
 import { getTeamLogo } from '../../data/teamLogos'
-import { useHomeMarketStickyState } from '../../hooks/useHomeMarketStickyVisible'
-import { useSlidingActiveIndicator } from '../../hooks/useSlidingActiveIndicator'
+import { useHomeMarketStickyState } from '../../shared/hooks/useHomeMarketStickyVisible'
+import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIndicator'
 import {
   getCompetitionLinkTarget,
   type CompetitionLinkTarget,
-} from '../../utils/competitionNavigation'
-import { updateLiveClock } from '../../utils/liveClock'
+} from '../../shared/utils/competitionNavigation'
+import { updateLiveClock } from '../../shared/utils/liveClock'
 
 import iconBasquete from '../../assets/iconSports/basketball.png'
 import iconEsoccer from '../../assets/iconSports/e-soccer.png'

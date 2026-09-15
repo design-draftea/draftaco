@@ -13,7 +13,7 @@ import iconRoleta from '../../assets/iconSports/roleta.png'
 import iconSlots from '../../assets/iconSports/slots.png'
 import iconTable from '../../assets/iconSports/table.png'
 import iconVideoBingo from '../../assets/iconSports/video-bingo.png'
-import type { CasinoCategoryId } from '../../types/home'
+import type { CasinoCategoryId } from '../../shared/types/home'
 
 interface MoreCasinoBottomSheetProps {
   isOpen: boolean

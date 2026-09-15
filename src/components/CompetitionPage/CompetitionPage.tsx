@@ -13,30 +13,36 @@ import {
 } from '../CalendarSection'
 import {
   HomeCompetitionSection,
+  HomeCompetitionMarketColumnsMatchCard,
   HomeCompetitionOddButton,
   HomeCompetitionPlayerPropCard,
   type HomeCompetitionMatchGroup,
+  type HomeCompetitionMatchOddRenderer,
   type HomeCompetitionPlayerPropOddRenderer,
 } from '../HomeCompetitionSection'
 import { BasePromo } from '../BasePromo'
 import { TeamLogo } from '../TeamLogo'
-import type { LiveEventOpenPayload } from '../../pages/LiveEventPage'
+import type { LiveEventOpenPayload } from '../../features/sports/LiveEventPage'
 import type {
   HomeCompetitionHighlight,
   HomeCompetitionMarketChip,
   HomeCompetitionMatch,
   HomeCompetitionOdd,
   HomeCompetitionPlayerProp,
-} from '../../types/home'
-import type { CompetitionLinkTarget } from '../../utils/competitionNavigation'
-import { getTeamAbbreviation } from '../../utils/teamAbbreviations'
+} from '../../shared/types/home'
+import type { CompetitionLinkTarget } from '../../shared/utils/competitionNavigation'
+import {
+  formatNflLine,
+  getNflMarketColumns,
+} from '../../shared/utils/nflMarkets'
+import { getTeamAbbreviation } from '../../shared/utils/teamAbbreviations'
 import {
   createBetslipSelection,
   getMatchOddBetslipKey,
   getPlayerPropBetslipKey,
   normalizeBetslipIdPart,
-} from '../../hooks/betslipUtils'
-import { useOddSelection } from '../../hooks/useOddSelection'
+} from '../../shared/hooks/betslipUtils'
+import { useOddSelection } from '../../shared/hooks/useOddSelection'
 import chevronRight from '../../assets/iconsDraftaco/chevronRight.svg'
 import chevronDown from '../../assets/iconsDraftaco/chevronDown.svg'
 import './CompetitionPage.css'
@@ -61,6 +67,7 @@ type CompetitionCarouselMarket = {
 type CompetitionPlayerPropMarketGroup = {
   id: string
   title: string
+  subtitle?: string
   props: HomeCompetitionPlayerProp[]
 }
 
@@ -69,7 +76,7 @@ interface CompetitionHighlightView {
   matchGroups: HomeCompetitionMatchGroup[]
 }
 
-const supportedCompetitionSports = new Set<string>(['futebol', 'basquete'])
+const supportedCompetitionSports = new Set<string>(['futebol', 'basquete', 'nfl'])
 const COMPETITION_PLAYER_PROPS_INITIAL_COUNT = 4
 const COMPETITION_PLAYER_PROPS_MAX_COUNT = 8
 const COMPETITION_PLAYER_PROPS_LOAD_STEP = 2
@@ -82,17 +89,18 @@ const isSupportedCompetitionSport = (sport?: string | null): sport is SupportedC
   !!sport && supportedCompetitionSports.has(sport)
 )
 
-const getSportLabel = (sport: SupportedCompetitionSport) => (
-  sport === 'basquete' ? 'Basquete' : 'Futebol'
-)
+const getSportLabel = (sport: SupportedCompetitionSport) => {
+  if (sport === 'basquete') return 'Basquete'
+  if (sport === 'nfl') return 'NFL'
+
+  return 'Futebol'
+}
 
 const getTeamOddLabel = getTeamAbbreviation
 
 const getCompetitionOddOutcomeId = (label: HomeCompetitionOdd['label'], index: number) => (
   `${index}-${normalizeBetslipIdPart(String(label))}`
 )
-
-const formatCompetitionLine = (line: number) => Number.isInteger(line) ? String(line) : line.toFixed(1)
 
 const getCompetitionLiveFooterClock = (clock: string) => (
   clock.match(/(?:\dT|Q\d)\s+(\d{1,2}:\d{2})/)?.[1] ?? clock
@@ -127,7 +135,7 @@ const getFootballCarouselMarket = (
   }
 
   if (marketId === 'total-gols' && match.totalGoalsOdds) {
-    const line = formatCompetitionLine(match.totalGoalsOdds.line)
+    const line = formatNflLine(match.totalGoalsOdds.line)
 
     return {
       id: marketId,
@@ -140,7 +148,7 @@ const getFootballCarouselMarket = (
   }
 
   if (marketId === 'total-escanteios' && match.totalCornersOdds) {
-    const line = formatCompetitionLine(match.totalCornersOdds.line)
+    const line = formatNflLine(match.totalCornersOdds.line)
 
     return {
       id: marketId,
@@ -167,7 +175,7 @@ const getBasketballCarouselMarket = (
   if ((marketId === 'handicap' || marketLabel.toLowerCase() === 'handicap') && match.handicapOdds) {
     const homeLabel = getTeamOddLabel(match.homeTeam)
     const awayLabel = getTeamOddLabel(match.awayTeam)
-    const line = formatCompetitionLine(Math.abs(match.handicapOdds.line))
+    const line = formatNflLine(Math.abs(match.handicapOdds.line))
 
     return {
       id: 'handicap',
@@ -180,7 +188,7 @@ const getBasketballCarouselMarket = (
   }
 
   if ((marketId === 'total-pontos' || marketLabel.toLowerCase().includes('total')) && match.totalPointsOdds) {
-    const line = formatCompetitionLine(match.totalPointsOdds.line)
+    const line = formatNflLine(match.totalPointsOdds.line)
 
     return {
       id: 'total-pontos',
@@ -211,6 +219,14 @@ const getCompetitionCarouselMarket = (
     : getFootballCarouselMarket(match, marketId, marketLabel)
 )
 
+// Subtítulo dos mercados de linha (“ganha se for maior ou igual”), conforme o Figma da NFL.
+const playerPropMarketSubtitles = new Map<string, string>([
+  ['jardas-passe', '(ganha se for maior ou igual)'],
+  ['recepcoes', '(ganha se for maior ou igual)'],
+  ['touchdowns', '(ganha se for maior ou igual)'],
+  ['jardas-corrida', '(ganha se for maior ou igual)'],
+])
+
 const getCompetitionPlayerPropMarketGroups = (
   competition: HomeCompetitionHighlight,
   activeMarketId?: string
@@ -224,6 +240,10 @@ const getCompetitionPlayerPropMarketGroups = (
     ['gols', 'Gols'],
     ['assistencias', 'Assistências'],
     ['pontos-jogador', 'Pontos de jogador'],
+    ['jardas-passe', 'Jardas de passe'],
+    ['recepcoes', 'Recepções'],
+    ['touchdowns', 'Touchdowns'],
+    ['jardas-corrida', 'Jardas de corrida'],
   ])
 
   competition.playerProps.forEach((prop) => {
@@ -239,6 +259,7 @@ const getCompetitionPlayerPropMarketGroups = (
     groupsById.set(marketId, {
       id: marketId,
       title: playerPropMarketTitles.get(marketId) ?? marketLabels.get(marketId) ?? prop.marketLabel,
+      subtitle: playerPropMarketSubtitles.get(marketId),
       props: [prop],
     })
   })
@@ -266,13 +287,28 @@ const basketballCompetitionMarketChips: HomeCompetitionMarketChip[] = [
   { id: 'assistencias', label: 'Assistências' },
 ]
 
+// Pills da NFL conforme o Figma (POPULARES, PARTIDAS, 1º TEMPO, PASSES, RECEPÇÕES,
+// TOUCHDOWNS, CORRIDA, 2º TEMPO).
+const nflCompetitionMarketChips: HomeCompetitionMarketChip[] = [
+  { id: 'populares', label: 'POPULARES' },
+  { id: 'resultado-final', label: 'PARTIDAS' },
+  { id: 'h1', label: '1º TEMPO' },
+  { id: 'jardas-passe', label: 'PASSES' },
+  { id: 'recepcoes', label: 'RECEPÇÕES' },
+  { id: 'touchdowns', label: 'TOUCHDOWNS' },
+  { id: 'jardas-corrida', label: 'CORRIDA' },
+  { id: 'h2', label: '2º TEMPO' },
+]
+
 const getCompetitionMarketChips = (
   sport: SupportedCompetitionSport,
   liveOnly: boolean
 ): HomeCompetitionMarketChip[] => {
   const sourceChips = sport === 'basquete'
     ? basketballCompetitionMarketChips
-    : footballCompetitionMarketChips
+    : sport === 'nfl'
+      ? nflCompetitionMarketChips
+      : footballCompetitionMarketChips
 
   return sourceChips
     .filter((chip) => !liveOnly || !isCalendarPlayerPropsMarketForSport(sport, chip.id))
@@ -337,6 +373,41 @@ const getBasketballMarketColumns = (
   ]
 }
 
+const getNflEventMarketColumns = (
+  event: CompetitionEvent,
+  match: ReturnType<typeof getCompetitionLiveEventMatch>,
+  marketId?: string
+) => getNflMarketColumns({
+  homeLabel: getTeamOddLabel(event.homeName),
+  awayLabel: getTeamOddLabel(event.awayName),
+  homeOdd: event.odds.home,
+  awayOdd: event.odds.away,
+  hasEarlyPayout: event.earlyPayout !== false,
+  totalLine: match.totalPointsOdds?.line,
+  totalOver: match.totalPointsOdds?.over,
+  totalUnder: match.totalPointsOdds?.under,
+  handicapLine: match.handicapOdds?.line,
+  handicapHome: match.handicapOdds?.home,
+  handicapAway: match.handicapOdds?.away,
+}, marketId)
+
+// Recalcula as colunas a partir do match já montado, para os mercados de tempo.
+const getNflMatchMarketColumns = (match: HomeCompetitionMatch, marketId?: string) => (
+  getNflMarketColumns({
+    homeLabel: String(match.odds[0]?.label ?? match.homeTeam),
+    awayLabel: String(match.odds[1]?.label ?? match.awayTeam),
+    homeOdd: match.odds[0]?.value ?? '-',
+    awayOdd: match.odds[1]?.value ?? '-',
+    hasEarlyPayout: match.tags.includes('PA'),
+    totalLine: match.totalPointsOdds?.line,
+    totalOver: match.totalPointsOdds?.over,
+    totalUnder: match.totalPointsOdds?.under,
+    handicapLine: match.handicapOdds?.line,
+    handicapHome: match.handicapOdds?.home,
+    handicapAway: match.handicapOdds?.away,
+  }, marketId)
+)
+
 const getCompetitionHomeMatch = (
   eventGroup: DisplayedCompetitionEventGroup,
   event: CompetitionEvent,
@@ -354,7 +425,8 @@ const getCompetitionHomeMatch = (
     label: getTeamOddLabel(event.awayName),
     value: event.odds.away,
   }
-  const middleOdd: HomeCompetitionOdd = sport === 'basquete'
+  const isTwoWaySport = sport === 'basquete' || sport === 'nfl'
+  const middleOdd: HomeCompetitionOdd = isTwoWaySport
     ? {
         label: 'TOTAL',
         value: match.totalPointsOdds?.over ?? '-',
@@ -369,14 +441,17 @@ const getCompetitionHomeMatch = (
     homeTeam: event.homeName,
     awayTeam: event.awayName,
     sport,
-    marketLabel: sport === 'basquete' ? eventGroup.league.name : 'RESULTADO FINAL',
+    leagueLabel: sport === 'nfl' ? eventGroup.league.name : undefined,
+    marketLabel: isTwoWaySport ? eventGroup.league.name : 'RESULTADO FINAL',
     tags: sport === 'futebol'
       ? event.isLive
         ? ["90'"]
         : event.earlyPayout !== false
           ? ['PA', "90'"]
           : ["90'"]
-      : [],
+      : sport === 'nfl' && event.earlyPayout !== false
+        ? ['PA']
+        : [],
     footerLabel: event.dateTime,
     ...(event.isLive ? {
       homeScore: String(event.homeScore ?? 0),
@@ -384,7 +459,11 @@ const getCompetitionHomeMatch = (
       live: true,
       liveClock: matchTimes[event.id] ?? event.dateTime,
     } : {}),
-    marketColumns: sport === 'basquete' ? getBasketballMarketColumns(event, match) : undefined,
+    marketColumns: sport === 'basquete'
+      ? getBasketballMarketColumns(event, match)
+      : sport === 'nfl'
+        ? getNflEventMarketColumns(event, match)
+        : undefined,
     doubleChanceOdds: match.doubleChanceOdds,
     bothTeamsScoreOdds: match.bothTeamsScoreOdds,
     totalGoalsOdds: match.totalGoalsOdds,
@@ -393,7 +472,7 @@ const getCompetitionHomeMatch = (
     handicapOdds: match.handicapOdds,
     q3TotalOdds: match.q3TotalOdds,
     q4TotalOdds: match.q4TotalOdds,
-    odds: sport === 'basquete'
+    odds: isTwoWaySport
       ? [homeOdd, awayOdd, middleOdd]
       : [homeOdd, middleOdd, awayOdd],
   }
@@ -574,7 +653,7 @@ function CompetitionMatchCarousel({
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     const trackEl = event.currentTarget
-    const firstCard = trackEl.querySelector<HTMLElement>('.competition-match-carousel__card')
+    const firstCard = trackEl.firstElementChild as HTMLElement | null
     if (!firstCard) return
 
     const gap = 12
@@ -586,7 +665,7 @@ function CompetitionMatchCarousel({
 
   const renderOddButton = (
     match: HomeCompetitionMatch,
-    market: CompetitionCarouselMarket,
+    market: Pick<CompetitionCarouselMarket, 'id' | 'label'>,
     odd: HomeCompetitionOdd,
     index: number
   ) => {
@@ -637,6 +716,19 @@ function CompetitionMatchCarousel({
     )
   }
 
+  // Adapta o renderer do carrossel para a assinatura do card de colunas de mercado.
+  const renderMarketColumnOddButton: HomeCompetitionMatchOddRenderer = (odd, {
+    match,
+    index,
+    marketId,
+    marketLabel,
+  }) => renderOddButton(
+    match,
+    { id: marketId, label: marketLabel },
+    { label: String(odd.label ?? ''), value: String(odd.value ?? '') },
+    index
+  )
+
   if (matches.length === 0) return null
 
   const firstVisibleBulletIndex = matches.length > COMPETITION_MATCH_CAROUSEL_MAX_BULLETS
@@ -660,6 +752,21 @@ function CompetitionMatchCarousel({
         {matches.map((match) => {
           const market = getCompetitionCarouselMarket(match, activeMarketId, activeMarketLabel)
           const isClickable = !!onMatchClick
+
+          // NFL reaproveita o card de colunas de mercado (mesmo layout do card de NBA
+          // na home), que é o leagueMarkets do Figma: RF/PA, Handicap e Total.
+          if (match.sport === 'nfl') {
+            return (
+              <HomeCompetitionMarketColumnsMatchCard
+                match={{ ...match, marketColumns: getNflMatchMarketColumns(match, activeMarketId) }}
+                liveTime={liveTimes[match.id]}
+                activeMarket={activeMarketId}
+                renderOddButton={renderMarketColumnOddButton}
+                onClick={onMatchClick ? () => onMatchClick(match, liveTimes) : undefined}
+                key={match.id}
+              />
+            )
+          }
 
           return (
             <article
@@ -916,7 +1023,12 @@ function CompetitionPlayerPropMarketSection({
       aria-label={group.title}
     >
       <header className="competition-player-props__market-header">
-        <h3>{group.title}</h3>
+        <h3>
+          {group.title}
+          {group.subtitle && (
+            <span className="competition-player-props__market-subtitle">{group.subtitle}</span>
+          )}
+        </h3>
         <button
           type="button"
           className="competition-player-props__market-toggle"
