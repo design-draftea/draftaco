@@ -29,6 +29,12 @@
   implementadas, comparadas quadro a quadro e descartadas — não estão no código. Só passe
   recebido mudou: chute com retorno, corrida, passe incompleto e chute ao gol seguem
   idênticos, conferidos nas 47 jogadas do fixture.
+- Objetivo 3 (pedido na mesma sessão): o lance terminado fica mais tempo na tela antes da
+  troca, e tocar no play de uma campanha do quarter rola o corpo do sheet até o topo, onde
+  está o campo. O tempo de leitura é o `stageExitDelay` (620 -> 1020ms; com a placa girando,
+  1280 -> 1680ms), não o respiro entre lances — este só acompanha para preservar os ~100ms de
+  campo limpo (1100 -> 1500 e 1750 -> 2150). `npm run check:nfl` cobre a ordem dessas cinco
+  constantes nos dois arquivos.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
