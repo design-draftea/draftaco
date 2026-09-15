@@ -12,7 +12,7 @@ import playerAvatarNFL from '../../assets/playerAvatarNFL.svg'
 import nflLiveGame from '../../data/nflLiveGame.json'
 import { NflPlayReplayPanel } from '../../features/sports/NflPlayReplay/NflPlayReplayPanel'
 import { REPLAY_SPEEDS, REPLAY_TIMING, type ReplaySpeed } from '../../features/sports/NflPlayReplay/usePlayReplay'
-import { getDriveTitle, getPlayTitle, hasBallFlight, showsGainBadge, type NflPlay } from '../../features/sports/NflPlayReplay/playNarrative'
+import { getDriveTitle, getPlayTitle, isAnimatable, showsGainBadge, type NflPlay } from '../../features/sports/NflPlayReplay/playNarrative'
 import campinhoNFL from '../../assets/iconsDraftaco/campinhoNFL.png'
 import campoDraftea from '../../assets/iconsDraftaco/campoDraftea.png'
 import campoPitaco from '../../assets/iconsDraftaco/campoPitaco.png'
@@ -232,14 +232,28 @@ function PlaysView({
   const [driveId, setDriveId] = useState<string | null>(initialDriveId)
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
-  // Abre no lance mais recente que TEM replay. Abrir no último lance da campanha deixava a
-  // tela num passe incompleto — sem animação nesta entrega — e o botão de reproduzir
-  // nascia desabilitado, dando a impressão de que nada funcionava.
+  /**
+   * Abre no lance mais recente que TEM replay. A porta de entrada é a faixa de situação, e o
+   * que ela promete é o lance que explica a descida e a distância de agora — não a campanha
+   * desde o começo, que leva de 15 a 48 segundos para chegar até aqui.
+   *
+   * "Tem replay" é `isAnimatable`, e não `hasBallFlight`. A diferença é a corrida: ela não
+   * tem arco, mas tem trecho rasteiro, retrato e nome — tem o que mostrar. Com o teste do
+   * voo, uma campanha que acabou de terminar em corrida abria numa jogada anterior e parava
+   * ali, porque na abertura não há encadeamento: quem tocou em "3ª & 4" via um lance de duas
+   * descidas atrás. E não é caso de borda — simulando cada estado pelo qual as campanhas
+   * deste fixture passam ao vivo (cada campanha passa por todos os próprios prefixos), 17 dos
+   * 56 abriam antes da última jogada; com `isAnimatable`, 1.
+   *
+   * A volta para trás continua existindo, e é ela que sobra nesse 1: um lance anulado antes
+   * do snap não tem nada para desenhar, e abrir nele deixaria o botão de reproduzir
+   * desabilitado, dando a impressão de que nada funciona.
+   */
   const [playIndex, setPlayIndex] = useState(() => {
     const initialPlays = playsByDrive.get(initialDriveId ?? '') ?? []
-    const lastAnimatable = initialPlays.map(hasBallFlight).lastIndexOf(true)
+    const lastWithReplay = initialPlays.map(isAnimatable).lastIndexOf(true)
 
-    return lastAnimatable >= 0 ? lastAnimatable : Math.max(0, initialPlays.length - 1)
+    return lastWithReplay >= 0 ? lastWithReplay : Math.max(0, initialPlays.length - 1)
   })
   const [runId, setRunId] = useState(0)
   // O sheet desmonta este componente ao fechar, então "primeira montagem" é o mesmo que
