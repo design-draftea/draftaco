@@ -35,6 +35,13 @@
   1280 -> 1680ms), não o respiro entre lances — este só acompanha para preservar os ~100ms de
   campo limpo (1100 -> 1500 e 1750 -> 2150). `npm run check:nfl` cobre a ordem dessas cinco
   constantes nos dois arquivos.
+- Objetivo 4 (pedido na mesma sessão): a troca de foco no lançamento era um corte seco — o
+  retrato de quem lançou sumia e o de quem recebe aparecia no mesmo quadro. Agora os dois se
+  cruzam em 220ms (`REPLAY_TIMING.focusSwap`), cada um com a própria haste e o próprio nome.
+  A cena expõe `leavingFocus`; o retrato que sai fica montado por uma fração do voo
+  (`FOCUS_SWAP_SPAN`), e `check:nfl` confere que essa janela cobre a animação no voo mais
+  curto. Vale para passe recebido e chute com retorno; não vale quando o foco não troca de
+  pessoa.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
