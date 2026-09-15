@@ -460,13 +460,24 @@
    Figma em 375 e escala sem cortar nas demais larguras. */
 /* O frame do replay tem 185 de altura, e não os 157 da arte: os 20px de folga em cima
    abrem espaço para o retrato e o nome do jogador, que sobem acima do gramado. */
+/* A largura é DECLARADA, e não deixada por conta do esticamento do flex. O Safari
+   transfere o `aspect-ratio` a partir da largura do CONTÊINER e ignora a sangria das
+   margens negativas, que é justamente o que leva a caixa à largura da tela: o frame saía
+   mais baixo do que a proporção pede, e aí o palco — SVG com viewBox 375x185 e o `meet`
+   padrão — encolhia para caber na altura e se centralizava na horizontal. Retrato, nome,
+   rastro e linhas saíam de registro com a arte, que continua ocupando a largura inteira,
+   e o `cover` ainda cortava as traves no topo. O Chrome usa a largura de uso e nunca
+   mostrou o defeito, então isto só aparece no iPhone. `calc(100% + 32px)` é a mesma
+   sangria das margens abaixo, escrita como largura. */
 .nfl-plays__field {
   position: relative;
+  width: calc(100% + 32px);
   aspect-ratio: 375 / 185;
   margin: 0 -16px;
   overflow: hidden;
   /* Contexto de container para a palavra TOUCHDOWN acompanhar a largura do campo. A largura
-     vem do pai e a altura do aspect-ratio, então conter o inline-size não muda o layout. */
+     está declarada acima e a altura vem do aspect-ratio, então conter o inline-size não
+     muda o layout. */
   container-type: inline-size;
 }
 
