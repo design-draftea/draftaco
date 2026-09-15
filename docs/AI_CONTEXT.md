@@ -4,7 +4,7 @@ Este arquivo contém contexto durável para Codex e Claude. Para o estado da tar
 
 ## Produto
 
-- Draftaco é um protótipo mobile em React para explorar experiências do Rei do Pitaco relacionadas a apostas esportivas, cassino, promoções, betslip e handoff de produto.
+- Draftaco é um protótipo mobile em React para explorar experiências de Pitaco (pt-BR) e Draftea (es-MX) relacionadas a apostas esportivas, cassino, promoções, betslip e handoff de produto.
 - O projeto também valida, em componentes navegáveis, tokens e decisões provenientes do Figma.
 - Use dados mockados. O protótipo público não deve conter credenciais, dados pessoais nem endpoints internos.
 
@@ -15,16 +15,21 @@ Este arquivo contém contexto durável para Codex e Claude. Para o estado da tar
 - Instalação reproduzível: `npm ci`.
 - Desenvolvimento: `npm run dev`.
 - Build com typecheck: `npm run build`.
+- Contratos das marcas: `npm run check:brands`.
 - Lint: `npm run lint`; existem erros preexistentes, portanto registre o resultado sem mascará-los nem ampliar o escopo da tarefa.
 - Preview de produção: `npm run preview`.
-- Em produção, o Vite usa o base path `/draftaco-v0/`.
+- Em produção, o Vite usa o base path `/draftaco/`.
 
 ## Rotas principais
 
-- `/apostas`: home de apostas esportivas.
-- `/cassino`: home de cassino.
-- `/promocoes`: promoções.
-- `/handoff`: contrato vivo de produto e comportamento.
+Cassino está desativado nas duas marcas (`features.casino: false`): item visível e sem ação na navbar, sem filtro/cards de promoções de cassino ou acesso pela rota. A implementação está preservada para reativação futura.
+
+- `/<marca>/apostas`: home de apostas esportivas.
+- `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
+- `/<marca>/promocoes`: promoções.
+- `/<marca>/handoff`: contrato vivo de produto e comportamento.
+
+`<marca>` é `pitaco` ou `draftea`. `/pitaco` e `/draftea` abrem apostas. `/<marca>/entrar` abre login. Somente `/pitaco/criar-conta` permite cadastro; a mesma rota na Draftea volta para apostas. O botão Crear cuenta permanece visível e sem ação.
 
 Rotas desconhecidas são normalizadas para o produto padrão de apostas. Após publicar, valide a rota-alvo; o sucesso da raiz do GitHub Pages não comprova a navegação direta de uma rota SPA.
 
@@ -36,12 +41,19 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas. Após p
 - `src/components/BottomSheet/`: shell e variações de bottom sheets.
 - `src/components/DepositPanel/`: fluxo de depósito e contas Pix.
 - `src/components/ProfileBottomSheet/`: perfil e integrações embutidas, inclusive depósito.
-- `src/components/PromoDraftaco/`: promoções e abertura de detalhes.
+- `src/features/promotions/PromoDraftaco/`: promoções e abertura de detalhes.
 - `src/data/`: dados mockados.
-- `src/hooks/`: estado compartilhado e feature flags.
-- `src/pages/`: telas principais.
+- `src/shared/hooks/`: estado compartilhado e feature flags.
+- `src/features/`: telas e comportamento agrupados por domínio.
 - `src/styles/`: tokens, temas e estilos globais.
-- `src/utils/`: navegação e formatação.
+- `src/shared/utils/`: navegação e formatação.
+
+- `src/brands/pitaco` e `src/brands/draftea`: configuração, logos e catálogos de texto por marca.
+- `src/shared/brand`: URL como fonte de marca, capacidades e storage com namespace por marca.
+- `src/shared/i18n`: adaptador de renderização React para o catálogo legado; mensagens explícitas para novos textos. Sem mutação do DOM.
+- A troca de marca recarrega a aplicação e limpa estado transitório; tema, flags, favoritos e recordes usam `brandStorage`.
+- O Vite preview usa `/draftaco/`, assim como o build. O servidor dev usa `/`.
+- Consulte [COLLABORATION.md](COLLABORATION.md) para limites, exemplos e validação nas duas marcas.
 
 ## Design e Figma
 
@@ -52,14 +64,24 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas. Após p
 - Compare o resultado no navegador, na mesma viewport e no mesmo estado da referência.
 - Valide também estados interativos, temas aplicáveis, safe areas e navegação mobile.
 
+## Localização e pré-bundle do Vite
+
+- A marca vem da URL e a tradução da Draftea acontece na criação dos elementos React, via `jsxImportSource: '@draftaco/i18n'` (alias para `src/shared/i18n`).
+- `@vitejs/plugin-react` injeta o runtime JSX de `jsxImportSource` em `optimizeDeps.include`, e include vence exclude. Como o runtime aqui é código-fonte, o pré-bundle inlineava todo o grafo dele — inclusive `src/brands/draftea/legacyCopy.ts`. O cache de deps não invalida com mudança de fonte, então editar o catálogo não tinha efeito no dev até apagar `node_modules/.vite`.
+- O plugin `draftaco-i18n-source-runtime` em `vite.config.ts` remove as entradas `@draftaco/i18n*` de `optimizeDeps.include` na config resolvida, devolvendo efeito ao `exclude`. O runtime passa a ser servido como fonte e o catálogo reflete por HMR.
+- Se algum dia o runtime de i18n voltar a aparecer em `node_modules/.vite/deps`, é sinal de que esse plugin parou de funcionar (por exemplo, após atualizar o `@vitejs/plugin-react`). O sintoma visível é texto novo aparecendo em pt-BR na Draftea.
+
 ## Fluxo Git e publicação
+
+- Destino desta cópia: `design-draftea/draftaco`. Nunca publicar em `draftaco-v0`.
+- O novo destino ainda requer validação/configuração remota; workflows herdados não são prova de deploy, permissões ou proteção de branch aplicados.
 
 - `main` representa a versão oficial publicada e não deve receber trabalho direto.
 - Crie uma branch por tarefa e mantenha mudanças não relacionadas fora dela.
 - Preserve um caminho de rollback para experimentos e mudanças temporárias.
 - Apresente a versão local antes da Pull Request.
-- Pull Request, merge e deploy exigem autorizações explícitas e separadas.
-- O deploy ocorre pelo GitHub Actions após incorporação à `main`; não use `gh-pages` manualmente.
+- Abrir a Pull Request exige aprovação da versão local. Incorporar a mudança à `main` exige uma nova autorização explícita.
+- O merge em `main` dispara o deploy pelo GitHub Actions; portanto, a autorização para merge deve informar e abranger essa publicação automática. Não use `gh-pages` manualmente.
 
 ## Critério de entrega
 

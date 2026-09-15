@@ -19,3 +19,4 @@ export {
   BeneficiosApostaBottomSheet,
   type BetslipBenefitSheetItem,
 } from './BeneficiosApostaBottomSheet'
+export { NflPlaysStatsBottomSheet } from './NflPlaysStatsBottomSheet'
