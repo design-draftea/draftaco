@@ -37,14 +37,20 @@ export const REPLAY_TIMING = {
    * Saída do palco ao encadear uma campanha. Entra depois do fadeOut da bola, para a
    * sequência ser: bola assenta -> bola apaga -> o resto do lance apaga -> próximo entra.
    * Antes disso o palco antigo sumia num quadro só e a troca parecia um corte.
+   *
+   * Esta espera é também O TEMPO EM QUE O LANCE TERMINADO FICA INTEIRO NA TELA, e é ela — não
+   * o `SEQUENCE_PAUSE` — que se mexe para dar mais respiro de leitura antes da troca: a
+   * pausa depois da saída é campo vazio, e esticá-la só atrasa o próximo lance. Saiu de 620
+   * para 1020 a pedido da pessoa responsável pelo protótipo, com o respiro entre lances
+   * acompanhando os mesmos 400ms.
    */
-  stageExitDelay: 620,
+  stageExitDelay: 1020,
   /**
    * Quando a placa gira mostrando as jardas, o palco só pode começar a sair DEPOIS de o
-   * número estar legível. Com os 620ms normais o fade começava no meio do giro e o número
-   * apagava enquanto aparecia.
+   * número estar legível. Com os 620ms de antes o fade começava no meio do giro e o número
+   * apagava enquanto aparecia. Leva os mesmos 400ms a mais do caso sem placa.
    */
-  stageExitDelayGain: 1280,
+  stageExitDelayGain: 1680,
   stageExitDuration: 380,
   /**
    * Palavra TOUCHDOWN sobre o campo. Primeiro cada letra nasce grande e assenta no tamanho
@@ -67,7 +73,7 @@ export const REPLAY_TIMING = {
    * entre a bola assentar e a placa virar.
    *
    * O total (220 + 200 + 280 = 700ms) tem de caber no respiro entre lances (`SEQUENCE_PAUSE`,
-   * 1100ms), senão a placa viraria com o lance já trocando.
+   * 1500ms), senão a placa viraria com o lance já trocando.
    */
   badgeFlipDelay: 220,
   /**

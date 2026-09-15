@@ -176,21 +176,24 @@ const groupPlaysByDrive = (plays: readonly NflPlay[]) => {
  * Respiro entre um lance e o seguinte ao reproduzir uma campanha inteira.
  *
  * Precisa comportar as duas saídas em sequência: a bola apaga (180 + 420 = 600ms) e então
- * o palco inteiro apaga (620 + 380 = 1000ms). Trocar antes disso atropela a transição — era
+ * o palco inteiro apaga (1020 + 380 = 1400ms). Trocar antes disso atropela a transição — era
  * o que acontecia com os 320ms originais e ainda com 780ms. Os ~100ms que sobram são o
  * campo limpo antes do próximo lance entrar, que por sua vez leva 480ms para aparecer.
+ *
+ * Quem manda no respiro de LEITURA é o `stageExitDelay`: até ele o lance está inteiro na
+ * tela, e daqui em diante é campo vazio. Este número acompanha aquele.
  */
-const SEQUENCE_PAUSE = 1100
+const SEQUENCE_PAUSE = 1500
 
 /**
  * Respiro maior quando a placa gira mostrando as jardas. Sem isto o lance trocava com o
  * número ainda aparecendo, e a informação não chegava a ser lida.
  *
  * Contas: giro pronto em 700ms, brilho assenta perto de 870ms, o palco começa a sair em
- * 1280ms (`stageExitDelayGain`) e leva 380ms. Sobram ~90ms de campo limpo antes da troca,
+ * 1680ms (`stageExitDelayGain`) e leva 380ms. Sobram ~90ms de campo limpo antes da troca,
  * o mesmo do caso sem placa.
  */
-const SEQUENCE_PAUSE_GAIN = 1750
+const SEQUENCE_PAUSE_GAIN = 2150
 
 const nextSpeed = (speed: ReplaySpeed): ReplaySpeed => (
   REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(speed) + 1) % REPLAY_SPEEDS.length]
@@ -284,6 +287,23 @@ function PlaysView({
     setAutoAdvance(false)
   }
 
+  const playsRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Leva a pessoa até o campo ao disparar uma campanha pela lista. O botão de play fica lá
+   * embaixo, entre as campanhas do quarter, e sem isto o lance corria fora da tela: tocava
+   * em play e continuava olhando para a lista.
+   *
+   * Rola o CORPO do sheet até o topo, e não o campo até a borda: o campo é o primeiro bloco
+   * depois dos chips, então o topo já o mostra inteiro, e é uma posição estável — não depende
+   * de quanto o conteúdo acima mede nem mexe em rolagem de outro elemento.
+   *
+   * Não vale para os marcadores da timeline: eles já ficam colados no campo.
+   */
+  const scrollToField = () => {
+    playsRef.current?.closest('.bottom-sheet__body')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const selectPlay = (nextDriveId: string, index: number, sequence: boolean) => {
     if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current)
     setIsFirstOpen(false)
@@ -294,7 +314,7 @@ function PlaysView({
   }
 
   return (
-    <div className="nfl-plays">
+    <div className="nfl-plays" ref={playsRef}>
       {play && (
         <NflPlayReplayPanel
           // A key por lance faz a troca ser uma remontagem: o laço de animação morre na
@@ -384,7 +404,10 @@ function PlaysView({
                       type="button"
                       className="nfl-plays__drive-button"
                       aria-label="Reproduzir campanha"
-                      onClick={() => selectPlay(item.id, 0, true)}
+                      onClick={() => {
+                        selectPlay(item.id, 0, true)
+                        scrollToField()
+                      }}
                     >
                       <img src={iconPlayPeq} alt="" />
                     </button>
