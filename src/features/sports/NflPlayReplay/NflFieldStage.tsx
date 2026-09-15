@@ -154,9 +154,11 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
     ? REPLAY_TIMING.catchPulse - REPLAY_TIMING.ballFadeDelay
     : REPLAY_TIMING.ballFadeDuration
   // Numa corrida não existe recepção: o corredor já sai com a bola da linha, então a
-  // passagem para a mão começa junto com o lance em vez de esperar a bola assentar. Depois
-  // de um voo, a espera continua sendo a mesma — é o instante em que a bola é agarrada.
-  const carryStartsAtOnce = carried && !scene.flies
+  // passagem para a mão começa junto com o lance em vez de esperar a bola assentar. No passe
+  // que vai direto para a mão a espera também não cabe: a bola chega ao selo no fim do voo,
+  // e o que sobra é só ela encolher com o aro aparecendo em volta. A espera fica para quem
+  // ainda precisa pegar a bola do chão — o retornador de um chute.
+  const carryStartsAtOnce = carried && (!scene.flies || scene.catchesInHand)
   const ballTiming = frame.ballEnding === 'none'
     ? undefined
     : {
@@ -178,10 +180,19 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
     : ballTiming
 
   /**
-   * A bola vira duas coisas diferentes conforme o momento, e entra em lugares diferentes do
-   * SVG: solta, é só a bola e fica ATRÁS do retrato, como sempre esteve; carregada, é um selo
-   * com o mesmo fundo e o mesmo aro do retrato, e fica POR CIMA do jogador. Trocar de lugar
-   * remonta o elemento, e é justamente no instante da recepção que a passagem deve começar.
+   * Em que camada a bola entra. Carregada, ela fecha a pilha do retrato, por cima do
+   * jogador. Solta, fica ATRÁS dele, sobre o gramado — com uma exceção: o passe que vai
+   * direto para a mão termina o voo EM CIMA do retrato, e deixá-lo atrás faria a bola sumir
+   * por trás da foto no último instante e reaparecer no selo. Aí ela sobe por cima desde o
+   * início do voo, onde ainda está longe do retrato e a camada não faz diferença.
+   */
+  const ballOnTop = carried || scene.catchesInHand
+
+  /**
+   * A bola vira duas coisas diferentes conforme o momento: solta, é só a bola; carregada, é
+   * um selo com o mesmo fundo e o mesmo aro do retrato, que é o que faz os dois lerem como
+   * uma peça só. Trocar de forma remonta o elemento, e é justamente no instante da recepção
+   * que a passagem deve começar.
    */
   const ball = frame.showsBall && (
     carried
@@ -347,7 +358,7 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
 
       {/* Num passe que cai, a bola some ao chegar e o X fica no lugar dela: as duas coisas
           empilhadas no mesmo ponto só sujariam a leitura. */}
-      {!carried && ball}
+      {!ballOnTop && ball}
 
       <line x1={frame.focusX} y1={STEM_TOP_Y} x2={frame.focusX} y2={scene.depthY} stroke="#fbfbfb" strokeWidth={1} opacity={0.8} />
       <g className={frame.flipsToGain ? 'nfl-plays__badge-front' : undefined} style={frame.flipsToGain ? flipStyle : undefined}>
@@ -387,9 +398,9 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
           strokeWidth={2}
         />
       )}
-      {/* Carregada, a bola fecha a pilha do retrato: por cima da foto, da placa que gira e
-          do anel, como um jogador que corre com ela na mão. */}
-      {carried && ball}
+      {/* Por cima da foto, da placa que gira e do anel: é o jogador com a bola na mão, e é
+          também para onde o passe vai enquanto ainda voa. */}
+      {ballOnTop && ball}
       {frame.focusName && (
         <text
           x={frame.focusX}
