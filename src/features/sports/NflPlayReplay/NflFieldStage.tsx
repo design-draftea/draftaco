@@ -114,6 +114,45 @@ function FlowPath({ d, casingId, flowId }: { d: string; casingId: string; flowId
   )
 }
 
+/** Haste que liga o retrato ao ponto do jogador no gramado. */
+const PortraitStem = ({ x, depthY }: { x: number; depthY: number }) => (
+  <line x1={x} y1={STEM_TOP_Y} x2={x} y2={depthY} stroke="#fbfbfb" strokeWidth={1} opacity={0.8} />
+)
+
+/** Nome curto acima do retrato. */
+const PortraitName = ({ x, name }: { x: number; name: string }) => (
+  <text x={x} y={NAME_BASELINE_Y} textAnchor="middle" className="nfl-plays__stage-name">
+    {shortName(name)}
+  </text>
+)
+
+/**
+ * Face do retrato: aro e foto recortada. Os dois marcadores da troca de foco desenham a
+ * mesma coisa, então ela mora aqui — e o recorte vem junto, porque é por jogador: são dois
+ * círculos em x diferentes, e um `clipPath` só serviria a um deles.
+ */
+function PortraitFace({ x, name, clipId }: { x: number; name: string | null; clipId: string }) {
+  const photo = name ? getLocalPlayerImageByName(name) ?? playerAvatarNFL : playerAvatarNFL
+
+  return (
+    <>
+      <clipPath id={clipId}>
+        <circle cx={x} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS - 2} />
+      </clipPath>
+      <circle cx={x} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS} fill={PORTRAIT_FILL} stroke={TRAIL_COLOR} strokeWidth={1.5} />
+      <image
+        href={photo}
+        x={x - (PORTRAIT_RADIUS - 2)}
+        y={PORTRAIT_CENTER_Y - (PORTRAIT_RADIUS - 2)}
+        width={(PORTRAIT_RADIUS - 2) * 2}
+        height={(PORTRAIT_RADIUS - 2) * 2}
+        clipPath={`url(#${clipId})`}
+        preserveAspectRatio="xMidYMid slice"
+      />
+    </>
+  )
+}
+
 interface NflFieldStageProps {
   play: NflPlay
   phase: ReplayPhase
@@ -130,7 +169,6 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
   const ms = timeScaler(speed)
 
   const pathColor = PATH_COLOR[scene.pathTone]
-  const photo = frame.focusName ? getLocalPlayerImageByName(frame.focusName) ?? playerAvatarNFL : playerAvatarNFL
   const clipId = `nfl-portrait-${play.id}`
   const flowId = `nfl-flow-${play.id}`
   const casingId = `nfl-flow-casing-${play.id}`
@@ -233,6 +271,16 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
 
   // Saída do palco inteiro, quando o próximo lance vem em seguida. A classe substitui a
   // animação de entrada (já terminada), então as duas não brigam pelo mesmo `animation`.
+  /**
+   * Troca de foco: quem lança sai, quem recebe entra. A escala acontece em torno do CENTRO
+   * DO RETRATO, e não do meio da caixa do marcador — a caixa inclui a haste, que desce até o
+   * gramado, e escalar por ela arrastaria o retrato para baixo enquanto ele apaga.
+   */
+  const focusSwapStyle = (x: number) => ({
+    transformOrigin: `${x}px ${PORTRAIT_CENTER_Y}px`,
+    animationDuration: ms(REPLAY_TIMING.focusSwap),
+  } as React.CSSProperties)
+
   const exitStyle = leaving
     ? {
       animationDelay: ms(frame.flipsToGain ? REPLAY_TIMING.stageExitDelayGain : REPLAY_TIMING.stageExitDelay),
@@ -249,9 +297,6 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
       focusable="false"
     >
       <defs>
-        <clipPath id={clipId}>
-          <circle cx={frame.focusX} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS - 2} />
-        </clipPath>
         <linearGradient id={casingId} gradientUnits="userSpaceOnUse" x1={scene.origin.x} y1={scene.depthY} x2={scene.endX} y2={scene.depthY}>
           <stop offset="0" stopColor="#000000" stopOpacity="0.2" />
           <stop offset="1" stopColor="#000000" stopOpacity="0.6" />
@@ -356,61 +401,61 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
         />
       )}
 
+      {/* Quem lançou sai de cena no instante do lançamento, onde estava: na linha de
+          scrimmage. Fica atrás da bola, que já partiu dali. */}
+      {frame.leavingFocus && (
+        <g className="nfl-plays__focus-out" style={focusSwapStyle(frame.leavingFocus.x)}>
+          <PortraitStem x={frame.leavingFocus.x} depthY={scene.depthY} />
+          <PortraitFace x={frame.leavingFocus.x} name={frame.leavingFocus.name} clipId={`${clipId}-out`} />
+          <PortraitName x={frame.leavingFocus.x} name={frame.leavingFocus.name} />
+        </g>
+      )}
+
       {/* Num passe que cai, a bola some ao chegar e o X fica no lugar dela: as duas coisas
           empilhadas no mesmo ponto só sujariam a leitura. */}
       {!ballOnTop && ball}
 
-      <line x1={frame.focusX} y1={STEM_TOP_Y} x2={frame.focusX} y2={scene.depthY} stroke="#fbfbfb" strokeWidth={1} opacity={0.8} />
-      <g className={frame.flipsToGain ? 'nfl-plays__badge-front' : undefined} style={frame.flipsToGain ? flipStyle : undefined}>
-        <circle cx={frame.focusX} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS} fill={PORTRAIT_FILL} stroke={TRAIL_COLOR} strokeWidth={1.5} />
-        <image
-          href={photo}
-          x={frame.focusX - (PORTRAIT_RADIUS - 2)}
-          y={PORTRAIT_CENTER_Y - (PORTRAIT_RADIUS - 2)}
-          width={(PORTRAIT_RADIUS - 2) * 2}
-          height={(PORTRAIT_RADIUS - 2) * 2}
-          clipPath={`url(#${clipId})`}
-          preserveAspectRatio="xMidYMid slice"
-        />
-      </g>
-      {frame.flipsToGain && (
-        <g className="nfl-plays__badge-back" style={flipStyle}>
-          <circle cx={frame.focusX} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS} fill={PORTRAIT_FILL} stroke={TRAIL_COLOR} strokeWidth={1.5} />
-          <text x={frame.focusX} y={PORTRAIT_CENTER_Y + 2} textAnchor="middle" className="nfl-plays__badge-gain">
-            {getGainValue(play)}
-          </text>
-          <text x={frame.focusX} y={PORTRAIT_CENTER_Y + 11} textAnchor="middle" className="nfl-plays__badge-unit">
-            {getYardAbbr()}
-          </text>
+      {/* O marcador em foco inteiro num grupo só — haste, retrato e nome —, porque na troca
+          os três entram juntos. A bola fica FORA: ela já está em cena e não entra com eles. */}
+      <g
+        className={frame.leavingFocus ? 'nfl-plays__focus-in' : undefined}
+        style={frame.leavingFocus ? focusSwapStyle(frame.focusX) : undefined}
+      >
+        <PortraitStem x={frame.focusX} depthY={scene.depthY} />
+        <g className={frame.flipsToGain ? 'nfl-plays__badge-front' : undefined} style={frame.flipsToGain ? flipStyle : undefined}>
+          <PortraitFace x={frame.focusX} name={frame.focusName} clipId={clipId} />
         </g>
-      )}
-      {/* Anel que abre no instante em que a face vira — fora do grupo que gira, senão ele
-          sairia achatado junto com a placa. */}
-      {frame.flipsToGain && (
-        <circle
-          className="nfl-plays__badge-ring"
-          style={flipStyle}
-          cx={frame.focusX}
-          cy={PORTRAIT_CENTER_Y}
-          r={PORTRAIT_RADIUS}
-          fill="none"
-          stroke="var(--ds-current-score, #bb78ff)"
-          strokeWidth={2}
-        />
-      )}
+        {frame.flipsToGain && (
+          <g className="nfl-plays__badge-back" style={flipStyle}>
+            <circle cx={frame.focusX} cy={PORTRAIT_CENTER_Y} r={PORTRAIT_RADIUS} fill={PORTRAIT_FILL} stroke={TRAIL_COLOR} strokeWidth={1.5} />
+            <text x={frame.focusX} y={PORTRAIT_CENTER_Y + 2} textAnchor="middle" className="nfl-plays__badge-gain">
+              {getGainValue(play)}
+            </text>
+            <text x={frame.focusX} y={PORTRAIT_CENTER_Y + 11} textAnchor="middle" className="nfl-plays__badge-unit">
+              {getYardAbbr()}
+            </text>
+          </g>
+        )}
+        {/* Anel que abre no instante em que a face vira — fora do grupo que gira, senão ele
+            sairia achatado junto com a placa. */}
+        {frame.flipsToGain && (
+          <circle
+            className="nfl-plays__badge-ring"
+            style={flipStyle}
+            cx={frame.focusX}
+            cy={PORTRAIT_CENTER_Y}
+            r={PORTRAIT_RADIUS}
+            fill="none"
+            stroke="var(--ds-current-score, #bb78ff)"
+            strokeWidth={2}
+          />
+        )}
+        {frame.focusName && <PortraitName x={frame.focusX} name={frame.focusName} />}
+      </g>
+
       {/* Por cima da foto, da placa que gira e do anel: é o jogador com a bola na mão, e é
           também para onde o passe vai enquanto ainda voa. */}
       {ballOnTop && ball}
-      {frame.focusName && (
-        <text
-          x={frame.focusX}
-          y={NAME_BASELINE_Y}
-          textAnchor="middle"
-          className="nfl-plays__stage-name"
-        >
-          {shortName(frame.focusName)}
-        </text>
-      )}
     </svg>
   )
 }

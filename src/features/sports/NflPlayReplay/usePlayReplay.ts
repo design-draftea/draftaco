@@ -22,6 +22,16 @@ export const REPLAY_TIMING = {
   airMax: 1700,
   /** Pulso de confirmação da recepção. */
   catchPulse: 460,
+  /**
+   * Troca de foco no lançamento: o retrato de quem lançou sai e o de quem recebe entra.
+   *
+   * Curto de propósito. A troca acontece no mesmo instante em que a bola sai, e os dois
+   * retratos ficam visíveis ao mesmo tempo enquanto ela corre — esticar isso passaria a
+   * impressão de dois jogadores em campo em vez de um lance saindo de um para o outro. Em
+   * 220ms o recebedor está firme muito antes de a bola chegar à mão dele, mesmo no voo mais
+   * curto (`airMin`, 780ms).
+   */
+  focusSwap: 220,
   /** Avanço rasteiro depois da recepção. */
   runBase: 320,
   runPerYard: 28,

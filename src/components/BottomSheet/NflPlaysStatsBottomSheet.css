@@ -793,6 +793,60 @@
   100% { transform: scale(1); }
 }
 
+/* ── Troca de foco no lançamento ─────────────────────────────────────────────
+
+   Até a bola sair, o lance é de quem a tem; a partir dali é de quem vai recebê-la. Antes os
+   dois marcadores trocavam no mesmo quadro — o retrato, o nome e a posição de uma vez —, e
+   isso lia como um sumindo e o outro aparecendo. Aqui eles se cruzam: um apaga encolhendo,
+   o outro aparece crescendo, cada um no seu lugar em campo.
+
+   A escala é discreta de propósito. O que precisa ser lido é a TROCA, não um zoom; e os dois
+   ficam visíveis ao mesmo tempo por alguns instantes, então quanto menos movimento, menos
+   parecem dois jogadores em campo.
+
+   A duração vem do componente, escalada pela velocidade, e a origem da escala é o centro do
+   retrato — as duas coisas chegam em `style`. */
+.nfl-plays__focus-in,
+.nfl-plays__focus-out {
+  transform-box: view-box;
+  animation-fill-mode: both;
+}
+
+.nfl-plays__focus-in {
+  animation-name: nfl-plays-focus-in;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sai com `ease-in`: começa devagar e acelera para fora, o oposto de quem entra. */
+.nfl-plays__focus-out {
+  animation-name: nfl-plays-focus-out;
+  animation-timing-function: ease-in;
+}
+
+@keyframes nfl-plays-focus-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nfl-plays-focus-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
 /* ── Giro da placa no fim do lance ───────────────────────────────────────────
 
    Duas faces empilhadas: a da frente encolhe na horizontal até virar um risco, a de trás

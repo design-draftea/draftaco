@@ -281,6 +281,18 @@ conferir('tempo: a bola chega à mão dentro da recepção',
   ballFadeDelay < catchPulse,
   `espera ${ballFadeDelay}ms, recepção dura ${catchPulse}ms`)
 
+// A troca de foco do lançamento vive em dois arquivos: a duração da animação está em
+// `REPLAY_TIMING`, e quanto tempo o retrato que sai fica montado é uma FRAÇÃO do voo, em
+// `playScene`. Se a fração não cobrir a animação no voo mais curto, o retrato some no meio da
+// saída e volta à opacidade cheia num quadro — bem à vista.
+const focusSwap = campoDeTempo('focusSwap')
+const airMin = campoDeTempo('airMin')
+const FOCUS_SWAP_SPAN = constante(cena, 'playScene.ts', 'FOCUS_SWAP_SPAN')
+conferir('tempo: a saída do retrato cabe no voo mais curto',
+  focusSwap <= FOCUS_SWAP_SPAN * airMin,
+  `saída de ${focusSwap}ms, janela de ${Math.round(FOCUS_SWAP_SPAN * airMin)}ms `
+  + `(${FOCUS_SWAP_SPAN} de ${airMin}ms)`)
+
 // ── Saída ──────────────────────────────────────────────────────────────────
 if (falhas.length > 0) {
   process.stdout.write(`check:nfl — ${falhas.length} de ${total} falharam\n`)

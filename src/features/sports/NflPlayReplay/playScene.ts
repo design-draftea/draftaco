@@ -47,6 +47,19 @@ export const PORTRAIT_CENTER_Y = 52
 export const STEM_TOP_Y = PORTRAIT_CENTER_Y + PORTRAIT_RADIUS
 export const NAME_BASELINE_Y = 24
 
+/**
+ * Quanto do voo o retrato de quem lançou continua montado depois de o foco trocar.
+ *
+ * É FRAÇÃO do voo, e não milissegundos, porque aqui não se sabe quanto o voo dura — isso
+ * mora em `usePlayReplay`. Precisa cobrir com folga a saída (`REPLAY_TIMING.focusSwap`) no
+ * voo mais curto (`airMin`): desmontar antes do fim da animação devolveria o retrato à
+ * opacidade cheia num quadro, bem à vista. Depois dela o retrato já está invisível — o
+ * `fill-mode: both` segura o estado final —, então sobrar janela não custa nada.
+ *
+ * `check:nfl` confere a folga, que depende de uma constante de outro arquivo.
+ */
+const FOCUS_SWAP_SPAN = 0.35
+
 /** Quantidade e alcance do rastro: trecho curto atrás da bola, não a rota inteira. */
 const TRAIL_SAMPLES = 7
 const TRAIL_SPAN = 0.17
@@ -390,6 +403,15 @@ export interface PlayFrame {
   ballEnding: 'none' | 'carried' | 'settled'
   focusName: string | null
   focusX: number
+  /**
+   * Retrato que está SAINDO de cena, enquanto o de quem recebe entra. Só existe na troca de
+   * foco do lançamento, e é o que permite desenhar os dois ao mesmo tempo: sem ele, um
+   * sumiria e o outro apareceria no mesmo quadro, que era o corte seco de antes.
+   *
+   * Vem com o próprio x porque quem sai fica onde estava — na linha de scrimmage —, e não
+   * acompanha o marcador novo. Enquanto ele existe, quem está em foco é quem ENTRA.
+   */
+  leavingFocus: { name: string; x: number } | null
   showsPath: boolean
   showsRunFlow: boolean
   showsArrival: boolean
@@ -469,6 +491,21 @@ export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number):
     ? origin.x
     : (phase === 'run' || phase === 'result' ? ground.x : landing.x)
 
+  /**
+   * A troca de foco acontece no instante do lançamento: até ali o lance é de quem tem a
+   * bola, e dali em diante é de quem vai recebê-la — o retrato precisa estar no destino bem
+   * antes de a bola chegar, porque é nele que o voo termina.
+   *
+   * Não vale quando o foco não troca de pessoa: passe que cai e chute sem retornador ficam
+   * no passador (`staysAtOrigin`), e na corrida quem sai e quem chega são o mesmo jogador.
+   */
+  const swappingFocus = animatable
+    && phase === 'air'
+    && progress < FOCUS_SWAP_SPAN
+    && !scene.staysAtOrigin
+    && !!scene.originName
+    && scene.originName !== scene.targetName
+
   const inFlight = phase === 'air' || phase === 'catch' || phase === 'run'
   const arrived = phase !== 'idle' && phase !== 'preparing'
   // No trecho rasteiro o rastro seria uma fileira de pontos no chão enquanto a bola já está
@@ -492,6 +529,7 @@ export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number):
     ballEnding,
     focusName: focusOnPasser ? scene.originName : scene.targetName,
     focusX,
+    leavingFocus: swappingFocus ? { name: scene.originName as string, x: origin.x } : null,
     showsPath: animatable && (inFlight || phase === 'result'),
     // O fluxo do trecho rasteiro só entra quando a bola chega lá.
     showsRunFlow: phase === 'run' || phase === 'result',
