@@ -91,6 +91,18 @@ export const REPLAY_TIMING = {
 export const REPLAY_SPEEDS = [0.5, 1, 1.5, 2, 3] as const
 export type ReplaySpeed = typeof REPLAY_SPEEDS[number]
 
+/**
+ * Duração já escalada pela velocidade, no formato que o CSS espera.
+ *
+ * Toda animação declarada em CSS — voo, recolhimento da bola, giro da placa, saída do
+ * palco, fogos, letras do touchdown — precisa da mesma divisão para as velocidades
+ * diferentes de 1x continuarem sincronizadas entre si. Isso estava escrito à mão em 15
+ * lugares, e esquecer um fazia aquela animação sozinha descolar do resto.
+ *
+ * Uso: `const ms = timeScaler(speed)` e depois `ms(REPLAY_TIMING.badgeFlipDelay)`.
+ */
+export const timeScaler = (speed: ReplaySpeed) => (ms: number) => `${ms / speed}ms`
+
 export type ReplayPhase = 'idle' | 'preparing' | 'air' | 'catch' | 'run' | 'result'
 
 export interface ReplaySegments {

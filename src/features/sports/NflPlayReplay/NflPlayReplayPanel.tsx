@@ -14,7 +14,7 @@ import {
   isRun,
   type NflPlay,
 } from './playNarrative'
-import { REPLAY_TIMING, usePlayReplay, type ReplaySegments, type ReplaySpeed } from './usePlayReplay'
+import { REPLAY_TIMING, timeScaler, usePlayReplay, type ReplaySegments, type ReplaySpeed } from './usePlayReplay'
 
 /**
  * "Touchdown" com as letras subindo e descendo em onda. Fica na linha de resultado, abaixo
@@ -141,11 +141,13 @@ const FIREWORK_SPARKS = Array.from({ length: FW_MAIN + FW_SECOND }, (_, index) =
 })
 
 function TouchdownParticles({ speed }: { speed: ReplaySpeed }) {
+  const ms = timeScaler(speed)
+
   return (
     <div
       className="nfl-plays__fw"
       aria-hidden="true"
-      style={{ '--fw-flash': `${260 / speed}ms` } as React.CSSProperties}
+      style={{ '--fw-flash': ms(260) } as React.CSSProperties}
     >
       {FIREWORK_SPARKS.map((spark, index) => (
         <span
@@ -157,8 +159,8 @@ function TouchdownParticles({ speed }: { speed: ReplaySpeed }) {
             '--fw-len': `${spark.len.toFixed(2)}cqw`,
             '--fw-th': `${spark.thick.toFixed(2)}cqw`,
             '--fw-c': spark.color,
-            '--fw-delay': `${spark.delay / speed}ms`,
-            '--fw-dur': `${spark.duration / speed}ms`,
+            '--fw-delay': ms(spark.delay),
+            '--fw-dur': ms(spark.duration),
             '--fw-tw': spark.twinkle ? 'nfl-plays-fw-twinkle' : 'none',
           } as React.CSSProperties}
         >
@@ -185,9 +187,10 @@ function TouchdownParticles({ speed }: { speed: ReplaySpeed }) {
  * durante a espera e atropelaria a entrada, já que as duas mexem em `transform`.
  */
 function FieldTouchdown({ speed }: { speed: ReplaySpeed }) {
+  const ms = timeScaler(speed)
   const style = {
-    '--td-in': `${REPLAY_TIMING.touchdownLetterIn / speed}ms`,
-    '--td-wave': `${REPLAY_TIMING.touchdownWave / speed}ms`,
+    '--td-in': ms(REPLAY_TIMING.touchdownLetterIn),
+    '--td-wave': ms(REPLAY_TIMING.touchdownWave),
   } as React.CSSProperties
 
   return (
@@ -197,8 +200,8 @@ function FieldTouchdown({ speed }: { speed: ReplaySpeed }) {
           key={index}
           style={{
             animationDelay: [
-              `${(index * REPLAY_TIMING.touchdownLetterStep) / speed}ms`,
-              `${(REPLAY_TIMING.touchdownWaveStart + index * REPLAY_TIMING.touchdownWaveStep) / speed}ms`,
+              ms(index * REPLAY_TIMING.touchdownLetterStep),
+              ms(REPLAY_TIMING.touchdownWaveStart + index * REPLAY_TIMING.touchdownWaveStep),
             ].join(', '),
           }}
         >
@@ -298,6 +301,8 @@ export function NflPlayReplayPanel({
   useEffect(() => {
     if (animatable || !isSequence) return
 
+    // Único `/ speed` que sobra em milissegundos crus: aqui é argumento de `setTimeout`,
+    // não duração de CSS, então não passa pelo `timeScaler`.
     const timer = window.setTimeout(() => onEndedRef.current(), REPLAY_TIMING.staticHold / speed)
 
     return () => window.clearTimeout(timer)

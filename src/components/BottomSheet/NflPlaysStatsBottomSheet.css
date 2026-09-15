@@ -209,12 +209,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* `--ds-live` é o token do ponto de "ao vivo" e vale exatamente este hex. Antes aqui havia
+   `--ds-feedback-error-default`, que não existe em nenhum lugar do projeto: caía sempre no
+   fallback, e por acaso o fallback era a cor certa. Parecia tokenizado e não estava. */
 .nfl-stats-bs__live-dot {
   width: 6px;
   height: 6px;
   flex: 0 0 6px;
   border-radius: 50%;
-  background: var(--ds-feedback-error-default, #f43f5e);
+  background: var(--ds-live, #f43f5e);
 }
 
 .nfl-stats-bs__score-table,
@@ -1290,4 +1293,59 @@
 
 @keyframes nfl-plays-fade-out {
   to { opacity: 0; }
+}
+
+/* A bola passa para a mão do jogador na recepção, quando ainda há corrida pela frente.
+
+   Ela precisava sair do gramado ali — dali em diante quem anda é o jogador com a bola, e uma
+   bola solta rolando ao lado do retrato contava outra coisa. Só que apagar no lugar quebrava
+   o elo causal: o retrato saía correndo sozinho e a bola parecia ter evaporado. Aqui ela
+   encolhe para dentro de um selo montado no aro do retrato — mesmo fundo, mesma borda — e
+   FICA, andando junto com ele, porque quem corre corre com a bola na mão.
+
+   São duas animações no mesmo gesto. O grupo inteiro encolhe e se desloca: ele já é desenhado
+   no ponto de repouso, e é o `transform` que o devolve ao ponto e ao tamanho da recepção no
+   primeiro quadro (`--carry-from-x/y` e `--carry-from-scale`, todos vindos do componente).
+   O aro, esse, só aparece no caminho: antes da recepção não existe selo nenhum, existe uma
+   bola voando, e um círculo aberto em volta dela no ar contaria algo que não aconteceu.
+
+   O preenchimento é `both`, e não `forwards`: sem o quadro inicial valendo durante a espera,
+   o selo apareceria pronto sobre o jogador antes de a passagem começar.
+
+   `transform-box: fill-box` é o que faz a escala acontecer em torno do centro do próprio
+   selo; sem ele a origem seria o canto do viewBox e ele voaria para fora, como já aconteceu
+   com a placa que gira.
+
+   A curva é de saída: o movimento acontece cedo, enquanto a bola ainda está grande o
+   bastante para ser seguida, e o fim é só o assentamento na mão. */
+.nfl-plays__ball-carry {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-name: nfl-plays-ball-carry;
+  animation-timing-function: cubic-bezier(0.22, 0.72, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+/* Herda espera e duração do grupo: as duas metades do gesto têm de terminar juntas. */
+.nfl-plays__ball-carry-ring {
+  animation-name: nfl-plays-ball-carry-ring;
+  animation-timing-function: ease-out;
+  animation-delay: inherit;
+  animation-duration: inherit;
+  animation-fill-mode: both;
+}
+
+@keyframes nfl-plays-ball-carry {
+  from {
+    transform: translate(var(--carry-from-x, 0px), var(--carry-from-y, 0px)) scale(var(--carry-from-scale, 1.25));
+  }
+
+  to {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes nfl-plays-ball-carry-ring {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

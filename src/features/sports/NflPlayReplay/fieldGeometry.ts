@@ -104,7 +104,8 @@ export const FIELD_MID_Y = 116.75
  * um pouco mais perto da lateral do que um na base (37,3 pés do centro contra 26,7).
  *
  * Não são as marcas de hash. As hashes ficam a 5,6m uma da outra num campo de 49m: dariam
- * ±4px aqui, invisíveis. Estas faixas representam o lado do campo em que o lance correu.
+ * ±4px aqui, invisíveis. Estas faixas representam o lado do campo em que o lance correu —
+ * um dado inferido, não medido: ver `PlaySide`.
  */
 export const PLAY_DEPTH = {
   far: 101.5,
@@ -112,16 +113,29 @@ export const PLAY_DEPTH = {
   near: GROUND_Y,
 } as const
 
-export type PlayLateral = 'left' | 'middle' | 'right'
+/**
+ * Lado do campo em que o lance ACONTECEU, na perspectiva de quem ataca.
+ *
+ * NÃO é a posição lateral da bola no snap, e o nome diz isso de propósito: o play-by-play
+ * não traz essa posição — não existe coluna de hash mark nem coordenada. O que existe é
+ * para onde o lance FOI (`pass_location` / `run_location`), e é dele que este campo é
+ * inferido no gerador do fixture (ver `playSideOf` em `scripts/build-nfl-live-fixture.mjs`).
+ *
+ * A inferência é causalmente invertida — um passe da hash esquerda para a lateral direita
+ * sai desenhado inteiro na faixa direita, origem inclusive — e isso é deliberado: lido como
+ * "de que lado do campo o lance correu", o desenho é coerente, e o visual foi aprovado
+ * assim. Quando um fornecedor trouxer a posição real da bola, é `playSideOf` que muda.
+ */
+export type PlaySide = 'left' | 'middle' | 'right'
 
 /**
  * Lado do campo -> profundidade. Depende do sentido do ataque: quem ataca para a direita
  * está de frente para a direita da tela, então a SUA esquerda aponta para longe da câmera
  * (topo). Quem ataca para a esquerda tem a própria esquerda apontando para a câmera (base).
  */
-export function depthForLateral(lateral: PlayLateral | null | undefined, direction: AttackDirection): number {
-  if (lateral === 'left') return direction === 'right' ? PLAY_DEPTH.far : PLAY_DEPTH.near
-  if (lateral === 'right') return direction === 'right' ? PLAY_DEPTH.near : PLAY_DEPTH.far
+export function depthForPlaySide(playSide: PlaySide | null | undefined, direction: AttackDirection): number {
+  if (playSide === 'left') return direction === 'right' ? PLAY_DEPTH.far : PLAY_DEPTH.near
+  if (playSide === 'right') return direction === 'right' ? PLAY_DEPTH.near : PLAY_DEPTH.far
 
   return PLAY_DEPTH.center
 }

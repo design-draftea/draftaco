@@ -323,13 +323,20 @@ const absoluteYard = (yardLine, posteam) => {
 const orEmpty = (value) => (value && value !== 'NA' ? value : null)
 
 /**
- * Faixa lateral em que o lance aconteceu: `left`, `middle` ou `right`, na perspectiva de
+ * Lado do campo em que o lance ACONTECEU: `left`, `middle` ou `right`, na perspectiva de
  * quem ataca. É o que permite desenhar cada jogada numa profundidade diferente do campo.
  *
- * O pbp NÃO traz a posição lateral da bola (não existe coluna de hash mark nem coordenada).
- * O que existe é para onde o lance FOI (`pass_location` / `run_location`), e é isso que
- * usamos. Não é a marca de hash: as hashes ficam a 5,6m uma da outra num campo de 49m e
- * seriam invisíveis no desenho.
+ * ATENÇÃO — este campo é INFERIDO, e o nome evita prometer o que ele não é. O pbp não traz a
+ * posição lateral da bola: não existe coluna de hash mark nem coordenada. O que existe é
+ * para onde o lance FOI (`pass_location` / `run_location`), e é dele que inferimos o lado.
+ * A inferência é causalmente invertida — um passe da hash esquerda para a lateral direita
+ * sai inteiro na faixa direita, origem inclusive. O comportamento é deliberado e aprovado:
+ * lido como "de que lado do campo o lance correu", o desenho é coerente.
+ *
+ * ESTE É O PONTO DE ENTRADA para quando um fornecedor trouxer a posição real da bola no
+ * snap: é só devolver o lado a partir dela aqui, e o resto do replay continua igual —
+ * `depthForPlaySide` em `src/features/sports/NflPlayReplay/fieldGeometry.ts` é o único
+ * consumidor, e ele só quer saber o lado.
  *
  * Quem não tem lado próprio herda o do lance anterior, porque a bola não andou de lado:
  * punt e jogada anulada saem do mesmo ponto. Kickoff, field goal e ponto extra são do
@@ -406,7 +413,7 @@ function parseNullified(descRaw) {
 
 const CENTERED_TYPES = new Set(['kickoff', 'field_goal', 'extra_point'])
 
-function lateralOf(play, previous, nullified) {
+function playSideOf(play, previous, nullified) {
   if (CENTERED_TYPES.has(play.play_type)) return 'middle'
 
   // Numa anulada as colunas de lado vêm vazias, mas o texto traz o lado real.
@@ -417,15 +424,15 @@ function lateralOf(play, previous, nullified) {
 }
 
 function buildPlays(plays, home) {
-  let previousLateral = 'middle'
+  let previousSide = 'middle'
 
   return plays
     .filter((play) => play.fixed_drive && play.posteam && play.play_type && play.play_type !== 'NA')
     .map((play) => {
       const start = absoluteYard(play.yrdln, play.posteam)
       const nullified = play.play_type === 'no_play' ? parseNullified(play.desc) : null
-      const lateral = lateralOf(play, previousLateral, nullified)
-      previousLateral = lateral
+      const playSide = playSideOf(play, previousSide, nullified)
+      previousSide = playSide
       const air = play.air_yards === '' || play.air_yards === 'NA' ? null : num(play.air_yards)
       const afterCatch = play.yards_after_catch === '' || play.yards_after_catch === 'NA'
         ? null
@@ -444,8 +451,8 @@ function buildPlays(plays, home) {
         // vem depois é corrida — juntar os dois num número só seria fingir que a bola
         // voou o lance inteiro.
         startYard: start,
-        /** Faixa lateral do campo, usada como profundidade do desenho. Ver `lateralOf`. */
-        lateral,
+        /** Lado do campo em que o lance correu, usado como profundidade. Ver `playSideOf`. */
+        playSide,
         yards: num(play.yards_gained),
         airYards: air,
         yardsAfterCatch: afterCatch,
