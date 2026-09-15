@@ -81,6 +81,42 @@ export const getPenaltyName = (tipo: string | null | undefined) => {
 /** Tem alguma coisa para animar: voo, corrida, ou os dois. */
 export const isAnimatable = (play: NflPlay) => hasBallFlight(play) || isRun(play) || hasNullifiedPlay(play)
 
+/**
+ * Desfecho do lance, do ponto de vista de QUEM DESENHA.
+ *
+ * Existe porque antes havia um booleano `complete` respondendo quatro perguntas diferentes
+ * ao mesmo tempo — em passe era "foi recebido", em corrida era sempre verdadeiro, em
+ * anulada era sempre verdadeiro e em chute era "não foi touchback". Ele decidia sozinho cor
+ * do caminho, marcador de chegada, pulso de recepção, opacidade do gradiente e posição
+ * final, e cada tipo novo de lance pendurava mais um `||` nele.
+ *
+ * Aqui o desfecho é derivado UMA vez, e cada consumidor pergunta o que de fato quer saber,
+ * por tabela exaustiva (o TypeScript cobra a variante que faltar). Um tipo novo — sack,
+ * interceptação, fumble — entra como variante e as tabelas apontam sozinhas o que falta
+ * decidir.
+ *
+ * - `gain`: o lance valeu e a bola chegou. Passe completo com avanço, corrida, chute com
+ *   posse no fim.
+ * - `noGain`: aconteceu e a bola chegou, mas não andou nada. Corrida parada na linha.
+ * - `incomplete`: a bola não chegou a ninguém. Passe que cai, e também a anulada em que o
+ *   lance não chegou a existir (falso início) — nos dois não há posse no fim.
+ * - `voided`: aconteceu em campo e a penalidade apagou. Não é erro do lance, e por isso
+ *   não divide cor com `incomplete`.
+ * - `touchback`: o chute morreu na end zone e não houve retorno para contar.
+ */
+export type PlayOutcome = 'gain' | 'noGain' | 'incomplete' | 'voided' | 'touchback'
+
+export function getPlayOutcome(play: NflPlay): PlayOutcome {
+  // A ordem importa: uma anulada é antes de tudo uma anulada, e um chute nunca é lido
+  // pelas colunas de passe (`complete` vale 0 em qualquer chute).
+  if (hasNullifiedPlay(play)) return 'voided'
+  if (isKick(play)) return play.touchback ? 'touchback' : 'gain'
+  if (play.noPlay) return 'incomplete'
+  if (play.type === 'pass' && !play.complete) return 'incomplete'
+
+  return play.yards === 0 ? 'noGain' : 'gain'
+}
+
 export function getPlayTitle(play: NflPlay): string {
   if (play.noPlay) {
     const anulada = play.nullified
