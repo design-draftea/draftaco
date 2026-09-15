@@ -276,8 +276,9 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
    * DO RETRATO, e não do meio da caixa do marcador — a caixa inclui a haste, que desce até o
    * gramado, e escalar por ela arrastaria o retrato para baixo enquanto ele apaga.
    */
-  const focusSwapStyle = (x: number) => ({
+  const focusSwapStyle = (x: number, delay = 0) => ({
     transformOrigin: `${x}px ${PORTRAIT_CENTER_Y}px`,
+    animationDelay: ms(delay),
     animationDuration: ms(REPLAY_TIMING.focusSwap),
   } as React.CSSProperties)
 
@@ -419,7 +420,7 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
           os três entram juntos. A bola fica FORA: ela já está em cena e não entra com eles. */}
       <g
         className={frame.leavingFocus ? 'nfl-plays__focus-in' : undefined}
-        style={frame.leavingFocus ? focusSwapStyle(frame.focusX) : undefined}
+        style={frame.leavingFocus ? focusSwapStyle(frame.focusX, REPLAY_TIMING.focusSwapDelay) : undefined}
       >
         <PortraitStem x={frame.focusX} depthY={scene.depthY} />
         <g className={frame.flipsToGain ? 'nfl-plays__badge-front' : undefined} style={frame.flipsToGain ? flipStyle : undefined}>

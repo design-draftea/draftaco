@@ -25,13 +25,21 @@ export const REPLAY_TIMING = {
   /**
    * Troca de foco no lançamento: o retrato de quem lançou sai e o de quem recebe entra.
    *
-   * Curto de propósito. A troca acontece no mesmo instante em que a bola sai, e os dois
-   * retratos ficam visíveis ao mesmo tempo enquanto ela corre — esticar isso passaria a
-   * impressão de dois jogadores em campo em vez de um lance saindo de um para o outro. Em
-   * 220ms o recebedor está firme muito antes de a bola chegar à mão dele, mesmo no voo mais
-   * curto (`airMin`, 780ms).
+   * Os 220ms da primeira versão passavam despercebidos, e a duração era só metade do
+   * motivo: com a curva de entrada da casa, um ease-out forte, o retrato novo chegava a 90%
+   * de opacidade em 100ms. A troca inteira acontecia enquanto o olho ainda estava na bola
+   * saindo da mão do passador, que é o movimento grande daquele instante.
+   *
+   * A espera abaixo é a outra metade. Sem ela os dois gestos acontecem juntos e se cancelam;
+   * com ela viram uma sequência — a bola sai, quem lançou apaga, quem recebe aparece — e é a
+   * sequência que se lê, não a duração.
+   *
+   * O teto é a chegada da bola: 130 + 380 = 510ms, e o voo mais curto (`airMin`) dura 780ms,
+   * então o recebedor está inteiro bem antes de a bola chegar à mão dele.
    */
-  focusSwap: 220,
+  focusSwap: 380,
+  /** Espera de quem ENTRA, para não disputar o olho com a bola saindo. */
+  focusSwapDelay: 130,
   /** Avanço rasteiro depois da recepção. */
   runBase: 320,
   runPerYard: 28,

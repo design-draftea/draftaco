@@ -51,14 +51,15 @@ export const NAME_BASELINE_Y = 24
  * Quanto do voo o retrato de quem lançou continua montado depois de o foco trocar.
  *
  * É FRAÇÃO do voo, e não milissegundos, porque aqui não se sabe quanto o voo dura — isso
- * mora em `usePlayReplay`. Precisa cobrir com folga a saída (`REPLAY_TIMING.focusSwap`) no
- * voo mais curto (`airMin`): desmontar antes do fim da animação devolveria o retrato à
- * opacidade cheia num quadro, bem à vista. Depois dela o retrato já está invisível — o
- * `fill-mode: both` segura o estado final —, então sobrar janela não custa nada.
+ * mora em `usePlayReplay`. Precisa cobrir com folga a troca inteira (`focusSwapDelay` mais
+ * `focusSwap`) no voo mais curto (`airMin`): desmontar antes do fim da animação devolveria o
+ * retrato à opacidade cheia num quadro, bem à vista. Depois dela o retrato já está
+ * invisível — o `fill-mode: both` segura o estado final —, então sobrar janela não custa
+ * nada.
  *
- * `check:nfl` confere a folga, que depende de uma constante de outro arquivo.
+ * `check:nfl` confere a folga, que depende de constantes de outro arquivo.
  */
-const FOCUS_SWAP_SPAN = 0.35
+const FOCUS_SWAP_SPAN = 0.7
 
 /** Quantidade e alcance do rastro: trecho curto atrás da bola, não a rota inteira. */
 const TRAIL_SAMPLES = 7

@@ -286,12 +286,14 @@ conferir('tempo: a bola chega à mão dentro da recepção',
 // `playScene`. Se a fração não cobrir a animação no voo mais curto, o retrato some no meio da
 // saída e volta à opacidade cheia num quadro — bem à vista.
 const focusSwap = campoDeTempo('focusSwap')
+const focusSwapDelay = campoDeTempo('focusSwapDelay')
 const airMin = campoDeTempo('airMin')
 const FOCUS_SWAP_SPAN = constante(cena, 'playScene.ts', 'FOCUS_SWAP_SPAN')
-conferir('tempo: a saída do retrato cabe no voo mais curto',
-  focusSwap <= FOCUS_SWAP_SPAN * airMin,
-  `saída de ${focusSwap}ms, janela de ${Math.round(FOCUS_SWAP_SPAN * airMin)}ms `
-  + `(${FOCUS_SWAP_SPAN} de ${airMin}ms)`)
+const trocaDeFoco = focusSwapDelay + focusSwap
+conferir('tempo: a troca de foco cabe no voo mais curto',
+  trocaDeFoco <= FOCUS_SWAP_SPAN * airMin,
+  `troca leva ${trocaDeFoco}ms (${focusSwapDelay} de espera + ${focusSwap}), `
+  + `janela de ${Math.round(FOCUS_SWAP_SPAN * airMin)}ms (${FOCUS_SWAP_SPAN} de ${airMin}ms)`)
 
 // ── Saída ──────────────────────────────────────────────────────────────────
 if (falhas.length > 0) {
