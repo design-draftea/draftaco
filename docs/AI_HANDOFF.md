@@ -45,6 +45,15 @@
   (`FOCUS_SWAP_SPAN`), e `check:nfl` confere que essa janela cobre a animação no voo mais
   curto. Vale para passe recebido e chute com retorno; não vale quando o foco não troca de
   pessoa.
+- Objetivo 5 (pedido na mesma sessão): o sheet abre no lance mais recente que tem replay
+  (`isAnimatable`), e não no mais recente com voo de bola. Corrida tem replay e não tem voo,
+  então uma campanha terminada em corrida abria numa jogada anterior e parava ali. Simulando
+  os 56 estados pelos quais as campanhas do fixture passam ao vivo, 17 abriam antes da última
+  jogada; agora 1 — um lance anulado antes do snap, que não tem o que desenhar. Fica
+  registrado que abrir na PRIMEIRA jogada da campanha foi discutido e descartado: 15 a 48
+  segundos por campanha, e a porta de entrada é uma faixa ao vivo; quem quer a campanha
+  inteira tem o botão "Repetir campanha", os marcadores da timeline e o play de cada campanha
+  na lista.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
