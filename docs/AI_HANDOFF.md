@@ -3,46 +3,38 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-15.
-- Checkout: pasta principal `draftaco`, branch `chore/replay-nfl-divida-tecnica`, criada a partir de `origin/main`.
-- Tarefa: revisão técnica do replay de jogadas da NFL — pagamento da dívida técnica deixada pela construção incremental, sem funcionalidade nova.
-- Status: implementação concluída e verificada, ainda NÃO commitada — as mudanças estão na árvore de trabalho da branch, aguardando a validação da pessoa responsável pelo protótipo. Sem commit, sem Pull Request, sem merge e sem deploy.
-- A arquitetura de marcas e o replay da NFL entraram na `main` pela PR #1 e já foram publicados: produção e a cópia local estão idênticas (mesmo commit, mesmos bundles). O relato técnico daquela frente está em [handoffs/2026-09-11-brand-architecture-nfl.md](handoffs/2026-09-11-brand-architecture-nfl.md).
-- O checkout `draftaco-v0` não faz parte desta tarefa e deve permanecer intacto.
+- Checkout: pasta principal `draftaco`. **Nenhuma tarefa em andamento** — não há trabalho
+  pendente na árvore, e a próxima tarefa começa com uma branch nova a partir de `main`.
+- `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
+  para a mão do jogador, entrou pela Pull Request #2 (merge `496685f`) e o deploy do GitHub
+  Actions concluiu. Os bundles em produção batem byte a byte com o build local, e
+  `/pitaco/apostas` e `/draftea/apuestas` carregam o app.
+- O checkout `draftaco-v0` não faz parte deste trabalho e deve permanecer intacto.
 
-## O que mudou
+## Histórico das entregas
 
-- **Desfecho explícito no lugar do booleano `complete`.** `PlayOutcome` (`gain`, `noGain`, `incomplete`, `voided`, `touchback`) é derivado uma vez em `playNarrative.ts`. Cada decisão de desenho — cor, marcador de chegada, pulso, opacidade do gradiente — virou tabela `Record<PlayOutcome, …>`, então um tipo novo de lance faz o TypeScript apontar o que falta decidir.
-- **`playScene.ts` (novo).** Decide O QUE desenhar (geometria, fases, visibilidade) sem React. `NflFieldStage.tsx` caiu de 509 para 339 linhas e só desenha. `kickAtGoal`/`kickAtGoalKind`, que eram a mesma expressão duas vezes, viraram uma.
-- **`lateral` -> `playSide`.** Renomeado no fixture, no gerador (`playSideOf`) e na geometria (`depthForPlaySide`), com comentário dizendo que o dado é INFERIDO de `pass_location`/`run_location` e marcando o ponto de entrada para quando um fornecedor trouxer a posição real da bola. O fixture foi regenerado do nflverse e saiu idêntico ao anterior, só com a chave renomeada.
-- **`scripts/check-nfl-replay.mjs` (novo, `npm run check:nfl`).** 26 conferências sem dependências: tripwire de sha256 e dimensões da arte do campo, conteúdo do fixture (chutador em todo chute, desfecho de chute sem retorno, as três anuladas contra o texto oficial, campanha em andamento sem vazar o resultado, `playSide` em todo lance) e relações entre constantes (faixas de profundidade dentro do gramado e simétricas, alvo do gol entre os postes, ordem dos cinco tempos que vivem em dois arquivos, e o selo da bola carregada continuar montado no aro do retrato com a bola cabendo dentro — medidas que também vivem em dois arquivos).
-- **Token fantasma.** `--ds-feedback-error-default` não existe no projeto e caía sempre no fallback. No ponto de "ao vivo" do sheet virou `--ds-live`, que existe e vale o mesmo hex. As quatro cores do campo continuam como constantes nomeadas, agora com comentário dizendo que não há token equivalente — para ninguém "migrar" isso depois para um token errado.
-- **`timeScaler(speed)`.** As 14 divisões `/ speed` escritas à mão nas durações de CSS viraram um helper único em `usePlayReplay.ts`. Sobrou uma divisão crua, no `setTimeout` do lance sem animação, que não é duração de CSS.
-- **A bola passa para a mão do jogador.** Na recepção com corrida pela frente, a bola encolhe para dentro de um selo montado no aro do retrato e FICA lá, andando junto com ele — quem corre corre com a bola na mão. O selo repete o fundo e a borda do retrato: círculo de 16 com borda de 1 e a bola dentro com 2 de respiro de cada lado, na diagonal de baixo à direita (12,0 x 12,6 do centro do retrato), conforme o estudo. Para ficar por cima do jogador a bola também mudou de lugar no SVG: solta continua atrás do retrato, carregada é desenhada depois da foto, da placa e do anel. O aro do selo só aparece durante a passagem — antes da recepção existe uma bola voando, não um selo. A regra é de POSSE, e não de tipo de lance: quem termina o lance com a bola aparece com ela no selo. Carregam a bola o recebedor de um passe completo (com ou sem avanço depois), o corredor — que sai com ela da própria linha, então ali a subida começa junto com o lance, sem espera —, o retornador de um chute, e também os dois lances anulados, que aconteceram em campo. Ficam com a bola no gramado: passe que cai e touchback (a bola morre sem dono), chute ao gol (a posição final entre os postes é a informação do lance), punt sem retornador (a bola para longe de quem chutou, e mandá-la para o selo dele a faria voltar no tempo) e a anulada em que o lance não chegou a existir. No recorte atual isso dá 39 lances com a bola no selo e 17 com a bola no gramado.
-
-## Validações executadas
-
-- `npm run build` (inclui `tsc -b`), `npm run check:brands`, `npm run check:nfl` e `npm run check:player-props` passaram. `npx eslint` nos arquivos tocados não acusa nada.
-- **Equivalência com a `main`:** as decisões de desenho foram comparadas com a implementação anterior em 58.464 pontos (56 jogadas x 6 fases x 6 instantes). As diferenças são só as da regra de posse: nos lances em que alguém fica com a bola, ela vai para o selo e o rastro rasteiro some (não há mais bola rolando no gramado para deixá-lo). Fora isso, nada mudou — a comparação confirma que os lances que mantêm a bola no gramado continuam idênticos, e que a sombra segue presa ao ponto do chão, e não à bola que subiu.
-- Os sete disparos do `check:nfl` foram testados ao contrário, numa cópia do repositório: arte alterada, profundidade assimétrica, alvo do gol encostado no poste, tempos fora de ordem, respiro encurtado, fixture com a chave antiga e regex que deixa de casar. Todos falham com a mensagem certa.
-- No navegador, nas duas marcas: passe incompleto (X vermelho, placa não gira), passe completo com avanço (`+22 JD`, anel), corrida (`+28 JD`, sem arco), kickoff com retorno, ponto extra (bola fica entre os postes), touchdown (palavra + 40 faíscas, bola fica), anulada com jogada (cinza, selo ANULADA, "Touchdown anulado · Bloqueio ilegal"), anulada sem jogada (estático, botão desabilitado), encadeamento de campanha, clique na timeline e ícone de reset só no último lance. O selo da bola carregada foi medido no navegador, em unidades do frame: círculo com 15 de preenchimento e 1 de borda (16 externos), bola de 12 dentro, fundo `#1b1b1b` e borda `#a877ff` — os mesmos do retrato —, centro a 12,0 x 12,6 do centro do retrato, e as duas animações (o grupo e o aro) com a mesma espera e a mesma duração. Ao longo da corrida o selo acompanha o retrato quadro a quadro. No touchdown, conferido na campanha `Touchdown · Hill`: o lance termina com `Touchdown · +53 jardas`, a palavra e os fogos, o selo sobre o jogador nas mesmas medidas e nenhuma bola solta no gramado. Na corrida, a passagem foi amostrada quadro a quadro pela Web Animations API: em t=0 a bola está no snap, no chão e em tamanho cheio, com o aro invisível; em t=140 já subiu quase toda; em t=280 está em 12,0 x 12,6 do centro do retrato, com o aro inteiro.
-
-## Pendências
-
-- **Validação da pessoa responsável pelo protótipo.** Nada foi aprovado visualmente ainda.
-- **O nó do Figma continua sem ser aberto diretamente.** O MCP do Figma Desktop responde, mas só enxerga a ABA ATIVA, e a aba aberta é outro documento; o conector remoto do Figma está sem autorização nesta sessão. O selo foi implementado a partir da referência visual e das medidas que a pessoa responsável passou (16x16, borda de 1, bola com 2 de respiro, mesmo fundo e mesma borda do retrato); a posição sobre o aro foi medida na própria referência, e bate com a proporção do frame (retrato de 40, selo de 16). Se for preciso conferir contra o nó `1953-4756` do arquivo `ENRUbTcNKoXvmuKprUu5CS` (Estudos Fluxos Draftea<>Pitaco), basta abrir esse arquivo como aba ativa no Figma Desktop.
-- **O selo não espelha com o sentido do ataque.** Fica sempre no mesmo canto, como na referência. Se em lance para a esquerda ele precisar ir para o outro lado, é multiplicar `carry.x` pela direção em `playScene.ts` — está comentado lá.
-- **O rastro rasteiro sai nos lances em que a bola é carregada**, corrida inclusive. Ele era o rastro DA BOLA; com ela na mão do jogador, sobrariam pontos no gramado atrás de nada. O caminho do lance continua desenhado pelo fluxo tracejado. Se a corrida precisar manter o rastro, é uma condição em `frameAt`. Com o arquivo aberto no Figma Desktop, conferir e ajustar é trocar três valores.
-- **Item 7 do plano (desempenho) ficou sem o perfil com CPU estrangulada.** O painel de navegador embutido fica oculto, o `requestAnimationFrame` é estrangulado e não há como aplicar throttling de CPU por ali — medir por relógio não valeria nada. O que deu para levantar sem relógio: no pico da comemoração correm 174 animações, 40 delas animando `filter: drop-shadow` (uma por faísca, e é o único grupo que não roda no compositor), e elas são FINITAS, concentradas no estouro. Depois da comemoração seguem em laço 9 ondas de letra (`transform`) e 11 cintilações (`opacity`), que são de compositor. Fora do escopo, mas visível na medição: 11 pulsos infinitos de `box-shadow` da tela por baixo continuam correndo com o sheet aberto. O perfil com throttling continua a fazer, em aparelho real.
-- **`npm ci` antes da Pull Request.** Não foi executado nesta sessão porque outro servidor de desenvolvimento está rodando a partir deste `node_modules`; reinstalar derrubaria a sessão de quem está usando.
-- **Observação para decidir depois, fora do escopo:** `--ds-feedback-error-default` também aparece em `src/components/CompetitionPage/CompetitionPage.css:275`, com fallback `#ff3f6b`. Lá a troca MUDARIA a cor (o token real é `#f43f5e`), então foi deixada como está.
-- **Premissa do plano que não se confirmou:** o item 3 assume que um script de verificação não consegue importar TypeScript. `scripts/check-brand-contracts.mjs` já faz isso hoje, usando o esbuild que vem junto com o Vite. O `check:nfl` foi entregue por regex, como planejado e aprovado; se um dia valer a pena, dá para trocar por importação real dos módulos sem dependência nova.
+- [2026-09-15 — Revisão técnica do replay da NFL e a bola na mão do jogador](handoffs/2026-09-15-replay-nfl-divida-tecnica.md):
+  desfecho explícito no lugar do booleano `complete`, extração de `playScene.ts`, renomeação
+  de `lateral` para `playSide`, `npm run check:nfl`, correção de um token inexistente,
+  `timeScaler`, e a regra de posse que leva a bola para o selo sobre o retrato. Traz também
+  o que ficou de fora: o perfil de desempenho com CPU estrangulada e a conferência direta no
+  nó do Figma.
+- [2026-09-11 — Arquitetura de marcas e replay da NFL](handoffs/2026-09-11-brand-architecture-nfl.md):
+  a base das duas frentes, e as armadilhas de dado do play-by-play do nflverse — elas não
+  quebram nada, produzem uma imagem plausível e errada, e cada uma custou uma rodada.
 
 ## Preservação
 
-- Não incluir por engano os arquivos locais preexistentes `.pnpm-store/`, `.worktrees/`, `design-qa.md`, `pnpm-lock.yaml` e `pnpm-workspace.yaml`.
-- Não executar `worktree prune`, `remove` ou `repair` sem revisar as referências herdadas em `.git/worktrees`.
-- Não publicar em `draftaco-v0`, não fazer force push automático e não tratar referências locais herdadas como prova do estado remoto.
+- Não incluir por engano os arquivos locais preexistentes `.pnpm-store/`, `.worktrees/`,
+  `design-qa.md`, `pnpm-lock.yaml` e `pnpm-workspace.yaml`.
+- Não executar `worktree prune`, `remove` ou `repair` sem revisar as referências herdadas em
+  `.git/worktrees`.
+- Não publicar em `draftaco-v0`, não fazer force push automático e não tratar referências
+  locais herdadas como prova do estado remoto.
 
-## Próximo passo
+## Antes de começar a próxima tarefa
 
-Apresentar a branch para validação local, com atenção ao recolhimento da bola na recepção. Depois da aprovação explícita, rodar `npm ci` e `npm run build` e abrir a Pull Request para `main` — lembrando que o merge dispara a publicação automática e precisa de autorização própria.
+Leia [AI_CONTEXT.md](AI_CONTEXT.md) para produto, arquitetura, rotas e comandos, e
+[COLLABORATION.md](COLLABORATION.md) quando a tarefa envolver arquitetura entre marcas,
+Git, validação completa ou publicação. Mexer no replay da NFL pede também o histórico de
+2026-09-15 acima: o que está documentado ali são decisões tomadas, não sugestões.
