@@ -4,7 +4,7 @@
     "dataset": "play_by_play_2023",
     "license": "CC-BY-4.0",
     "gameId": "2023_19_MIA_KC",
-    "cutoffPlayId": 1520,
+    "cutoffPlayId": 1543,
     "generatedBy": "scripts/build-nfl-live-fixture.mjs"
   },
   "game": {
@@ -27,29 +27,29 @@
   },
   "live": {
     "quarter": 2,
-    "clock": "07:41",
-    "homeScore": 10,
-    "awayScore": 7,
-    "down": 3,
-    "distance": 8,
-    "ballOn": "MIA 8",
+    "clock": "05:50",
+    "homeScore": 13,
+    "awayScore": 14,
+    "down": null,
+    "distance": null,
+    "ballOn": "KC 25",
     "possession": "home"
   },
   "quarterScores": {
     "home": [
       7,
-      3,
+      6,
       0,
       0
     ],
     "away": [
       0,
-      7,
+      14,
       0,
       0
     ],
-    "homeTotal": 10,
-    "awayTotal": 7
+    "homeTotal": 13,
+    "awayTotal": 14
   },
   "players": {
     "KC": {
@@ -135,8 +135,8 @@
         {
           "id": "00-0033303",
           "name": "H.Butker",
-          "fgMade": 1,
-          "fgAtt": 1,
+          "fgMade": 2,
+          "fgAtt": 2,
           "xpMade": 1,
           "xpAtt": 1
         }
@@ -237,14 +237,21 @@
         {
           "id": "00-0036212",
           "name": "T.Tagovailoa",
-          "completions": 4,
-          "attempts": 6,
-          "yards": 77,
-          "tds": 1,
+          "completions": 6,
+          "attempts": 9,
+          "yards": 142,
+          "tds": 2,
           "interceptions": 1
         }
       ],
       "rushing": [
+        {
+          "id": "00-0039040",
+          "name": "D.Achane",
+          "carries": 2,
+          "yards": 16,
+          "tds": 0
+        },
         {
           "id": "00-0036212",
           "name": "T.Tagovailoa",
@@ -265,22 +272,22 @@
           "carries": 3,
           "yards": 7,
           "tds": 0
-        },
-        {
-          "id": "00-0039040",
-          "name": "D.Achane",
-          "carries": 1,
-          "yards": 0,
-          "tds": 0
         }
       ],
       "receiving": [
         {
           "id": "00-0033040",
           "name": "T.Hill",
-          "receptions": 2,
-          "yards": 62,
-          "tds": 1
+          "receptions": 3,
+          "yards": 109,
+          "tds": 2
+        },
+        {
+          "id": "00-0036613",
+          "name": "J.Waddle",
+          "receptions": 1,
+          "yards": 18,
+          "tds": 0
         },
         {
           "id": "00-0039040",
@@ -303,8 +310,8 @@
           "name": "J.Sanders",
           "fgMade": 0,
           "fgAtt": 0,
-          "xpMade": 1,
-          "xpAtt": 1
+          "xpMade": 2,
+          "xpAtt": 2
         }
       ],
       "defense": [
@@ -526,12 +533,23 @@
       "id": "7",
       "quarter": 2,
       "side": "home",
-      "result": null,
-      "scorer": null,
-      "plays": 11,
+      "result": "Field goal",
+      "scorer": "H.Butker",
+      "plays": 12,
       "yards": 72,
-      "duration": "6:20",
-      "inProgress": true
+      "duration": "6:25",
+      "inProgress": false
+    },
+    {
+      "id": "8",
+      "quarter": 2,
+      "side": "away",
+      "result": "Touchdown",
+      "scorer": "T.Hill",
+      "plays": 5,
+      "yards": 71,
+      "duration": "1:43",
+      "inProgress": false
     }
   ],
   "plays": [
@@ -2344,35 +2362,300 @@
       "returner": null,
       "fieldGoalResult": null,
       "kickOutcome": null
+    },
+    {
+      "id": "1543",
+      "driveId": "7",
+      "quarter": 2,
+      "clock": "07:39",
+      "side": "home",
+      "type": "field_goal",
+      "down": 4,
+      "distance": 8,
+      "startYard": 92,
+      "playSide": "middle",
+      "yards": 0,
+      "airYards": null,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": null,
+      "receiver": null,
+      "rusher": null,
+      "kickDistance": 26,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": "H.Butker",
+      "returner": null,
+      "fieldGoalResult": "made",
+      "kickOutcome": null
+    },
+    {
+      "id": "9001",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "07:33",
+      "side": "away",
+      "type": "kickoff",
+      "down": null,
+      "distance": null,
+      "startYard": 65,
+      "playSide": "middle",
+      "yards": 0,
+      "airYards": null,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": null,
+      "receiver": null,
+      "rusher": null,
+      "kickDistance": 63,
+      "returnYards": 27,
+      "touchback": false,
+      "kicker": "H.Butker",
+      "returner": "D.Achane",
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9002",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "07:26",
+      "side": "away",
+      "type": "pass",
+      "down": 1,
+      "distance": 10,
+      "startYard": 29,
+      "playSide": "left",
+      "yards": 18,
+      "airYards": 12,
+      "yardsAfterCatch": 6,
+      "complete": true,
+      "touchdown": false,
+      "firstDown": true,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": "T.Tagovailoa",
+      "receiver": "J.Waddle",
+      "rusher": null,
+      "kickDistance": null,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": null,
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9003",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "06:52",
+      "side": "away",
+      "type": "pass",
+      "down": 1,
+      "distance": 10,
+      "startYard": 47,
+      "playSide": "right",
+      "yards": 0,
+      "airYards": 34,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": "T.Tagovailoa",
+      "receiver": "T.Hill",
+      "rusher": null,
+      "kickDistance": null,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": null,
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9004",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "06:45",
+      "side": "away",
+      "type": "no_play",
+      "down": 2,
+      "distance": 10,
+      "startYard": 47,
+      "playSide": "right",
+      "yards": 0,
+      "airYards": null,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": true,
+      "penalty": true,
+      "penaltyType": "Offensive Holding",
+      "nullified": {
+        "kind": "pass",
+        "passer": "T.Tagovailoa",
+        "receiver": "D.Achane",
+        "rusher": null,
+        "complete": true,
+        "location": "right",
+        "yards": 8,
+        "touchdown": false
+      },
+      "passer": null,
+      "receiver": null,
+      "rusher": null,
+      "kickDistance": null,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": null,
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9005",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "06:38",
+      "side": "away",
+      "type": "run",
+      "down": 2,
+      "distance": 20,
+      "startYard": 37,
+      "playSide": "left",
+      "yards": 16,
+      "airYards": null,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": null,
+      "receiver": null,
+      "rusher": "D.Achane",
+      "kickDistance": null,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": null,
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9006",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "05:58",
+      "side": "away",
+      "type": "pass",
+      "down": 3,
+      "distance": 4,
+      "startYard": 53,
+      "playSide": "right",
+      "yards": 47,
+      "airYards": 41,
+      "yardsAfterCatch": 6,
+      "complete": true,
+      "touchdown": true,
+      "firstDown": true,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": "T.Tagovailoa",
+      "receiver": "T.Hill",
+      "rusher": null,
+      "kickDistance": null,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": null,
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
+    },
+    {
+      "id": "9007",
+      "driveId": "8",
+      "quarter": 2,
+      "clock": "05:50",
+      "side": "away",
+      "type": "extra_point",
+      "down": null,
+      "distance": null,
+      "startYard": 85,
+      "playSide": "middle",
+      "yards": 0,
+      "airYards": null,
+      "yardsAfterCatch": null,
+      "complete": false,
+      "touchdown": false,
+      "firstDown": false,
+      "noPlay": false,
+      "penalty": false,
+      "penaltyType": null,
+      "nullified": null,
+      "passer": null,
+      "receiver": null,
+      "rusher": null,
+      "kickDistance": 33,
+      "returnYards": 0,
+      "touchback": false,
+      "kicker": "J.Sanders",
+      "returner": null,
+      "fieldGoalResult": null,
+      "kickOutcome": null
     }
   ],
   "teamComparison": [
     {
       "key": "total-yards",
       "home": 203,
-      "away": 103
+      "away": 184
     },
     {
       "key": "pass-yards",
       "home": 118,
-      "away": 77
+      "away": 142
     },
     {
       "key": "rush-yards",
       "home": 85,
-      "away": 26
+      "away": 42
     },
     {
       "key": "first-downs",
       "home": 10,
-      "away": 3
+      "away": 5
     },
     {
       "key": "third-down",
       "home": "3/7",
-      "away": "0/4",
+      "away": "1/5",
       "homeRatio": 0.42857142857142855,
-      "awayRatio": 0
+      "awayRatio": 0.2
     },
     {
       "key": "turnovers",
@@ -2382,16 +2665,16 @@
     {
       "key": "penalties",
       "home": "2-20",
-      "away": "2-9",
+      "away": "3-19",
       "homeRatio": 20,
-      "awayRatio": 9
+      "awayRatio": 19
     },
     {
       "key": "possession",
       "home": "15:00",
-      "away": "7:24",
+      "away": "9:07",
       "homeRatio": 900,
-      "awayRatio": 444
+      "awayRatio": 547
     }
   ]
 }

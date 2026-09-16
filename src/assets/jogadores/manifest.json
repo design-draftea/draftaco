@@ -3574,7 +3574,10 @@
     {
       "team": "MIA Dolphins",
       "name": "De'Von Achane",
-      "file": "nfl/de-von-achane.png"
+      "file": "nfl/de-von-achane.png",
+      "aliases": [
+        "Devon Achane"
+      ]
     },
     {
       "team": "MIA Dolphins",

@@ -92,11 +92,14 @@ conferir('chute: sem retorno, diz por quê', semDesfecho.length === 0,
   `sem \`kickOutcome\`: ${semDesfecho.join(', ')}`)
 
 // O lance anulado é extraído do TEXTO oficial porque o nflverse deixa as colunas
-// estatísticas vazias em `no_play`. Estas três são o recorte inteiro, conferidas uma a uma
-// contra a súmula: se o parser do texto mudar, é aqui que aparece.
+// estatísticas vazias em `no_play`. As três do jogo real são conferidas uma a uma contra a
+// súmula abaixo: se o parser do texto mudar, é aqui que aparece. A quarta é da campanha de
+// demonstração, fabricada no gerador — ela entra pelo mesmo parser, então também prova que
+// o texto dela está no formato do nflverse.
 const anuladas = jogadas.filter((play) => play.noPlay)
-conferir('anulada: o recorte tem as três', anuladas.length === 3,
-  `encontradas ${anuladas.length}: ${anuladas.map((play) => play.id).join(', ')}`)
+const anuladasReais = anuladas.filter((play) => Number(play.id) < 9000)
+conferir('anulada: o recorte real tem as três', anuladasReais.length === 3,
+  `encontradas ${anuladasReais.length}: ${anuladasReais.map((play) => play.id).join(', ')}`)
 
 const anulada = (id) => jogadas.find((play) => play.id === id)
 const falsoInicio = anulada('360')
@@ -125,6 +128,15 @@ conferir('anulada 1453: passe Mahomes -> Rice de 8 jardas, touchdown que não co
   && touchdownAnulado.touchdown === false,
   `nullified=${JSON.stringify(touchdownAnulado?.nullified)} play.touchdown=${touchdownAnulado?.touchdown}`)
 
+const passeAnuladoDemo = jogadas.find((play) => play.id === '9004')
+conferir('anulada 9004 (demo): passe Tagovailoa -> Achane de 8 jardas',
+  !!passeAnuladoDemo?.nullified
+  && passeAnuladoDemo.nullified.kind === 'pass'
+  && passeAnuladoDemo.nullified.passer === 'T.Tagovailoa'
+  && passeAnuladoDemo.nullified.receiver === 'D.Achane'
+  && passeAnuladoDemo.nullified.yards === 8,
+  `nullified=${JSON.stringify(passeAnuladoDemo?.nullified)}`)
+
 const anuladaComJardas = anuladas.filter((play) => play.yards !== 0).map((play) => play.id)
 conferir('anulada: nenhuma credita jardas', anuladaComJardas.length === 0,
   `creditaram jardas: ${anuladaComJardas.join(', ')}`)
@@ -132,8 +144,23 @@ conferir('anulada: nenhuma credita jardas', anuladaComJardas.length === 0,
 // `fixed_drive_result` já traz o desfecho FINAL da campanha, inclusive da que ainda está
 // correndo. Mostrar isso entregaria o que ainda não aconteceu no jogo.
 const emAndamento = jogo.drives.filter((drive) => drive.inProgress)
-conferir('campanha em andamento: existe uma só', emAndamento.length === 1,
-  `encontradas ${emAndamento.length}`)
+// No máximo uma, e pode ser NENHUMA: quando o recorte para num chute de pontuação, a
+// campanha acabou e a seguinte ainda não começou — é o intervalo entre o ponto extra e o
+// kickoff. Fora desse caso, uma campanha tem de estar correndo, senão o jogo não está ao
+// vivo e a faixa de situação não tem o que mostrar.
+const ULTIMA = jogo.plays[jogo.plays.length - 1]
+const ENTRE_POSSES = ULTIMA.type === 'extra_point' || ULTIMA.type === 'field_goal'
+conferir('campanha em andamento: uma só, ou nenhuma entre posses',
+  emAndamento.length === 1 || (emAndamento.length === 0 && ENTRE_POSSES),
+  `encontradas ${emAndamento.length}, último lance ${ULTIMA.type}`)
+// Entre posses a faixa de situação descreve o recomeço, não o lance que acabou: quem sofreu
+// o ponto assume a bola. Sem isto ela diria que quem marcou está com a bola no campo de
+// defesa do adversário.
+if (ENTRE_POSSES) {
+  conferir('situação ao vivo: a posse passou para quem recebe o chute',
+    jogo.live.possession !== ULTIMA.side && jogo.live.down === null,
+    `posse ${jogo.live.possession}, último lance do lado ${ULTIMA.side}, descida ${jogo.live.down}`)
+}
 conferir('campanha em andamento: não vaza o futuro',
   emAndamento.every((drive) => drive.result === null && drive.scorer === null),
   JSON.stringify(emAndamento.map((drive) => ({ id: drive.id, result: drive.result, scorer: drive.scorer }))))

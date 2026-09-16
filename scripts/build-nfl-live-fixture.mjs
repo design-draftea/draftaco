@@ -27,7 +27,12 @@ const args = Object.fromEntries(
 )
 
 const GAME_ID = args.game ?? '2023_19_MIA_KC'
-const CUTOFF = Number(args.cutoff ?? 1520)
+/* O corte fecha a campanha do KC no field goal de 26 jardas (13 x 7), para ela entrar na
+   lista com desfecho em vez de ficar pendurada em 3ª & 8 quando a campanha de demonstração
+   vem depois. Antes era 1520, uma jogada antes do chute. */
+const CUTOFF = Number(args.cutoff ?? 1543)
+/** `--demo=0` gera só o recorte real, sem a campanha fabricada (ver `demoPlays`). */
+const WITH_DEMO = args.demo !== '0' && args.demo !== 'false'
 const SEASON = GAME_ID.slice(0, 4)
 const PBP_URL = `https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_${SEASON}.csv.gz`
 
@@ -507,11 +512,16 @@ function buildDrives(plays, cutoffPlay, home) {
   }
 
   const lastDriveId = [...byDrive.keys()].pop()
+  /* Campanha que terminou num chute de pontuação está ENCERRADA, mesmo sendo a última do
+     recorte: ela já entregou a bola ao adversário. Sem isto ela apareceria sem desfecho na
+     lista — um touchdown sem a palavra "Touchdown" ao lado. */
+  const SCORING_KICKS = new Set(['extra_point', 'field_goal'])
 
   return [...byDrive.entries()].map(([id, drivePlays]) => {
     const first = drivePlays[0]
     const last = drivePlays[drivePlays.length - 1]
     const inProgress = id === lastDriveId
+      && !SCORING_KICKS.has(drivePlays[drivePlays.length - 1].play_type)
     const startQuarter = Number(first.drive_quarter_start || first.qtr)
 
     const playCount = inProgress
@@ -558,15 +568,177 @@ function buildDrives(plays, cutoffPlay, home) {
   })
 }
 
+// ── Campanha de demonstração ───────────────────────────────────────────────
+//
+// FABRICADA. As demais jogadas deste fixture são o play-by-play real do MIA @ KC de
+// 2023; esta campanha não aconteceu.
+//
+// Por que existe: campanha real é quase toda corrida de 3 jardas e passe curto, e o
+// replay sabe desenhar muito mais do que isso — retorno de chute, passe que cai, jogada
+// anulada, corrida, bomba para touchdown e chute entre os postes. Para apresentar o
+// protótipo era preciso uma campanha que passasse por todo esse vocabulário em pouco
+// tempo. O corte real do jogo foi conferido antes: das 21 campanhas, só três terminam em
+// touchdown, e nenhuma delas junta variedade e tamanho curto.
+//
+// Por que mora AQUI e não no JSON: o JSON é gerado. Uma edição à mão desaparece no
+// próximo `node scripts/build-nfl-live-fixture.mjs` sem deixar rastro, e quem rodasse não
+// entenderia por que o protótipo mudou.
+//
+// Por que em formato de play-by-play e não de fixture: entrando junto com as jogadas
+// reais, ela passa pelas MESMAS contas — placar por quarter, estatística de jogador,
+// comparação entre equipes, campanhas, situação ao vivo. Fabricar direto no fixture
+// obrigaria a repetir todas essas contas à mão, e cada uma seria uma chance de o placar da
+// tela não bater com o das jogadas.
+//
+// `--demo=0` gera o recorte real puro.
+//
+// A história: KC acabou de fazer o field goal de 26 jardas (13 x 7, jogada real 1543).
+// MIA recebe e responde em 1:43 — retorno de 27, passe de 18 para primeira descida, bomba
+// incompleta, uma anulada por holding, corrida de 16 e o touchdown de 47 jardas numa 3ª &
+// 4. Com o ponto extra, MIA vira o jogo em 14 x 13.
+const DEMO_DRIVE = '8'
+
+/** Linha de pbp com todas as colunas que o gerador lê, para cada lance preencher só o seu. */
+const demoPlay = (home, away, campos) => ({
+  game_id: GAME_ID,
+  drive: DEMO_DRIVE,
+  fixed_drive: DEMO_DRIVE,
+  qtr: '2',
+  posteam: away,
+  defteam: home,
+  // Colunas de campanha: o nflverse repete em todas as linhas, e `buildDrives` lê da
+  // primeira.
+  drive_quarter_start: '2',
+  drive_game_clock_start: '07:33',
+  drive_start_yard_line: `${away} 29`,
+  drive_end_yard_line: `${home} 47`,
+  fixed_drive_result: 'Touchdown',
+  drive_play_count: '5',
+  drive_time_of_possession: '1:43',
+  // Tudo o mais vazio por padrão: `num()` e `isOne()` tratam vazio como 0/falso.
+  down: '', ydstogo: '', yrdln: '', yards_gained: '0', air_yards: '', yards_after_catch: '',
+  complete_pass: '0', touchdown: '0', pass_touchdown: '0', rush_touchdown: '0', first_down: '0',
+  third_down_converted: '0', penalty: '0', penalty_team: '', penalty_type: '', penalty_yards: '0',
+  interception: '0', fumble_lost: '0', sack: '0', touchback: '0', kick_distance: '', return_yards: '0',
+  extra_point_result: '', field_goal_result: '', punt_downed: '0', punt_fair_catch: '0',
+  punt_out_of_bounds: '0', pass_location: '', run_location: '',
+  passer_player_name: '', passer_player_id: '', receiver_player_name: '', receiver_player_id: '',
+  rusher_player_name: '', rusher_player_id: '', kicker_player_name: '', kicker_player_id: '',
+  punter_player_name: '', punter_player_id: '', kickoff_returner_player_name: '',
+  punt_returner_player_name: '', interception_player_name: '', interception_player_id: '',
+  sack_player_name: '', sack_player_id: '', td_player_name: '',
+  passing_yards: '0', receiving_yards: '0', rushing_yards: '0',
+  total_home_score: '13', total_away_score: '7',
+  ...campos,
+})
+
+const ID = { tua: '00-0036212', hill: '00-0033040', waddle: '00-0036613', achane: '00-0039040', sanders: '00-0034794', butker: '00-0033303' }
+
+function demoPlays(home, away) {
+  return [
+    // 1. Retorno de chute: a bola cai no campo e o retornador sai com ela na mão.
+    demoPlay(home, away, {
+      play_id: '9001', time: '07:33', play_type: 'kickoff', yrdln: `${home} 35`,
+      kick_distance: '63', return_yards: '27', kicker_player_name: 'H.Butker', kicker_player_id: ID.butker,
+      kickoff_returner_player_name: 'D.Achane',
+      desc: `7-H.Butker kicks 63 yards from ${home} 35 to ${away} 2. 22-D.Achane to ${away} 29 for 27 yards (26-D.Bush).`,
+    }),
+    // 2. Passe curto com corrida depois: voo, recepção e trecho rasteiro na mesma jogada.
+    demoPlay(home, away, {
+      play_id: '9002', time: '07:26', play_type: 'pass', down: '1', ydstogo: '10', yrdln: `${away} 29`,
+      yards_gained: '18', air_yards: '12', yards_after_catch: '6', complete_pass: '1', first_down: '1',
+      pass_location: 'left', passer_player_name: 'T.Tagovailoa', passer_player_id: ID.tua,
+      receiver_player_name: 'J.Waddle', receiver_player_id: ID.waddle,
+      passing_yards: '18', receiving_yards: '18',
+      desc: `(7:26) (Shotgun) 1-T.Tagovailoa pass short left to 17-J.Waddle to ${away} 47 for 18 yards (33-E.Apple).`,
+    }),
+    // 3. Passe profundo que cai: o X vermelho no ponto onde a bola bateu no chão.
+    demoPlay(home, away, {
+      play_id: '9003', time: '06:52', play_type: 'pass', down: '1', ydstogo: '10', yrdln: `${away} 47`,
+      air_yards: '34', pass_location: 'right', passer_player_name: 'T.Tagovailoa', passer_player_id: ID.tua,
+      receiver_player_name: 'T.Hill', receiver_player_id: ID.hill,
+      desc: '(6:52) (Shotgun) 1-T.Tagovailoa pass incomplete deep right to 10-T.Hill (38-L.Sneed).',
+    }),
+    // 4. Anulada por penalidade: o lance aconteceu e é desenhado em cinza, com o carimbo.
+    demoPlay(home, away, {
+      play_id: '9004', time: '06:45', play_type: 'no_play', down: '2', ydstogo: '10', yrdln: `${away} 47`,
+      penalty: '1', penalty_team: away, penalty_type: 'Offensive Holding', penalty_yards: '10',
+      desc: `(6:45) (Shotgun) 1-T.Tagovailoa pass short right to 22-D.Achane for 8 yards. PENALTY on ${away}-76-K.Jones, Offensive Holding, 10 yards, enforced at ${away} 47 - No Play.`,
+    }),
+    // 5. Corrida: só trecho rasteiro, sem arco.
+    demoPlay(home, away, {
+      play_id: '9005', time: '06:38', play_type: 'run', down: '2', ydstogo: '20', yrdln: `${away} 37`,
+      yards_gained: '16', run_location: 'left', rusher_player_name: 'D.Achane', rusher_player_id: ID.achane,
+      rushing_yards: '16',
+      desc: `(6:38) (Shotgun) 22-D.Achane left end to ${home} 47 for 16 yards (29-B.Jones).`,
+    }),
+    // 6. O lance da campanha: bomba de 47 jardas para touchdown numa 3ª & 4.
+    demoPlay(home, away, {
+      play_id: '9006', time: '05:58', play_type: 'pass', down: '3', ydstogo: '4', yrdln: `${home} 47`,
+      yards_gained: '47', air_yards: '41', yards_after_catch: '6', complete_pass: '1', first_down: '1',
+      third_down_converted: '1', touchdown: '1', pass_touchdown: '1', pass_location: 'right',
+      passer_player_name: 'T.Tagovailoa', passer_player_id: ID.tua,
+      receiver_player_name: 'T.Hill', receiver_player_id: ID.hill,
+      td_player_name: 'T.Hill', passing_yards: '47', receiving_yards: '47',
+      total_home_score: '13', total_away_score: '13',
+      desc: '(5:58) (Shotgun) 1-T.Tagovailoa pass deep right to 10-T.Hill for 47 yards, TOUCHDOWN.',
+    }),
+    // 7. Ponto extra: a bola para entre os postes, no alto.
+    demoPlay(home, away, {
+      play_id: '9007', time: '05:50', play_type: 'extra_point', yrdln: `${home} 15`,
+      // A distância é o que faz o lance ter voo (`isKick` em `playNarrative`): sem ela o
+      // ponto extra não anima, e o sheet abriria no touchdown em vez de nele. São as 33
+      // jardas de sempre — 15 do snap mais 18 da end zone e do fundo.
+      kick_distance: '33',
+      extra_point_result: 'good', kicker_player_name: 'J.Sanders', kicker_player_id: ID.sanders,
+      total_home_score: '13', total_away_score: '14',
+      desc: '7-J.Sanders extra point is GOOD, Center-44-B.Ferguson, Holder-16-J.Bailey.',
+    }),
+  ]
+}
+
+/**
+ * Descida, distância, posição e posse no instante do corte.
+ *
+ * Caso normal: sai do próprio lance do corte. Mas quando o corte cai num chute de
+ * PONTUAÇÃO — ponto extra ou field goal — não existe descida nem distância: o lance
+ * acabou, a posse já mudou de dono e quem recebe ainda não começou. Ler o lance do corte
+ * ali diria que quem acabou de marcar está com a bola no campo de defesa do adversário, e é
+ * essa faixa que abre o sheet de jogadas.
+ *
+ * Nesse caso a situação descreve o recomeço: quem sofreu o ponto assume na própria 25, que
+ * é onde o kickoff para quando vira touchback. A descida fica nula de propósito — a bola
+ * ainda não foi chutada —, e o app já trata isso caindo em 1ª & 10.
+ */
+function liveSituation(cutoffPlay, home, away) {
+  const SCORING_KICKS = new Set(['extra_point', 'field_goal'])
+  if (SCORING_KICKS.has(cutoffPlay.play_type)) {
+    const receiving = cutoffPlay.posteam === home ? away : home
+
+    return { down: null, distance: null, ballOn: `${receiving} 25`, possession: receiving === home ? 'home' : 'away' }
+  }
+
+  return {
+    down: Number(cutoffPlay.down) || null,
+    distance: Number(cutoffPlay.ydstogo) || null,
+    ballOn: cutoffPlay.yrdln || null,
+    possession: cutoffPlay.posteam === home ? 'home' : 'away',
+  }
+}
+
 async function main() {
   const allPlays = await loadPbp()
   if (allPlays.length === 0) throw new Error(`jogo ${GAME_ID} não encontrado`)
 
-  const plays = allPlays.filter((play) => Number(play.play_id) <= CUTOFF)
-  const cutoffPlay = plays[plays.length - 1]
   const first = allPlays[0]
   const home = first.home_team
   const away = first.away_team
+
+  const plays = [
+    ...allPlays.filter((play) => Number(play.play_id) <= CUTOFF),
+    ...(WITH_DEMO ? demoPlays(home, away) : []),
+  ]
+  const cutoffPlay = plays[plays.length - 1]
 
   // Placar por quarter: diferença do placar acumulado dentro de cada período.
   const quarters = { [home]: [0, 0, 0, 0], [away]: [0, 0, 0, 0] }
@@ -606,10 +778,7 @@ async function main() {
       clock: cutoffPlay.time,
       homeScore: num(cutoffPlay.total_home_score),
       awayScore: num(cutoffPlay.total_away_score),
-      down: Number(cutoffPlay.down) || null,
-      distance: Number(cutoffPlay.ydstogo) || null,
-      ballOn: cutoffPlay.yrdln || null,
-      possession: cutoffPlay.posteam === home ? 'home' : 'away',
+      ...liveSituation(cutoffPlay, home, away),
     },
     quarterScores: {
       home: quarters[home],
