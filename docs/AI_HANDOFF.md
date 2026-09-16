@@ -3,14 +3,17 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-16.
-- Checkout: pasta principal `draftaco`, na branch `feature/nfl-jogadas-ao-vivo`.
+- Checkout: pasta principal `draftaco`. A branch `feature/nfl-jogadas-ao-vivo` já está na
+  `main`; o trabalho descrito aqui está PUBLICADO.
 - Objetivo: o jogo de NFL do protótipo mostrava um INSTANTE congelado — o touchdown de 47
   jardas — enquanto o relógio do placar corria. Relógio andando com campo morto é a assinatura
   de um replay em laço. Agora os lances seguintes chegam sozinhos, um a um, até o intervalo; o
   protótipo abre na corrida ANTES do touchdown, o sheet de jogadas acompanha o jogo sem ninguém
   tocar em nada, e cada chegada tem movimento próprio na lista.
-- **O trabalho NÃO está commitado.** Falta a aprovação da versão local para commit e Pull
-  Request. `npm ci` ainda não rodou nesta branch; o `AGENTS.md` pede antes de abrir a PR.
+- **Entregue e publicado.** Pull Request #6, merge `95667e2`, deploy do GitHub Actions
+  concluído com sucesso. Antes da PR rodaram `npm ci` e `npm run build`, com `check:nfl`
+  (48 conferências), `check:brands` e `check:player-props` passando, e o `eslint src` ficou
+  nos mesmos 26 problemas preexistentes (18 erros, 8 avisos) — nenhum novo.
 - Esta sessão CONTINUOU o trabalho de outra sessão do Claude, na mesma pasta, que parou no
   meio por limite de créditos. O servidor de desenvolvimento na porta 5173 é daquela sessão e
   seguiu servindo esta mesma árvore de arquivos.
@@ -264,13 +267,28 @@ da lista de campanhas, porque ali ele acompanha uma linha de texto em vez de tit
   `AGENTS.md`.
 - NÃO conferido nesta sessão: evento de basquete ao vivo e evento pré-jogo.
 
+### Conferência depois do deploy
+
+- `/pitaco/apostas` e `/draftea/apuestas` conferidos direto na rota, em 375x812. As duas
+  respondem com HTTP 404 e o corpo do `index.html`: é o fallback de SPA do `deploy.yml`
+  (`cp dist/index.html dist/404.html`), não um defeito — a rota renderiza.
+- Na Pitaco, com a aba visível, o relógio do card andou de `Q2 04:28` para `Q2 03:57` em 10
+  segundos reais: 31 segundos de jogo, que é a compressão de 3x valendo em produção.
+- O placar da tela do evento abre o sheet de jogadas, que sobe com o placar próprio
+  (`KC 13 · Q2 2:31 · 1ª & 10 · MIA 20 · 14 MIA`) e o campo reproduzindo o lance mais recente
+  (`Corrida de 2 jardas · Achane`).
+- Na Draftea: `LIVE`, colunas `ML`/`SPREAD`/`TOTAL` e navbar `Bets · Mis entradas · Gaming ·
+  Rewards`, com o mesmo jogo.
+- O protótipo publicado passa antes pelo portão de localização
+  (`LocationPermissionGate`), que é preexistente: sem permissão de localização no navegador,
+  nenhuma das duas rotas mostra o jogo.
+
 ### Próximo passo concreto
 
-1. Apresentar a versão local para a pessoa responsável pelo protótipo e pedir aprovação.
-2. Com a aprovação: `npm ci`, `npm run build`, commit na `feature/nfl-jogadas-ao-vivo` e Pull
-   Request para a `main`. O merge dispara o deploy pelo GitHub Actions, então ele precisa de
-   autorização explícita à parte.
-3. Depois do deploy, conferir `/pitaco/apostas` e `/draftea/apuestas` direto na rota.
+1. A decisão de produto em aberto na seção acima (a faixa de situação descrever o LANCE que
+   acabou ou a SITUAÇÃO que ficou) continua esperando a pessoa responsável pelo protótipo.
+2. Nada mais desta branch está pendente. A limpeza (branch local, branch remota e worktrees)
+   não foi feita: o `AGENTS.md` pede autorização explícita para ela.
 
 ## Histórico das entregas
 
