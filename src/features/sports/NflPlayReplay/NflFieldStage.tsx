@@ -51,6 +51,10 @@ const PATH_COLOR: Record<PathTone, string> = {
 /** Braço do X que marca onde o passe caiu. */
 const INCOMPLETE_MARK = 4.5
 
+/** Braço e traço do X que ocupa o selo numa jogada anulada. */
+const VOID_MARK_ARM = 4.2
+const VOID_MARK_STROKE = 1.8
+
 /* Um pouco menor que os 18 do estudo: em 375px de largura a bola competia com o retrato e
    com os marcadores do gramado. */
 const BALL_SIZE = 15
@@ -153,6 +157,29 @@ function PortraitFace({ x, name, clipId }: { x: number; name: string | null; cli
   )
 }
 
+/**
+ * X no lugar da bola na mão: o lance aconteceu e alguém ficou com a bola, mas não conta.
+ *
+ * Marca a POSSE, que é exatamente o que a anulada desfaz. Antes disso era a palavra ANULADA
+ * atravessada sobre o campo, que dizia o mesmo apontando para lugar nenhum — e, quando o
+ * lance acontecia no meio do campo, caía na mesma coluna do nome e do retrato, empilhando
+ * três informações uma em cima da outra.
+ *
+ * A bola sai de cena em vez de ser riscada, e isso foi medido, não suposto: o selo tem 16px
+ * e a bola 12px, e nesse tamanho cabe a bola OU o X. Riscando por cima, com ou sem contorno,
+ * ou a bola some sob o traço ou o traço some sobre a bola. Que o jogador estava com ela
+ * continua sendo dito pelo caminho cinza que chega até ele e pelo texto do cartão; o que só
+ * o selo consegue dizer é que a posse não vale.
+ */
+function VoidMark({ x, y }: { x: number; y: number }) {
+  return (
+    <g stroke={VOID_COLOR} strokeWidth={VOID_MARK_STROKE} strokeLinecap="round">
+      <line x1={x - VOID_MARK_ARM} y1={y - VOID_MARK_ARM} x2={x + VOID_MARK_ARM} y2={y + VOID_MARK_ARM} />
+      <line x1={x - VOID_MARK_ARM} y1={y + VOID_MARK_ARM} x2={x + VOID_MARK_ARM} y2={y - VOID_MARK_ARM} />
+    </g>
+  )
+}
+
 interface NflFieldStageProps {
   play: NflPlay
   phase: ReplayPhase
@@ -188,6 +215,8 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
   // A bola tem de chegar à mão do jogador ANTES de a corrida começar, então a passagem cabe
   // dentro da fase de recepção. O apagar do fim do lance não tem pressa e pode ser mais longo.
   const carried = frame.ballEnding === 'carried'
+  /** Jogada anulada: o selo da bola na mão ganha o X que diz que a posse não conta. */
+  const voided = scene.outcome === 'voided'
   const ballDuration = carried
     ? REPLAY_TIMING.catchPulse - REPLAY_TIMING.ballFadeDelay
     : REPLAY_TIMING.ballFadeDuration
@@ -244,16 +273,18 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
             cy={frame.ball.y}
             r={CARRY_BADGE_RADIUS}
             fill={PORTRAIT_FILL}
-            stroke={TRAIL_COLOR}
+            stroke={pathColor}
             strokeWidth={CARRY_BADGE_BORDER}
           />
-          <image
-            href={bolaNFL}
-            x={frame.ball.x - CARRY_BALL_SIZE / 2}
-            y={frame.ball.y - CARRY_BALL_SIZE / 2}
-            width={CARRY_BALL_SIZE}
-            height={CARRY_BALL_SIZE}
-          />
+          {voided ? <VoidMark x={frame.ball.x} y={frame.ball.y} /> : (
+            <image
+              href={bolaNFL}
+              x={frame.ball.x - CARRY_BALL_SIZE / 2}
+              y={frame.ball.y - CARRY_BALL_SIZE / 2}
+              width={CARRY_BALL_SIZE}
+              height={CARRY_BALL_SIZE}
+            />
+          )}
         </g>
       )
       : (

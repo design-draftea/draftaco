@@ -8,7 +8,6 @@ import {
   getPlaySituation,
   getPlayTitle,
   hasBallFlight,
-  hasNullifiedPlay,
   isAnimatable,
   isKick,
   isRun,
@@ -213,17 +212,6 @@ function FieldTouchdown({ speed }: { speed: ReplaySpeed }) {
 }
 
 /**
- * Selo de jogada anulada sobre o campo. A jogada é desenhada normalmente — ela aconteceu —
- * e este selo é o que diz que o resultado não vale. Sem ele a pessoa veria um lance bonito
- * sem entender por que a campanha não avançou.
- *
- * "ANULADA" serve às duas marcas sem tradução.
- */
-function FieldVoided() {
-  return <div className="nfl-plays__field-void" aria-hidden="true">ANULADA</div>
-}
-
-/**
  * Seletor de velocidade escondido a pedido da pessoa responsável pelo protótipo.
  *
  * O ESTADO de velocidade continua valendo e fica fixo em 1x — é ele que escala a duração de
@@ -351,9 +339,6 @@ export function NflPlayReplayPanel({
           // palco fica: ali a pessoa está olhando o desfecho, não esperando a troca.
           leaving={replay.isEnded && isSequence && !isLastPlay}
         />
-        {hasNullifiedPlay(play) && (replay.phase === 'catch' || replay.phase === 'run' || replay.phase === 'result') && (
-          <FieldVoided />
-        )}
         {play.touchdown && (replay.phase === 'run' || replay.phase === 'result') && (
           <>
             {/* Antes da palavra na ordem do DOM, para as faíscas passarem por trás dela. */}
