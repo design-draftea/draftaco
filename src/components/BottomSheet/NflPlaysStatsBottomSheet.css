@@ -1237,10 +1237,32 @@
 
 .nfl-plays__drive {
   position: relative;
-  display: flex;
-  align-items: center;
-  height: 72px;
   border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+/* O gatilho é a linha inteira. Fica no botão, e não no `li`, porque o alvo tem de ser
+   focável pelo teclado e anunciado como botão — o `li` com `onClick` seria só um retângulo
+   que reage ao toque. */
+.nfl-plays__drive-row {
+  display: flex;
+  width: 100%;
+  height: 72px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* Botão reseta fonte e cor no Safari; o texto da linha tem estilo próprio. */
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sem isto o toque não tem resposta nenhuma até o campo trocar de jogada, e a linha parece
+   não ter sido tocada. */
+.nfl-plays__drive-row:active {
+  background: var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08));
 }
 
 /* A campanha em foco recebe o brilho que no Figma é um asset `light` desfocado no topo
@@ -1292,22 +1314,17 @@
   white-space: nowrap;
 }
 
-.nfl-plays__drive-button {
+/* Só o sinal do que o toque faz: quem recebe o clique é a linha inteira. */
+.nfl-plays__drive-play {
   display: flex;
   flex: 0 0 44px;
   width: 44px;
   height: 44px;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 56px;
-  background: transparent;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.nfl-plays__drive-button img {
+.nfl-plays__drive-play img {
   display: block;
   width: 44px;
   height: 44px;

@@ -404,26 +404,31 @@ function PlaysView({
                       item.id === drive?.id ? 'nfl-plays__drive--active' : '',
                     ].filter(Boolean).join(' ')}
                   >
-                    <TeamLogo
-                      teamName={team.name}
-                      sport="nfl"
-                      className="nfl-plays__drive-logo"
-                      placeholderClassName="nfl-plays__drive-logo"
-                    />
-                    <div className="nfl-plays__drive-info">
-                      <p className="nfl-plays__drive-name">{getDriveTitle(item, team.nickname)}</p>
-                      <p className="nfl-plays__drive-stats">{getDriveStatsLabel(item)}</p>
-                    </div>
+                    {/* A LINHA INTEIRA é o gatilho, e não só o ícone de play: ele é um alvo
+                        de 44px numa linha de 72, e o resto do card parecia tocável sem ser.
+                        O ícone fica como sinal do que o toque faz. */}
                     <button
                       type="button"
-                      className="nfl-plays__drive-button"
-                      aria-label="Reproduzir campanha"
+                      className="nfl-plays__drive-row"
+                      aria-label={`Reproduzir campanha ${getDriveTitle(item, team.nickname)}`}
                       onClick={() => {
                         selectPlay(item.id, 0, true)
                         scrollToField()
                       }}
                     >
-                      <img src={iconPlayPeq} alt="" />
+                      <TeamLogo
+                        teamName={team.name}
+                        sport="nfl"
+                        className="nfl-plays__drive-logo"
+                        placeholderClassName="nfl-plays__drive-logo"
+                      />
+                      <div className="nfl-plays__drive-info">
+                        <p className="nfl-plays__drive-name">{getDriveTitle(item, team.nickname)}</p>
+                        <p className="nfl-plays__drive-stats">{getDriveStatsLabel(item)}</p>
+                      </div>
+                      <span className="nfl-plays__drive-play" aria-hidden="true">
+                        <img src={iconPlayPeq} alt="" />
+                      </span>
                     </button>
                   </li>
                 )
