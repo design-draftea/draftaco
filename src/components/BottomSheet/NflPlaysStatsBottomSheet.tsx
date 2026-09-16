@@ -215,6 +215,23 @@ const SEQUENCE_PAUSE = 1500
  */
 const SEQUENCE_PAUSE_GAIN = 2150
 
+/**
+ * O apito do fim do primeiro tempo.
+ *
+ * Sem ele a troca era um corte: no MESMO quadro o relógio virava `Intervalo`, o lance, o cartão
+ * e a linha do tempo sumiam, e a lista de campanhas subia 146px de uma vez. Medido no navegador,
+ * amostrando a cada 50ms — entre uma amostra e a seguinte a altura ia de 1371px para 1225px.
+ *
+ * Agora a saída tem ordem: primeiro o LANCE some do campo (é o apito), e só depois dobram as duas
+ * coisas que descrevem um lance em foco — o cartão e a linha do tempo. O campo fica, porque no
+ * intervalo ele continua ali, vazio.
+ *
+ * O valor é a soma da coreografia do CSS (`nfl-plays--whistle`): o palco apaga em 260ms e o
+ * cartão e o trilho dobram de 140ms a 520ms. Trocar antes do fim atropela a dobra e devolve o
+ * salto, só que menor.
+ */
+const HALFTIME_WHISTLE = 520
+
 const nextSpeed = (speed: ReplaySpeed): ReplaySpeed => (
   REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(speed) + 1) % REPLAY_SPEEDS.length]
 )
@@ -259,6 +276,40 @@ const getLiveSituationLabel = (live: NflLiveState, isGameOver: boolean) => {
 }
 
 /**
+ * Um número do placar que ROLA quando muda: o antigo desce e some, o novo entra por cima.
+ *
+ * O valor de trás vem do DADO, e não de estado guardado. Cada passo do feed é o jogo inteiro já
+ * calculado, então o passo anterior JÁ é o placar que estava na tela — guardar o número velho
+ * num `useState` criaria uma segunda verdade para a mesma coisa, que é exatamente como dois
+ * placares do mesmo jogo passam a divergir.
+ *
+ * Quem dispara a rolagem é a MONTAGEM do elemento, o mesmo padrão das chegadas na lista de
+ * campanhas: a `key` é o próprio valor, então o número novo é um elemento novo e a animação
+ * corre uma vez. O relógio renderiza duas a três vezes por segundo e nenhuma dessas renderizações
+ * remonta nada.
+ *
+ * Os dois números percorrem a mesma distância na mesma curva, e quem faz "sumir" e "aparecer" é o
+ * recorte da caixa — não um fade. É uma bobina, e bobina não tem meio-termo translúcido.
+ */
+function ScoreRoll({ value, previous }: { value: number; previous: number | null }) {
+  const rola = previous !== null && previous !== value
+
+  return (
+    <span className="nfl-stats-bs__live-score-roll">
+      {rola && (
+        <span className="nfl-stats-bs__live-score-roll-out" aria-hidden="true">{previous}</span>
+      )}
+      <span
+        key={value}
+        className={rola ? 'nfl-stats-bs__live-score-roll-in' : undefined}
+      >
+        {value}
+      </span>
+    </span>
+  )
+}
+
+/**
  * Placar do sheet, como na referência da Live Activity da NFL: escudo e sigla nas pontas, o
  * placar em números grandes e, no meio, o relógio com a situação de campo embaixo.
  *
@@ -273,11 +324,14 @@ const getLiveSituationLabel = (live: NflLiveState, isGameOver: boolean) => {
 function SheetScoreboard({
   teams,
   live,
+  previousLive,
   clock,
   isGameOver,
 }: {
   teams: NflTeams
   live: NflLiveState
+  /** O jogo no passo ANTERIOR, só para os números saberem de onde vieram. Ver `ScoreRoll`. */
+  previousLive: NflLiveState | null
   clock: string
   isGameOver: boolean
 }) {
@@ -300,7 +354,10 @@ function SheetScoreboard({
         <span className="nfl-stats-bs__live-score-abbr">{teams[side].abbr}</span>
       </div>
       <strong className="nfl-stats-bs__live-score-number">
-        {side === 'home' ? live.homeScore : live.awayScore}
+        <ScoreRoll
+          value={side === 'home' ? live.homeScore : live.awayScore}
+          previous={previousLive ? (side === 'home' ? previousLive.homeScore : previousLive.awayScore) : null}
+        />
       </strong>
     </div>
   )
@@ -309,7 +366,18 @@ function SheetScoreboard({
     <section className="nfl-stats-bs__live-score" aria-label="Placar">
       {teamSide('home', false)}
       <div className="nfl-stats-bs__live-score-state">
-        <span className="nfl-stats-bs__live-score-clock">{clock}</span>
+        {/* No fim do período o relógio deixa de contar e passa a dizer o estado do jogo. A troca
+            é a primeira coisa que anuncia o apito — antes de o lance sair do campo —, então ela
+            entra com movimento em vez de trocar o texto num quadro. A classe só aparece quando
+            `isGameOver` vira, e é a chegada dela que dispara a animação. */}
+        <span
+          className={[
+            'nfl-stats-bs__live-score-clock',
+            isGameOver ? 'nfl-stats-bs__live-score-clock--state' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {clock}
+        </span>
         {situation && <span className="nfl-stats-bs__live-score-situation">{situation}</span>}
       </div>
       {teamSide('away', true)}
@@ -342,6 +410,7 @@ function PlaysView({
   plays,
   arrival,
   live,
+  previousLive,
   clock,
   isOpen,
   isGameOver,
@@ -353,6 +422,8 @@ function PlaysView({
   arrival: NflPlay | null
   /** O jogo AGORA, para o placar do topo: placar, relógio e situação de campo. */
   live: NflLiveState
+  /** O jogo no passo ANTERIOR, só para os números do placar saberem de onde vieram. */
+  previousLive: NflLiveState | null
   /** Relógio do placar, já formatado (`Q2 05:58`, ou `Intervalo` no fim do período). */
   clock: string
   isOpen: boolean
@@ -434,9 +505,36 @@ function PlaysView({
    * campanha depois do fim não é interrompido: ali existe um lance em foco para mostrar, e a
    * tela de intervalo diz o contrário.
    */
-  const showsHalftime = isGameOver && isFollowing && !hasPickedAfterEnd
+  const isHalftime = isGameOver && isFollowing && !hasPickedAfterEnd
+
+  /**
+   * O intervalo entra em dois tempos: a saída do lance (`whistle`) e o campo vazio (`over`).
+   *
+   * Quem ABRE o sheet com o jogo já parado começa direto em `over`: ali não há lance na tela para
+   * sair, e rodar a saída seria meio segundo de espera por nada. `abriuNoIntervalo` guarda o
+   * valor com que o componente montou — o sheet desmonta ao fechar, então ele é exatamente isso.
+   *
+   * O efeito depende SÓ de `isHalftime`. Depender também de `halftime` faria a limpeza do render
+   * seguinte cancelar o próprio agendamento — o mesmo tropeço que a marca de chegada na lista de
+   * campanhas já custou uma rodada.
+   */
+  // `useState` e não `useRef`: este valor É lido no render (decide o fade do campo), e ref lida
+  // no render é erro de lint. Estado sem setter é justamente um valor fixado na montagem.
+  const [abriuNoIntervalo] = useState(isHalftime)
+  const [halftimeAssentou, setHalftimeAssentou] = useState(abriuNoIntervalo)
+
+  useEffect(() => {
+    if (!isHalftime || halftimeAssentou) return
+
+    const id = window.setTimeout(() => setHalftimeAssentou(true), HALFTIME_WHISTLE)
+
+    return () => window.clearTimeout(id)
+  }, [isHalftime, halftimeAssentou])
+
+  const showsHalftime = isHalftime && halftimeAssentou
+  const isWhistling = isHalftime && !halftimeAssentou
   // No intervalo não há campanha em foco: o destaque na lista aponta para o que está no campo, e
-  // o campo está vazio.
+  // o campo está vazio. Durante o apito o lance ainda está saindo, então a campanha segue marcada.
   const drive = showsHalftime ? null : drives.find((item) => item.id === driveId) ?? null
 
   // ── A ponta ao vivo ────────────────────────────────────────────────────────
@@ -624,15 +722,34 @@ function PlaysView({
   )
 
   return (
-    <div className="nfl-plays" ref={playsRef}>
-      <SheetScoreboard teams={teams} live={live} clock={clock} isGameOver={isGameOver} />
+    <div
+      className={['nfl-plays', isWhistling ? 'nfl-plays--whistle' : ''].filter(Boolean).join(' ')}
+      ref={playsRef}
+    >
+      <SheetScoreboard
+        teams={teams}
+        live={live}
+        previousLive={previousLive}
+        clock={clock}
+        isGameOver={isGameOver}
+      />
 
       {showsHalftime && (
         /* Intervalo: o campo fica, a jogada não. A palavra não se repete aqui — quem diz o
            estado é o relógio do placar, logo acima, e o campo vazio é o que sobra de um jogo
            parado. Saem também o cartão da jogada e a linha do tempo: os dois descrevem um lance
-           em foco, e não há nenhum. */
-        <div className="nfl-plays__field nfl-plays__field--halftime">
+           em foco, e não há nenhum.
+
+           `--after-whistle` tira o fade de entrada: depois do apito a arte JÁ ESTÁ na tela — quem
+           saiu foi o lance —, e repetir a entrada aqui faria o campo piscar. O fade só vale para
+           quem ABRE o sheet com o jogo já parado, que é quando a arte está de fato chegando. */
+        <div
+          className={[
+            'nfl-plays__field',
+            'nfl-plays__field--halftime',
+            abriuNoIntervalo ? '' : 'nfl-plays__field--after-whistle',
+          ].filter(Boolean).join(' ')}
+        >
           <FieldArt />
         </div>
       )}
@@ -662,6 +779,7 @@ function PlaysView({
           startDelay={isFirstOpen ? REPLAY_TIMING.openDelay : 0}
           isSequence={autoAdvance}
           continuesAfter={followsAfter}
+          isPeriodOver={isWhistling}
           onReplaySequence={() => driveId && selectPlay(driveId, 0, true)}
           onStopSequence={stopSequence}
         >
@@ -685,14 +803,27 @@ function PlaysView({
               className={[
                 'nfl-plays__timeline-marker',
                 index < playIndex ? 'nfl-plays__timeline-marker--done' : '',
-                index === playIndex ? 'nfl-plays__timeline-marker--current' : '',
                 item.id === arrival?.id ? 'nfl-plays__timeline-marker--arrived' : '',
               ].filter(Boolean).join(' ')}
               style={{ left: markerOffset(index, playCount) }}
               aria-label={getPlayTitle(item)}
+              aria-current={index === playIndex}
               onClick={() => driveId && selectPlay(driveId, index, true)}
             />
           ))}
+
+          {/* A cabeça de leitura. É UM objeto que viaja de ponto a ponto, e não um estado de
+              cada ponto: antes disto o destaque era destruído num marcador e criado no outro,
+              enquanto a barra e a redistribuição dos pontos deslizavam — tudo escorregava e só
+              a bola teleportava. A `key` no índice é o que faz a deformação da viagem correr a
+              cada troca; a viagem em si é a transição de `left`, na mesma curva da barra. */}
+          <span
+            className="nfl-plays__timeline-head"
+            style={{ left: markerOffset(playIndex, playCount) }}
+            aria-hidden="true"
+          >
+            <span key={playIndex} className="nfl-plays__timeline-head-core" />
+          </span>
         </div>
         <div className="nfl-plays__timeline-clock">
           <span>{drivePlays[0]?.clock ?? '--:--'}</span>
@@ -848,6 +979,10 @@ export function NflPlaysStatsBottomSheet({
   const game = useMemo(() => ({
     ...nflLiveGame,
     ...feed.step,
+    // `feed.live` sobrepõe o `live` do passo: o placar mostra o instante do lance que está na
+    // tela, e ele atrasa enquanto o campo desenha o lance que acabou de chegar. Ver
+    // `presentationOf` no feed.
+    live: feed.live,
     plays: feed.plays,
   }), [feed])
   const [activeTeam, setActiveTeam] = useState<TeamSide>('home')
@@ -881,6 +1016,14 @@ export function NflPlaysStatsBottomSheet({
   const activeTeamAbbr = teams[activeTeam].abbr as keyof NflLiveGame['players']
   const teamPlayers = game.players[activeTeamAbbr]
   const clock = liveClock ?? `Q${game.live.quarter} ${game.live.clock}`
+  /**
+   * O jogo no passo ANTERIOR — é dele que os números do placar saem quando rolam.
+   *
+   * Vem do dado, e não de estado: cada passo do feed é o jogo inteiro já calculado, então o passo
+   * de trás JÁ é o placar que estava na tela. Guardar o número velho num `useState` seria uma
+   * segunda verdade para o mesmo número, e é assim que dois placares do mesmo jogo divergem.
+   */
+  const placarAnterior = nflLiveGame.feed.steps[feed.index - 1]?.live ?? null
 
   return (
     <BottomSheet
@@ -908,13 +1051,20 @@ export function NflPlaysStatsBottomSheet({
           plays={game.plays}
           arrival={feed.arrival}
           live={game.live}
+          previousLive={placarAnterior}
           clock={clock}
           isOpen={isOpen}
           isGameOver={feed.isOver}
         />
       ) : (
       <>
-      <SheetScoreboard teams={teams} live={game.live} clock={clock} isGameOver={feed.isOver} />
+      <SheetScoreboard
+        teams={teams}
+        live={game.live}
+        previousLive={placarAnterior}
+        clock={clock}
+        isGameOver={feed.isOver}
+      />
 
       <section className="nfl-stats-bs__scoreboard" aria-label="Placar por quarter">
         <table className="nfl-stats-bs__score-table">

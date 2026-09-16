@@ -3,295 +3,398 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-16.
-- Checkout: pasta principal `draftaco`. A branch `feature/nfl-jogadas-ao-vivo` já está na
-  `main`; o trabalho descrito aqui está PUBLICADO.
-- Objetivo: o jogo de NFL do protótipo mostrava um INSTANTE congelado — o touchdown de 47
-  jardas — enquanto o relógio do placar corria. Relógio andando com campo morto é a assinatura
-  de um replay em laço. Agora os lances seguintes chegam sozinhos, um a um, até o intervalo; o
-  protótipo abre na corrida ANTES do touchdown, o sheet de jogadas acompanha o jogo sem ninguém
-  tocar em nada, e cada chegada tem movimento próprio na lista.
-- **Entregue e publicado.** Pull Request #6, merge `95667e2`, deploy do GitHub Actions
-  concluído com sucesso. Antes da PR rodaram `npm ci` e `npm run build`, com `check:nfl`
-  (48 conferências), `check:brands` e `check:player-props` passando, e o `eslint src` ficou
-  nos mesmos 26 problemas preexistentes (18 erros, 8 avisos) — nenhum novo.
-- Esta sessão CONTINUOU o trabalho de outra sessão do Claude, na mesma pasta, que parou no
-  meio por limite de créditos. O servidor de desenvolvimento na porta 5173 é daquela sessão e
-  seguiu servindo esta mesma árvore de arquivos.
+- Checkout: pasta principal `draftaco`, branch `fix/nfl-relogio-regra-e-placar` (sem worktree
+  isolado; não havia alteração local de arquivo rastreado).
+- **Implementado e validado localmente. Não há Pull Request, merge nem deploy.**
+- Objetivo: o relógio e o placar do jogo de NFL passarem a descrever o LANCE QUE ESTÁ NA TELA, e
+  as trocas do sheet — entrada no intervalo, jogada em foco no trilho e número do placar —
+  pararem de acontecer entre dois quadros.
+- Segunda frente, na mesma branch: **o campo parou de ficar vazio em lances que aconteceram**
+  (passe anulado incompleto e sack) e o field goal deixou de dizer "bom". Ver
+  "O lance que não aparecia".
 
-### O que a sessão anterior deixou pronto
+### Os seis defeitos
 
-- `src/features/sports/NflLiveFeed/` (novo): um store de módulo com `useSyncExternalStore`.
-  Três árvores leem o mesmo jogo — o card da lista, o placar da `LiveEventPage` e o sheet de
-  jogadas — e com um relógio por componente elas divergiriam em segundos.
-- As contas ficam no gerador, não no navegador: `scripts/build-nfl-live-fixture.mjs` roda as
-  mesmas regras do recorte estático uma vez por lance e emite `feed.steps` com o jogo inteiro
-  já calculado (27 passos, de `Q2 05:58 13x13` até `Q2 00:02 16x14`). O módulo só escolhe qual
-  passo está valendo agora.
-- O relógio é DERIVADO dos lances e interpola entre um e o outro, então nunca deriva e
-  reproduz de graça as paradas do jogo real. O intervalo entre lances é proporcional ao
-  intervalo real, comprimido em 3x, com piso de 6s e teto de 14s.
-- `hasNflLiveClock` desliga, só para o evento `nfl-1`, os seis relógios genéricos de 1 segundo
-  que fazem os jogos mockados parecerem vivos. O jeito de desligar é OMITIR a chave do mapa de
-  relógios, e não congelá-la: sem a chave, o consumidor cai no `dateTime` do evento, que é onde
-  `withNflLiveState` põe o relógio do feed.
-- `withNflLiveState` mora no ÚNICO ponto por onde toda lista de eventos passa
-  (`getCalendarChampionships`, em `CalendarSection.tsx`). Espalhar a troca por cada tela daria
-  versões diferentes do mesmo jogo na mesma sessão.
-- `check:nfl` subiu de 30 para 46 conferências (arte, fixture e constantes).
+**1. O relógio nunca parava.** `clockAt`, em `nflLiveFeed.ts`, escorregava os `gapSeconds`
+INTEIROS de forma uniforme pela espera até o próximo lance. Os extremos estavam certos — cada
+passo caía exatamente no relógio do lance seguinte —, mas o FORMATO da descida ignorava a regra:
+no passe incompleto, em que o cronômetro congela assim que a bola bate no chão, ele seguia
+descendo devagar; e num lance comum já estava vinte segundos dentro do huddle antes de a
+animação da jogada terminar. Foi o que a pessoa responsável pelo protótipo viu no print: a
+corrida de 16 jardas de Achane (06:38) na tela, o placar marcando `Q2 6:17`.
 
-### O que esta sessão fechou
+**2. O placar do sheet nascia 8,4px à direita.** As duas pontas do `SheetScoreboard` têm largura
+de conteúdo, então a coluna do meio — relógio e situação — é centralizada no que sobra ENTRE
+elas. Com `13 x 7` a ponta da esquerda media 83,6px e a da direita 66,8px, e a diferença é a
+largura de um dígito. Só centralizava depois, quando a MIA fazia o touchdown e o placar virava
+`13 x 14` — que é exatamente o "só centraliza depois" do relato.
 
-- O card do jogo na lista de competição estava congelado: ele acompanhava o feed até o primeiro
-  render e depois parava. Conferido no navegador antes da correção, com o trilho de jogos e o
-  card lado a lado mostrando horários diferentes do MESMO jogo (trilho `04:15`, card `04:36`) e
-  o card parado em `13x14 · Q2 04:36` por minutos.
-- Causa: `useCompetitionMarketSelection`, em `src/components/CompetitionPage/CompetitionPage.tsx`,
-  é o hook que MONTA esse card, e a lista de eventos dele é um `useMemo` com escopo de
-  competição. Assinar o feed não basta ali: sem o feed nas dependências, o hook renderiza de
-  novo a cada lance e devolve sempre o instantâneo do cache. O hook passou a assinar
-  `useNflLiveFeed()` e o valor entrou na lista de dependências — o mesmo padrão que a `Home` já
-  usava nos três memos dela.
-- Duas regressões de lint da sessão anterior, corrigidas sem desabilitar regra nenhuma:
-  - Em `CalendarSection.tsx`, `withNflLiveState` foi inserido ENTRE a diretiva
-    `// eslint-disable-next-line react-refresh/only-export-components` e o
-    `export function getCalendarChampionships` que ela protegia. A diretiva voltou para a linha
-    de cima do export.
-  - Em `LiveEventPage.tsx`, os dois efeitos de relógio passaram a ler `match.id` sem tê-lo nas
-    dependências. Com o id fora da lista, trocar de partida deixaria o efeito decidindo pelo id
-    da anterior. `match.id` entrou nos dois.
+**3. A entrada no intervalo era um corte.** Medido no navegador, amostrando a cada 50ms: entre uma
+amostra e a seguinte o relógio virava `Intervalo`, o lance, o cartão e a linha do tempo sumiam, e
+a lista de campanhas subia 146px de uma vez (1371px para 1225px). Tudo no MESMO quadro.
 
-### A rodada do movimento ao vivo (abertura, avanço e chegada)
+**4. A bolinha da jogada em foco teleportava.** No trilho não existia uma bolinha: o destaque era
+um ESTADO de cada ponto (`--current`, núcleo de 14px com anel de 4px). Na troca de lance ele era
+destruído num ponto e criado no outro. E a barra de progresso e a redistribuição dos pontos já
+tinham transição de 320ms — então tudo escorregava e só a bola pulava.
 
-Três pedidos da pessoa responsável pelo protótipo, na mesma conversa.
+**5. O número do placar trocava entre dois quadros.** O lance mais importante do jogo — o que muda
+o placar — passava sem nada acontecer no número que ele mudou.
 
-**1. A abertura saiu do touchdown e passou para a corrida de 16 jardas.** O recorte de abertura
-agora termina no lance 9005 (corrida de D.Achane, `Q2 06:38`, 13 x 7, campanha da MIA em
-andamento numa 3ª & 4), e o touchdown virou o PRIMEIRO lance do horizonte, seguido do ponto
-extra e do kickoff. A razão: abrir no touchdown gasta o melhor lance do recorte antes de alguém
-ter olhado a tela — e o que o protótipo quer mostrar é o jogo ACONTECENDO. Mexido em
-`demoPlays`/`bridgePlays` (`scripts/build-nfl-live-fixture.mjs`) e o fixture regerado; o feed foi
-de 27 para 28 passos. O custo é a espera: entre a corrida e o touchdown o jogo real queimou 40
-segundos, que a 3x dão ~13s até a primeira chegada — a maior espera do horizonte. Quem quiser
-encurtar mexe em `FEED_TIMING.maxInterval`, e o preço é o relógio andar mais rápido que 3x nas
-queimas longas.
+**6. O placar descrevia um momento que a tela ainda não tinha alcançado.** O defeito de fundo, e o
+que fez os outros aparecerem: o passo do feed troca o jogo INTEIRO no instante em que o lance
+CHEGA, e o campo leva de 1,2s (corrida curta) a 3,5s (passe profundo, com voo e avanço depois da
+recepção) para desenhar esse mesmo lance. Dois sintomas da mesma causa — o número do placar mudava
+antes de a bola voar, e o relógio já estava dentro do huddle enquanto o campo mostrava a jogada
+anterior (na tela: corrida de 6 jardas às 05:43, relógio marcando 05:23).
 
-**2. O sheet de jogadas passou a ACOMPANHAR o jogo.** Era o defeito relatado: com o sheet aberto,
-os lances chegavam na lista e o campo nunca os mostrava. Três causas, todas em `PlaysView`
-(`src/components/BottomSheet/NflPlaysStatsBottomSheet.tsx`):
-- o encadeamento abria desligado (`autoAdvance` em `false`). Fazia sentido num recorte congelado,
-  onde não havia próximo lance; com o jogo andando, virou o defeito. Abre ligado, e a pausa é o
-  freio explícito de quem não quer ser levado adiante;
-- o encadeamento era enquadrado na CAMPANHA: ao chegar no último lance dela, desligava. Agora a
-  conta é feita na lista inteira de lances, então a reprodução atravessa para a campanha
-  seguinte — o touchdown, o ponto extra e o kickoff passam sem ninguém tocar em nada;
-- o avanço era decidido só no fim do lance. Na ponta ao vivo o próximo lance ainda não existe: o
-  fim vem primeiro e a CHEGADA vem depois. Virou efeito, que dispara nas duas ordens.
-O que decide se a reprodução atravessa para outra campanha é `isFollowing` — "esta reprodução
-está acompanhando o jogo". Começa ligado, porque o sheet abre no lance mais recente; uma campanha
-antiga aberta pela lista desliga, e é isso que a faz parar no fim dela em vez de emendar o resto
-do jogo. A primeira versão comparava com a campanha ao vivo em vez de guardar a intenção, e
-bastava a reprodução ficar atrás (uma aba escondida, por exemplo) para ela parar no meio, com o
-jogo correndo à frente.
-Junto disso, `isLastPlay` virou `continuesAfter` no `NflPlayReplayPanel`: "último lance da
-campanha" e "a reprodução segue" eram a mesma pergunta no recorte congelado e deixaram de ser. É
-`continuesAfter` que mantém o botão de pausa no respiro e que faz o palco sair apagando antes do
-próximo lance entrar.
+### A regra, e onde ela mora
 
-**3. Cada chegada tem movimento próprio.** O marcador do lance nasce no trilho, os marcadores se
-redistribuem com transição em vez de salto, a linha da campanha que recebeu o lance recebe um
-brilho que passa e sai, e a campanha que ESTREIA abre espaço na lista em vez de empurrar as
-outras de uma vez. Nada disso é estado: quem sabe o que chegou é o `arrival` do feed, e cada
-animação é disparada pela MONTAGEM de um elemento (o marcador novo, a linha nova, e um elemento
-de brilho com `key` no id do lance, que remonta a cada chegada). A primeira versão guardava os
-ids novos e limpava num `setTimeout`, e a limpeza do render seguinte cancelava o próprio
-agendamento — a marca ficava para sempre na linha. O feed renderiza duas a três vezes por
-segundo, por causa do relógio.
+A conta ficou no GERADOR, junto das outras regras do recorte, e não no navegador. `buildSteps`
+(`scripts/build-nfl-live-fixture.mjs`) passou a emitir dois campos por passo:
 
-Dois defeitos encontrados e corrigidos no caminho, os dois de identidade instável:
-- `playsAt`, no feed, devolvia um array NOVO de lances a cada tique de relógio. Além de fazer todo
-  `useMemo` e efeito dependente recalcular no mesmo ritmo, era o que cancelava o agendamento da
-  marca de chegada. Agora tem cache por `playCount`;
-- `advanceTo` lia o mapa de lances por campanha do render em que o avanço foi AGENDADO. Entre
-  agendar e disparar chegam lances, e o lance de destino podia não estar naquele mapa — o índice
-  caía no fallback e a reprodução voltava para o PRIMEIRO lance da campanha, um salto para trás no
-  meio do ao vivo. Observado no navegador: o foco pulou do 2º lance para o kickoff. Agora lê por
-  ref o mapa atual, e o fallback é o ÚLTIMO lance da campanha — nunca o primeiro.
+- `clockStops` — o relógio para quando este lance acaba? Sai de coluna real do nflverse: passe
+  incompleto, pontuação, troca de posse, touchback, fair catch, falta, pedido de tempo e fim de
+  período. O fora de campo é o único que só existe no texto da súmula (`ran ob`, `pushed ob`).
+  Primeira descida NÃO entra — parar o relógio na primeira descida é regra universitária.
+- `playSeconds` — quantos segundos do intervalo o LANCE em si queimou, do snap até a bola morrer.
 
-**4. Dois acertos de estado, pedidos depois de ver o movimento rodando.**
-- Campanha que ACABA DE COMEÇAR: o ponto dela na linha do tempo fica na esquerda, não no meio.
-  `markerOffset` centralizava a campanha de um lance só, o que era o desenho de um trilho parado;
-  com o jogo andando, a campanha nasce com um lance e o ponto saltava do meio para a ponta quando
-  o segundo chegava.
-- INTERVALO: quando o relógio zera, o sheet entra em estado de intervalo — nenhuma campanha
-  selecionada na lista, campo sem jogada e a palavra `Intervalo` centralizada na faixa escura
-  acima do gramado (o mesmo lugar da palavra `TOUCHDOWN`, que é onde texto sobre o campo se lê).
-  Saem também o cartão da jogada e a linha do tempo: os dois descrevem um lance em foco, e ali
-  não há nenhum. A lista continua tocável, e escolher uma campanha tira a tela de intervalo da
-  frente — rever uma campanha no intervalo é exatamente o que se faz ali. Quem está revendo uma
-  campanha antiga quando o relógio zera NÃO é interrompido. Na Draftea a palavra sai
-  `Medio Tiempo`, pelo catálogo (`'Intervalo': 'Medio Tiempo'`).
+A divisão se sustenta sozinha no dado: quando o cronômetro para no fim do lance, o que sobra até
+o snap seguinte é zero, e então o intervalo medido É a duração do lance. Confere neste jogo — os
+lances que param o relógio têm intervalos de 2 a 12 segundos, e os que não param, de 17 a 41.
+Por isso `playSeconds` só precisa de estimativa (`PLAY_CLOCK_SECONDS`, 5-8s por tipo) no caso em
+que o relógio segue correndo; nos outros ele é o intervalo inteiro.
 
-**5. No intervalo a faixa de situação não mostra mais descida.** O placar mostrava
-`1ª & 20 · MIA 38` embaixo de `Intervalo`: a descida, a distância e o ponto da bola são do último
-lance, e depois do apito não valem mais — a próxima posse começa depois do intervalo, em outro
-lugar do campo. Quem monta a situação passa a marcar `footballSituation.isPeriodOver` quando o
-feed acaba (nos dois pontos: `nflLiveMatch`, na tela do evento, e `withNflLiveState`, na lista),
-e a faixa fica só com o acesso às jogadas. O desfecho do último lance (`Touchdown · MIA · Hill`)
-também sai: no apito ele já não é a notícia. A faixa mantém os 26px e o placar continua sendo o
-gatilho do sheet — a altura é fixa e o `Ver mais` é absoluto, então não há salto de layout.
+No app, `burnedAt` (`nflLiveFeed.ts`) queima em duas fases: os `playSeconds` no tempo da animação
+(`FEED_TIMING.playBurn`, 1800ms, fixo em tempo REAL e não proporcional — é o que faz uma parada
+de regra ser visível), e o que sobrar espalhado pelo resto da espera. Lance que para o relógio
+não deixa sobra, então o cronômetro fica congelado até o próximo lance chegar.
 
-**6. O sheet ganhou placar próprio, acima do campo, e o escudo do time na descrição do lance.**
-Pedido com a referência da Live Activity da NFL (print do Twitter) na mão: escudo e sigla nas
-pontas, o placar em números grandes por dentro deles e, no meio, o relógio com a situação de
-campo embaixo. O sheet COBRE o placar da tela do evento — que é o gatilho dele —, e é justamente
-ali que o placar muda a cada lance; sem isto, quem abre as jogadas para ver o jogo acontecendo
-fica sem o número. A situação do meio sai de `getLiveSituationLabel`, que repete as três regras
-da faixa do evento (nada no fim do período, o desfecho num lance de pontuação, descida e ponto da
-bola no resto) — o mesmo instante não pode ser descrito de dois jeitos em duas telas. O escudo da
-descrição entra por `contextLogo`, prop nova do `NflPlayReplayPanel`, com 20px: menor que os 32px
-da lista de campanhas, porque ali ele acompanha uma linha de texto em vez de titular a linha.
+`isOver` passou a ser medido pelo CRONÔMETRO (`burned >= gapSeconds`) e não pela espera do passo.
+No último lance — passe incompleto às 00:02 — os dois segundos queimam junto com a animação, e é
+aí que o apito soa; medindo pela espera, o relógio mostraria `Intervalo` alguns segundos antes de
+a tela entrar em intervalo.
 
-**7. Acertos depois de ver o placar do sheet na tela.**
-- A palavra `Intervalo` grande sobre o campo SAIU. Ela foi pedida quando o sheet não tinha placar;
-  com o placar logo acima, era a mesma informação duas vezes. No intervalo o campo fica vazio e o
-  estado é dito uma vez, no relógio do placar.
-- No placar da tela do evento, o estado desce para a linha da SITUAÇÃO quando o período acaba —
-  onde ficava `1ª & 20 · MIA 38` —, e não fica mais na linha do relógio, entre os números. Assim
-  ele aparece uma vez e na mesma linha horizontal do `Ver mais` (medido: 246px e 247px de topo).
-  A coluna do placar tem 52px fixos e alinha por baixo, então o número não se desloca. O ponto
-  vermelho de ao vivo sai junto com a linha do relógio: no intervalo não há relógio correndo.
-- Espaçamento da aba Jogadas, valores da pessoa responsável pelo protótipo: `gap: 24px` entre os
-  chips e o bloco (`.nfl-stats-bs__body--plays`) e NENHUM gap dentro do bloco (`.nfl-plays`). Com
-  os 8px de antes o placar encostava nos botões.
+### Arquivos alterados
 
-**8. O mesmo placar nas duas abas do sheet, e a tabela de quarters sem o total.**
-- O placar da aba Jogadas passou a valer também na aba Estatísticas, no lugar do cabeçalho menor
-  que havia lá (`Chiefs × Dolphins` com o relógio ao lado): ele dizia menos ocupando a mesma
-  faixa, e dois placares diferentes no mesmo sheet eram a chance de um ficar atrás do outro. O
-  componente virou `SheetScoreboard` e as classes saíram de `nfl-plays__scoreboard*` para
-  `nfl-stats-bs__live-score*` — com as duas abas usando o bloco, o prefixo da aba de jogadas
-  passaria a mentir para quem for ler o CSS. Saíram com o cabeçalho o `.nfl-stats-bs__live` e o
-  ponto de ao vivo dele.
-- A coluna `Total` saiu da tabela por quarter. O placar logo acima já é o total; repetido ali, era
-  a terceira aparição do mesmo número na mesma tela.
-- O gap da aba Jogadas deixou de precisar de modificador: os 24px são os mesmos do corpo do sheet,
-  então `.nfl-stats-bs__body--plays` não declara mais gap (a classe continua no markup, que é o
-  que dá os 40px dos chips do Figma).
+- `scripts/build-nfl-live-fixture.mjs`: `stopsClock`, `PLAY_CLOCK_SECONDS`, `playClockSeconds` e
+  os dois campos novos em `buildSteps`.
+- `src/data/nflLiveGame.json`: regerado (`node scripts/build-nfl-live-fixture.mjs`). Mesmos 28
+  passos e 89 lances; o que entrou foi `playSeconds` e `clockStops` por passo.
+- `src/features/sports/NflLiveFeed/nflLiveFeed.ts`: `presentationOf`, o `live` atrasado exposto
+  separado do `step`, `burnedAt` descendo dentro da apresentação e travando, `isPresenting` na
+  comparação do `emit`, `FEED_TIMING.stageEnter` e o `isOver` medido pelo cronômetro.
+- `src/features/sports/NflPlayReplay/playScene.ts`: `segmentsFor`, vindo do painel — passou a ter
+  dois consumidores, e o feed precisa dela para saber quanto tempo o lance leva na tela.
+- `src/features/sports/LiveEventPage/LiveEventPage.tsx`: `nflLiveMatch` e `withNflLiveState` leem
+  `feed.live` no lugar de `feed.step.live`, para as duas telas descreverem o mesmo instante.
+- `src/components/BottomSheet/NflPlaysStatsBottomSheet.tsx`: `HALFTIME_WHISTLE`, o estado em dois
+  tempos do intervalo (`abriuNoIntervalo`/`halftimeAssentou`), a classe `nfl-plays--whistle`, o
+  `isPeriodOver` para o painel e a classe de estado no relógio do placar.
+- `src/components/BottomSheet/NflPlaysStatsBottomSheet.css`: `min-width: 2ch` e
+  `text-align: center` em `.nfl-stats-bs__live-score-number`; a coreografia do apito
+  (`nfl-plays-whistle-fold`, `nfl-plays-whistle-stage-out`, `nfl-plays-whistle-clock`,
+  `--after-whistle`) e os dois `--whistle-fold`.
+- `src/features/sports/NflPlayReplay/NflPlayReplayPanel.tsx`: prop `isPeriodOver`, que liga a
+  saída do palco sem esperar o respiro de leitura.
+- `src/features/sports/NflPlayReplay/NflFieldStage.tsx`: prop `exitNow` (espera zero) e a classe
+  `nfl-plays__stage--whistle`.
+- `src/features/sports/LiveEventPage/LiveEventPage.css`: `Intervalo` entra subindo na faixa de
+  situação do placar do evento, em vez de trocar num quadro.
+- No mesmo par `.tsx`/`.css` do sheet: `ScoreRoll` e o `previousLive` que desce até ele, a cabeça
+  de leitura (`nfl-plays__timeline-head`), a deformação da viagem (`nfl-plays-head-travel`), a
+  bobina (`nfl-score-roll-in`/`-out`) e a cor do ponto percorrido, que agora acende em vez de
+  virar de uma vez.
+- `scripts/check-nfl-replay.mjs`: cinco conferências novas do relógio (48 -> 52) e mais catorze do
+  desenho do lance (52 -> 66).
 
-**9. Dois acertos finais de posição e espaço.**
-- No intervalo, o PLACAR volta a ficar onde estava. Tirar a linha do relógio do fluxo escorregava
-  o número para baixo: a coluna do placar tem 52px e alinha por baixo. Agora a linha continua
-  ocupando o lugar dela, invisível (`.live-event-inline__score-time--hidden`, com `aria-hidden`
-  para o estado não ser lido duas vezes). Medido: 204px de topo do placar durante o jogo e no
-  intervalo, com `Intervalo` em 246px contra 247px do `Ver mais`.
-- `.live-event-inline__market-chips.content-filter-chips` perdeu os 8px de padding de baixo. Com
-  eles fora, o override que o sheet de jogadas tinha só para cancelá-los saiu também, e com o
-  override foi o modificador `.nfl-stats-bs__body--plays`, que já não declarava nada — as duas
-  abas usam o mesmo espaçamento. A aba Estatísticas era a que ainda somava os 8px; agora as duas
-  ficam nos 24px do sheet.
+Da segunda frente:
+
+- `scripts/build-nfl-live-fixture.mjs`: `depth` no lance anulado (o balde que o parser já
+  capturava e jogava fora), os campos `sack`/`sackedBy` e, para a falta seca, `penaltyBy` e
+  `penaltyYards` (com a função `penaltyMarch`, que dá o sinal à marcação).
+- `src/data/nflLiveGame.json`: regerado. Mesmos 28 passos e 89 lances.
+- `src/features/sports/NflPlayReplay/playNarrative.ts`: `isSack`, `penaltyMarchYards`/
+  `hasPenaltyMarch`, `hasNullifiedPlay` sem a exigência de `complete`, as variantes `sack`,
+  `voidedIncomplete` e `penalty` em `PlayOutcome`, o título e o resultado do sack e da falta seca,
+  o sack na placa de jardas e o texto do field goal.
+- `src/features/sports/NflPlayReplay/playScene.ts`: `VOID_PASS_DEPTH` e `voidPassSpan`, as três
+  variantes novas nas quatro tabelas existentes, as tabelas `KEEPS_POSSESSION` e `BALL_FALLS`, o
+  sack e a falta seca entrando como trecho rasteiro, o nome de quem cometeu a falta no retrato e
+  os três casos novos em `segmentsFor`.
+- `src/features/sports/NflPlayReplay/NflFieldStage.tsx`: o X de bola no chão passou a usar a cor
+  do caminho, e não a do erro.
+- Ainda em `playScene.ts`: `PATH_TONE.touchback` e `FLOW_END_OPACITY.touchback`, para o chute que
+  morre na end zone deixar de ser desenhado como erro.
+
+### O apito, e a ordem da saída
+
+A saída para o intervalo passou a ter ordem, e a ordem é a do jogo: o RELÓGIO anuncia (é ele que
+vira `Intervalo`), o LANCE sai do campo, e só então dobram as duas coisas que descrevem um lance
+em foco — o cartão e a linha do tempo. O campo fica, porque no intervalo ele continua ali, vazio.
+
+Quem segura a troca é `HALFTIME_WHISTLE` (520ms), em `NflPlaysStatsBottomSheet.tsx`: enquanto ele
+corre, o sheet fica em `nfl-plays--whistle` e só depois troca para o campo vazio. A dobra precisa
+de uma altura de PARTIDA em pixels — `auto` não interpola —, e as duas são fixas por construção
+(cartão: 32 + 4 + 48; trilho: 4 + 40 + 18). O número mora em `--whistle-fold`, ao lado das regras
+que o produzem.
+
+Duas armadilhas encontradas e resolvidas no caminho, as duas invisíveis num `build`:
+
+- **Zerar a espera não faz o fade acontecer.** No apito o palco quase sempre JÁ está em
+  `--leaving`, parado na espera do respiro de leitura (1020ms, ou 1680ms quando a placa das
+  jardas gira). Trocar essa espera para zero mantém a MESMA animação, e o navegador recalcula o
+  tempo dela contra a espera nova: como já se passou mais do que a duração, o palco pula direto
+  para o fim. Medido: opacidade de 1,00 para 0,00 entre dois quadros. O que resolve é trocar o
+  NOME da animação (`nfl-plays__stage--whistle`), porque isso cancela a antiga e começa outra do
+  zero.
+- **O campo não pode repetir o fade de entrada.** Depois do apito a arte já está na tela — quem
+  saiu foi o lance —, e `nfl-plays-halftime-in` faria o gramado piscar no meio da transição.
+  `--after-whistle` tira a animação. O fade continua valendo para quem ABRE o sheet com o jogo já
+  parado, que é quando a arte está de fato chegando.
+
+### A cabeça de leitura, e a bobina do placar
+
+Duas trocas que aconteciam entre dois quadros e passaram a ter movimento. As duas escolhidas com a
+pessoa responsável pelo protótipo: para o trilho foram apresentadas três opções (cabeça que viaja;
+viagem acompanhando a reprodução do lance; só a passagem de bastão) e a escolha foi a **cabeça de
+leitura que viaja**.
+
+**A bolinha virou um OBJETO.** `.nfl-plays__timeline-head` é um elemento só, na posição da jogada
+em foco, e a viagem é a transição de `left` na MESMA curva e duração da barra e da redistribuição
+dos pontos — é isso que faz os três lerem como uma peça só. Os marcadores perderam `--current` e
+ficaram todos com 8px; quem está sob a cabeça fica coberto, e `aria-current` no botão preserva o
+que a classe dizia para quem não vê a tela. Dois elementos aninhados porque são dois transforms
+que não podem disputar o mesmo atributo: o de fora centraliza no ponto, o de dentro deforma.
+
+A deformação (`nfl-plays-head-travel`) é o que dá peso: a bola se estica no sentido em que anda e
+assenta na chegada. O pico fica em 22% porque a curva da viagem é dianteira — quase toda a
+distância é vencida no começo. É simétrica de propósito, para servir também a quem toca num lance
+anterior e volta. Quem dispara é a `key` no índice do lance: elemento novo, animação do zero.
+
+Vale notar o que NÃO dispara: quando um lance chega e a reprodução não avança, todos os pontos se
+redistribuem e a cabeça acompanha — mas sem deformar. Redistribuição é o trilho mudando de escala,
+não a bola andando.
+
+**O número do placar virou uma bobina.** O antigo desce e sai, o novo entra por cima, os dois
+percorrendo exatamente a altura da linha na mesma curva. Quem faz "sumir" e "aparecer" é o RECORTE
+da caixa, e não um fade: com fade, na metade do caminho as duas cifras aparecem pela metade e o
+placar fica ilegível justo no instante em que alguém está olhando para ele.
+
+O valor de trás vem do DADO, e não de estado guardado: cada passo do feed é o jogo inteiro já
+calculado, então `steps[index - 1].live` JÁ é o placar que estava na tela. Guardar o número velho
+num `useState` seria uma segunda verdade para o mesmo número — e é assim que dois placares do
+mesmo jogo divergem. Quem dispara é a montagem do elemento (`key` no próprio valor), o mesmo
+padrão das chegadas na lista de campanhas: o relógio renderiza duas a três vezes por segundo e
+nenhuma dessas renderizações remonta nada.
+
+### A apresentação do lance, e a decisão que ela reverteu
+
+A correção do defeito 6 é uma só e resolve os dois sintomas: **o placar descreve o lance que está
+na tela**, e não o instante em que o lance chegou ao feed.
+
+`presentationOf` (`nflLiveFeed.ts`) mede quanto tempo o lance leva para ACONTECER na tela, pela
+MESMA conta que o painel usa para animar (`segmentsFor` + `replayTotalDuration`, mais a entrada do
+palco). Não é estimativa: é a única forma de o placar virar exatamente quando o touchdown chega na
+end zone, que é o lance em que errar aparece. `segmentsFor` saiu do painel para `playScene.ts`
+porque passou a ter dois consumidores.
+
+Enquanto o lance é desenhado:
+
+- o **relógio** desce do horário do lance ANTERIOR até o horário DELE, e ali TRAVA até o próximo
+  chegar. Na corrida de 6 jardas às 05:43, desce de 05:50 a 05:43 e fica;
+- o **placar, a descida, o ponto da bola e a posse** continuam sendo os de antes do lance. Só
+  viram quando ele acontece — conferido no touchdown: a bola voa com o placar ainda em 13 x 7, e
+  os dois números viram junto com o relógio travando em 05:58.
+
+O feed passou a expor `live` separado de `step`: só esse bloco atrasa. Campanhas e estatísticas
+continuam sendo as do passo atual, porque a lista precisa conter a campanha do lance que acabou de
+entrar — sem ela o sheet ficaria com um lance órfão, sem campanha para reproduzir.
+
+**Isto REVERTE a decisão tomada mais cedo nesta mesma sessão** (regra real contínua, com o relógio
+correndo pelo huddle). A pessoa responsável pelo protótipo viu a versão rodando e classificou o
+resultado como erro de sincronização, pedindo explicitamente que o relógio travasse no horário do
+lance. O que se perde, e está registrado no código: a parada de relógio da regra da NFL deixa de
+aparecer COMO uma parada, porque agora o cronômetro fica travado entre todos os lances. A regra
+continua valendo no dado — é ela que faz a descida ser de 5 segundos depois de um passe incompleto
+e de 39 depois de uma corrida em campo —, e `check:nfl` continua protegendo isso. `playSeconds`
+deixou de ser lido pelo app; segue emitido e conferido como medida da regra.
+
+### O lance que não aparecia
+
+Três relatos, um defeito só: **o campo desenha a partir das COLUNAS estatísticas, e emudece
+quando a coluna vem vazia** — mesmo quando o texto oficial do lance diz exatamente o que houve.
+
+**1. Passe anulado incompleto: campo vazio.** `hasNullifiedPlay` exigia `nullified.complete`, com
+o argumento de que o texto diz "short right" mas não diz quantas jardas. O argumento não se
+sustentava: o passe anulado COMPLETO já é desenhado com uma aproximação (o ganho total no lugar
+das jardas aéreas), e `short`/`deep` é o balde oficial da NFL — uma medida, não um chute. A
+profundidade agora sai da MEDIANA real de cada balde entre os passes incompletos da temporada
+2023, medida no mesmo play-by-play que gera o fixture: `short` 5 jardas (4.486 lances), `deep` 24
+(1.828). `VOID_PASS_DEPTH`, em `playScene.ts`, guarda os dois números com a origem escrita ao
+lado. Nenhum número aparece na tela — `showsGainBadge` continua suprimindo a placa em toda
+anulada —, e o que o campo passa a mostrar é o que o título dela já dizia em palavras.
+
+**2. O sack chamado de "passe incompleto", e parado.** O nflverse guarda o sack como
+`play_type: 'pass'` com `air_yards` vazio. Sem marca própria, o protótipo lia "passe" + "não
+completou" e escrevia PASSE INCOMPLETO num lance em que passe nenhum saiu — e, sem jardas aéreas,
+não desenhava nada. O fixture passou a carregar `sack` e `sackedBy`, o lance virou variante de
+desfecho e é desenhado como uma CORRIDA PARA TRÁS: o ganho negativo cuida do sentido sozinho, e a
+placa gira mostrando `-7`. É um lance no recorte (1915, Tagovailoa, 3ª & 13 às 02:00).
+
+**3. "Field goal de 32 jardas · bom".** Era o `the field goal is GOOD` do gamebook traduzido ao pé
+da letra, num espaço que em todo o resto da tela carrega uma QUANTIDADE ("+12 jardas",
+"Touchback", "Posse para Dolphins"). Virou `convertido` / `perdido` (na Draftea, `convertido` /
+`fallado`).
+
+**4. A falta seca mostrava um capacete sem nome.** No falso início a bola não chega a ser
+snapada, e a tela ficava com o retrato anônimo, a bola parada e o título genérico "Jogada
+anulada" — num lance em que quem saiu antes do snap foi o Tyreek Hill. A falta É o lance ali, e o
+dado bruto traz as duas coisas que ela tem: `penalty_player_name` (quem) e `penalty_yards`
+(quanto a bola voltou). O fixture passou a carregar `penaltyBy` e `penaltyYards` — este último COM
+SINAL no referencial de quem tem a bola —, o título virou o nome da falta (`Falso início`), o
+resultado virou `Falso início · -5 jardas` e a bola desliza para a jarda nova no cinza da anulada.
+
+O direito de desenhar esse recuo vem de uma conferência, não de uma suposição: ele tem de fechar
+com a linha de scrimmage do lance SEGUINTE. Fecha nos oito `no_play` do recorte, e os três falsos
+inícios recuam 5 jardas exatas (27->22, 22->17, 49->44). Meia distância para a end zone, faltas
+compensadas ou falta recusada quebrariam a conta, e `check:nfl` avisa. A linha amarela da descida
+NÃO anda junto — `startYard + distance` é o mesmo antes e depois —, e é por isso que a distância
+cresce ("3ª e 8" vira "3ª e 13"): a bola recua para longe de uma linha parada. Também conferido.
+
+**5. Dois punts lado a lado com linguagens visuais diferentes.** O punt dominado em campo saía
+no lilás de sempre; o que terminou em touchback saía em VERMELHO, a mesma cor do passe que cai.
+Vinha de `PATH_TONE.touchback = 'error'`, pelo argumento "a bola não chegou a ninguém" — que vale
+para o passe e não vale para o chute: ele foi executado, andou as 48 jardas e a posse passou como
+devia. Um punt que entra na end zone é o desfecho NORMAL dele. O touchback passou a usar o tom
+dos outros chutes, com a mesma força de chegada (0,6 -> 0,95), e quem diz que ninguém ficou com a
+bola continua sendo o X da chegada e o texto (`Touchback`). Vale igual para o kickoff que morre
+na end zone, que é o caso do recorte (293).
+
+As três variantes novas de `PlayOutcome` existem por uma razão de correção, não de organização: a
+anulada incompleta herdando `voided` faria a bola SUBIR para o retrato no fim do lance, contando
+uma recepção que não houve. É o mecanismo que o arquivo já previa — `Record<PlayOutcome, …>`
+obriga a responder por toda variante nova —, e por isso duas tabelas que antes eram `!==` soltos
+no meio de `carriesBall` viraram tabela (`KEEPS_POSSESSION`, `BALL_FALLS`).
+
+Efeito colateral corrigido junto: o X de bola no chão era sempre vermelho. Num passe anulado que
+caiu, o caminho é cinza porque quem apagou o lance foi a penalidade — e um X vermelho no fim dele
+dizia o contrário. O X passou a usar a cor do caminho; no passe incompleto comum ele continua
+vermelho, conferido.
+
+### Validações executadas
+
+- `npm run build`, `npm run check:nfl` (66 conferências), `npm run check:brands` e
+  `npm run check:player-props` passando. `npx tsc -b` limpo. `eslint src` nos mesmos 26 problemas
+  preexistentes (18 erros, 8 avisos) — nenhum novo.
+- As conferências novas foram testadas ao contrário: forçando `playSeconds = gapSeconds` em todos
+  os passos (o modelo antigo), `check:nfl` falha em "corrida derrubada em campo mantém o relógio
+  correndo". Conferência que não falha não protege nada.
+- Simulação dos 28 passos fora do navegador: todos caem EXATAMENTE no relógio do lance seguinte,
+  sem sobra e sem salto.
+- No navegador, em 375x812, na Pitaco, amostrando o relógio do sheet a cada 100ms por 38s
+  corridos: no passe incompleto de 03:14 o cronômetro desce para `3:09` em 2s e fica **congelado
+  4,3 segundos** até o punt chegar; no punt de 03:09 desce para `3:02` e congela outros 4,5s; na
+  corrida de 03:55, derrubada em campo, ele corre sem parar pelo huddle inteiro.
+- Placar do sheet medido nos dois placares: com `13 x 7` e com `13 x 14` as duas pontas medem
+  88,9px e o relógio fica em 187,5 — o centro exato da faixa de 343px. Desvio 0px, contra os
+  8,4px de antes.
+- Reproduzido o instante do print (`13 x 7`, corrida de 16 jardas de Achane, campanha `5 de 5`,
+  linha do tempo `07:33`–`06:38`): o placar agora mostra `Q2 6:37`, um segundo dentro do lance
+  que está sendo desenhado.
+- Intervalo conferido acelerando `Date.now` no navegador, sem mexer no código: `Intervalo`, campo
+  vazio e situação vazia entram no MESMO estado — não há mais janela em que o relógio já zerou e
+  a tela ainda mostra lance.
+- Transição do intervalo medida no navegador a cada 25ms, com o relógio acelerado 9x: o palco
+  apaga de 1,00 a 0,00 em ~380ms, o cartão dobra de 84px a 0 e a altura total desce de 1371px
+  para 1225px em ~345ms, com o lance saindo ANTES de a dobra terminar. Apito inteiro em ~525ms,
+  contra um único quadro antes.
+- Abrir o sheet com o jogo já parado conferido em seguida: nenhum apito, o campo entra apagando
+  (`nfl-plays-halftime-in`, medido em 0,66 no meio da entrada) e o placar mostra
+  `16 · Intervalo · 14` com a lista de campanhas intacta.
+- Console conferido em aba NOVA, sem erro. O `ReferenceError: entrouNoIntervalo` que aparecia na
+  aba antiga era resto de HMR de uma edição intermediária; o módulo servido pelo Vite não tem a
+  palavra, conferido por `curl`.
+- Trilho medido no navegador a cada 25ms, com o relógio acelerado 3x, por 28 segundos: SETE
+  viagens da cabeça, todas com pico de `scaleX` em 1,20 e ~250ms de deformação, acompanhando o
+  deslocamento (`left 246 -> 288`, `311 -> 344`, `32 -> 120`, `113 -> 176`, `212 -> 260`). Zero
+  marcadores com `--current` restantes. A troca de campanha leva a cabeça de volta ao começo do
+  trilho (`202 -> 10`), junto com a barra — lê como o trilho rebobinando, e é o mesmo movimento
+  que a barra já fazia.
+- Bobina do placar conferida nas duas trocas do começo do jogo (7 -> 13 no touchdown, 13 -> 14 no
+  ponto extra). Quadro congelado no meio do giro, com as animações pausadas e medidas: a caixa tem
+  os 32px da linha com `overflow: hidden`, o número que entra estava a -1,3px do lugar e o que sai
+  a +30,7px — os dois dentro do recorte. As duas cifras aparecem CORTADAS AO MEIO no meio do giro,
+  que é o que uma bobina faz; num primeiro olhar isso parece defeito e não é.
+- Centralização do placar conferida de novo depois da bobina: as duas pontas continuam com 88,9px.
+- Sincronização conferida no navegador, amostrando placar, relógio, situação e lance em foco a
+  cada 40ms por 30 segundos. No touchdown: `Q2 6:04 · 13x7` com o passe já na tela e a bola no ar,
+  e só em `Q2 5:58` o placar vira `13x13` com `Touchdown · Hill` — o relógio trava ali. Na corrida
+  de 6 jardas, o caso do relato: `5:48 -> 5:46 -> 5:43`, e trava em `05:43`, que é o horário do
+  lance no trilho. No ponto extra, `13x13 -> 13x14` travando em `05:50`.
+- Fim do primeiro tempo conferido depois da mudança (o último passo é o único que continua
+  descendo depois da apresentação): `0:06 -> 0:01 -> Intervalo`, com o apito e o campo vazio em
+  seguida.
+- Resíduo conhecido e medido: a descida do relógio começa quando o lance CHEGA, e o campo só
+  começa a desenhá-lo ~1,7s depois, por causa do respiro entre lances (`SEQUENCE_PAUSE`, que é do
+  sheet e o feed não conhece). Nesse intervalo o relógio mostra horários que não são de nenhum
+  lance. Era de 20 segundos antes da mudança.
+- Da segunda frente, conferido no navegador em 375x812, reproduzindo cada lance pelo trilho:
+  o passe anulado incompleto de Mahomes para Kelce (1962, o do relato) desenha o arco e cai a
+  cerca de 5 jardas da linha, com Mahomes ficando na origem; o de Tagovailoa sem recebedor no
+  texto (2248) desenha igual, sem retrato do outro lado; o sack aparece como `Sack de 7 jardas ·
+  Karlaftis`, com Tagovailoa andando para trás e a placa girando para `-7`; o field goal diz
+  `Field goal de 26 jardas · convertido`.
+- Touchback conferido no navegador no kickoff do 1º quarto (293): o caminho agora sai em
+  `#a877ff` com 0,95 de força no fim — o mesmo lilás dos outros chutes —, contra `#f43f5e` com
+  0,6 antes. A regressão virou tripwire (`chute: touchback não é desenhado como erro`), testada
+  ao contrário: devolvendo `'error'` à tabela, `check:nfl` falha.
+- Falta seca conferida no navegador no falso início do 1º quarto (360): título `Falso início ·
+  -5 jardas`, retrato com o nome `Jackson` no lugar do capacete anônimo, e a bola andando de
+  verdade — amostrada a cada 90ms, ela sai de x=227 e chega a x=237 em ~400ms. Caminho e as duas
+  bolinhas em `#9aa0a6`, o cinza da anulada, e não o vermelho do erro.
+- Cor do X medida nos dois casos: `rgb(154, 160, 166)` (cinza da anulada) no passe anulado que
+  caiu, `rgb(244, 63, 94)` (vermelho) no passe incompleto comum — sem regressão.
+- As nove conferências novas foram testadas ao contrário: tirando o `depth` do lance 1962,
+  desmarcando o `sack` do 1915 e pondo `short: 20` em `VOID_PASS_DEPTH`, as quatro que protegem
+  cada um desses casos falham, inclusive a que teria pegado o sack silencioso ("passe: sem
+  jardas aéreas, só se for sack").
+- Console conferido em aba NOVA depois das duas frentes, sem erro. Os `ReferenceError` que
+  aparecem na aba antiga são resto de HMR das edições intermediárias.
+- NÃO conferido nesta sessão: Draftea, evento de futebol/basquete ao vivo e evento pré-jogo. A
+  mudança é interna ao feed de NFL, ao sheet de NFL e ao CSS da faixa de situação do evento,
+  então o risco novo está contido ali.
 
 ### Em aberto para a pessoa responsável pelo protótipo
 
-- A faixa de situação do placar descreve o LANCE QUE ACABOU DE ACONTECER, com a descida e a
-  distância do snap dele — não a situação que ficou. Com a abertura no touchdown isso não
-  aparecia (ali a faixa mostra `Touchdown · MIA · Hill`); com a abertura na corrida, a primeira
-  coisa que se lê é `2ª & 20 · MIA 37`, quando a corrida já ganhou 16 e a situação real é
-  `3ª & 4 · KC 47`. É decisão de produto, não defeito: ou a faixa continua sendo o lance (como
-  está, e como a lista de jogadas também descreve), ou passa a ser a situação de agora — e aí
-  `liveSituation`, no gerador, precisa usar o desfecho do lance, o mesmo que o painel já calcula
-  em `getNextSituation`. Não foi mexido.
-- Defeito de texto PREEXISTENTE, visível na demonstração: `Corrida de 1 jardas` em vez de
-  `1 jarda`, em `getPlayTitle` (`playNarrative.ts`). Fora do escopo desta rodada.
-
-### Decisões e becos sem saída conferidos
-
-- `src/components/CompetitionPage/CompetitionCalendar.tsx` NÃO é importado por ninguém: é uma
-  implementação antiga da página de competição. A mudança de relógio que ela recebeu é coerente
-  com as outras, mas não dá para conferir no navegador porque a tela não é alcançável.
-- `SportsPageV2` só aceita `futebol` e `basquete` (`supportedSports`), então nunca mostra o jogo
-  de NFL. Não há nada a fazer nela.
-- O card "Outras partidas em destaque" da home e `getHomeCompetitionMatchFromCalendarEvent`
-  descartam qualquer esporte que não seja futebol ou basquete, então o jogo de NFL não passa por
-  ali e aquele memo de módulo não precisa do feed.
-- Defeito PREEXISTENTE registrado, fora do escopo desta branch: nessa mesma lista, os cards de
-  futebol ao vivo mostram o `dateTime` literal do dado (por exemplo `2T 22:12`) e nunca
-  receberam os relógios genéricos, então o horário deles fica parado enquanto a tela do evento
-  conta. Conferido na `main` do dado, não tocado aqui.
-
-### Validações executadas nesta sessão
-
-- `npm run build`, `npm run check:nfl` (48 conferências), `npm run check:brands` e
-  `npm run check:player-props` passando. As duas conferências que o `check:nfl` tinha para o
-  instante de abertura no touchdown não foram removidas: elas passaram a valer no PASSO em que o
-  touchdown chega, que é onde a faixa precisa manter a posse com quem marcou. Entraram também a
-  ordem do horizonte (touchdown, ponto extra, kickoff) e a exigência de a abertura ser um lance
-  comum, com a campanha em andamento.
-- O movimento ao vivo foi acompanhado no navegador por 40 segundos corridos, com a aba visível,
-  registrando cada troca de estado: o sheet abre no lance mais recente, espera na ponta, a
-  campanha nova entra na lista, a reprodução atravessa para ela e segue lance a lance (`1 de 1`
-  -> `1 de 2` -> `2 de 2` -> `2 de 3` -> `3 de 3` ...), sem nenhum salto para trás.
-- Cuidado para quem for repetir a medição: a aba escondida PARA o feed (é a regra de
-  `handleVisibility`), e no painel do navegador do app a aba fica escondida entre chamadas. Sem a
-  aba visível, o relógio congela e nenhum lance chega — parece defeito e não é.
-- Campanha que começa: o ponto medido em `4px` no trilho de 343px, com a barra de progresso em
-  `0px`, no lance `1 de 1` do kickoff.
-- Intervalo conferido no fim do horizonte (alcançado no navegador acelerando `Date.now`, sem
-  mexer no código): a palavra aparece, o palco sai, o cartão e o trilho saem, nenhuma campanha
-  fica destacada e o relógio do placar mostra `Intervalo`. Tocando na primeira campanha da lista,
-  a tela de intervalo sai e a campanha reproduz do primeiro lance.
-- Faixa de situação no intervalo: de `2ª & 5 | KC 49 | Ver mais` para `Ver mais`, com zero itens
-  de situação, 26px de altura e o placar ainda sendo o gatilho do sheet.
-- Intervalo conferido de novo depois dos acertos: no sheet, campo vazio sem palavra e
-  `KC 16 · Intervalo · 14 MIA` no placar; no header, `Intervalo | Ver mais` na mesma linha, sem
-  relógio entre os números. Espaçamentos medidos no navegador: 24px no corpo, nenhum no bloco.
-- Aba Estatísticas conferida depois da troca: o placar novo no topo, o cabeçalho antigo ausente,
-  a tabela com quatro colunas de quarter e nenhuma de total (`7 6 0 0` e `0 14 0 0`, que fecham
-  com o 13 x 14 do placar), e a aba Jogadas intacta ao voltar.
-- Placar do sheet conferido nos três estados, nas duas marcas: lance comum
-  (`KC 13 · Q2 4:47 · 2ª & 4 · KC 31 · 14 MIA`), lance de pontuação (`Touchdown · Hill` no lugar
-  da descida) e intervalo (só `Intervalo`, sem situação). Na Draftea sai `2da & 20` e
-  `Medio Tiempo`, pelo catálogo. O escudo da descrição mede 20px.
-- No navegador, em 375x812, nas duas marcas: o card da lista e o trilho de jogos mostram o MESMO
-  horário a cada amostra, o placar virou `13x14` -> `16x14` no field goal de Q2 00:22 e o relógio
-  chegou a `Intervalo` — o protótipo TERMINA em vez de congelar outra vez. Na Draftea o card
-  mostra `LIVE` e `ML`/`SPREAD`, com a nomenclatura da marca intacta.
-- Página do evento de NFL e sheet de jogadas conferidos em seguida: abrem no lance que está
-  valendo (`Passe de 6 jardas · Mahomes -> Kelce`) e seguem em frente com a lista de campanhas.
-- Regressão do relógio genérico: a tela de um evento de futebol ao vivo (Flamengo x Cruzeiro)
-  conta 1 segundo por segundo, amostrada de segundo em segundo. Sem erros de console.
-- `npm run lint` acusa 53 problemas, mas varre também o `.worktrees/` local da máquina; em `src`
-  são 26 (18 erros, 8 avisos). Desses, 4 avisos são `React Hook useMemo has an unnecessary
-  dependency: 'nflLiveFeed'` — 3 da sessão anterior e 1 desta. O aviso é inerente ao padrão: a
-  função de montagem LÊ o feed por fora do React (`getNflLiveFeed`) para continuar pura, então o
-  ESLint não vê a dependência que o memo de fato tem. Desabilitar a regra é proibido pelo
-  `AGENTS.md`.
-- NÃO conferido nesta sessão: evento de basquete ao vivo e evento pré-jogo.
-
-### Conferência depois do deploy
-
-- `/pitaco/apostas` e `/draftea/apuestas` conferidos direto na rota, em 375x812. As duas
-  respondem com HTTP 404 e o corpo do `index.html`: é o fallback de SPA do `deploy.yml`
-  (`cp dist/index.html dist/404.html`), não um defeito — a rota renderiza.
-- Na Pitaco, com a aba visível, o relógio do card andou de `Q2 04:28` para `Q2 03:57` em 10
-  segundos reais: 31 segundos de jogo, que é a compressão de 3x valendo em produção.
-- O placar da tela do evento abre o sheet de jogadas, que sobe com o placar próprio
-  (`KC 13 · Q2 2:31 · 1ª & 10 · MIA 20 · 14 MIA`) e o campo reproduzindo o lance mais recente
-  (`Corrida de 2 jardas · Achane`).
-- Na Draftea: `LIVE`, colunas `ML`/`SPREAD`/`TOTAL` e navbar `Bets · Mis entradas · Gaming ·
-  Rewards`, com o mesmo jogo.
-- O protótipo publicado passa antes pelo portão de localização
-  (`LocationPermissionGate`), que é preexistente: sem permissão de localização no navegador,
-  nenhuma das duas rotas mostra o jogo.
+- Duas decisões de produto, nenhuma delas defeito introduzido aqui:
+  1. **O placar do sheet durante uma REVISÃO.** Ele mostra sempre o estado AO VIVO. Conferido no
+     intervalo: com o kickoff de `00:18` reproduzindo na tela, o placar marcava `Intervalo` e
+     `16 x 14`. A regra "o placar corresponde ao lance na tela" só vale na ponta ao vivo. Trocar
+     para o estado daquele lance é possível — cada passo do feed já guarda o jogo inteiro —, mas
+     muda o que o placar significa.
+  2. A faixa de situação do placar continua descrevendo o LANCE QUE ACABOU, com a descida do snap
+     dele, e não a situação que ficou. Registrada na rodada anterior e não tocada aqui.
+- Aproximação conhecida e documentada no código: o aviso de dois minutos não é um caso à parte.
+  Como o snap seguinte no dado real já é às 02:00, a descida chega no lugar certo; o que não
+  acontece é o cronômetro congelar nos últimos instantes daquela espera.
+- Defeito de texto PREEXISTENTE: `Corrida de 1 jardas` em vez de `1 jarda`, em `getPlayTitle`
+  (`playNarrative.ts`).
 
 ### Próximo passo concreto
 
-1. A decisão de produto em aberto na seção acima (a faixa de situação descrever o LANCE que
-   acabou ou a SITUAÇÃO que ficou) continua esperando a pessoa responsável pelo protótipo.
-2. Nada mais desta branch está pendente. A limpeza (branch local, branch remota e worktrees)
-   não foi feita: o `AGENTS.md` pede autorização explícita para ela.
+1. Validação da versão local pela pessoa responsável pelo protótipo. O `AGENTS.md` pede essa
+   aprovação explícita ANTES da Pull Request.
+2. Com a aprovação, abrir a PR de `fix/nfl-relogio-regra-e-placar` para `main` (`npm ci` e
+   `npm run build` antes). Merge e publicação pedem autorização explícita à parte — o merge
+   dispara o deploy do GitHub Actions.
 
 ## Histórico das entregas
 
+- [2026-09-16 — O jogo de NFL andando sozinho até o intervalo](handoffs/2026-09-16-nfl-jogo-ao-vivo.md):
+  o feed que entrega os lances um a um, o sheet acompanhando o jogo, o movimento de chegada, o
+  estado de intervalo e o placar próprio do sheet. É a base sobre a qual a regra de relógio
+  descrita no Estado atual foi construída — o relógio derivado dos lances nasceu ali.
 - [2026-09-16 — Nomenclatura da Draftea e o placar da NFL como gatilho](handoffs/2026-09-16-draftea-nomenclatura-e-placar-nfl.md):
   a troca de mercados e da navegação só na Draftea, o placar inteiro como gatilho do sheet de
   jogadas e o ponto extra fora do recorte — com o custo aceito de exibir 13 x 13, o placar

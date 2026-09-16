@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { advanceLiveClock, formatLiveClock } from '../../../shared/utils/liveClock'
+import { segmentsFor } from '../NflPlayReplay/playScene'
+import { replayTotalDuration } from '../NflPlayReplay/usePlayReplay'
 import nflLiveGame from '../../../data/nflLiveGame.json'
 
 // Jogo de NFL acontecendo sozinho.
@@ -75,6 +77,13 @@ export const FEED_TIMING = {
   scale: 3,
   minInterval: 6000,
   maxInterval: 14000,
+  /**
+   * Entrada do palco antes de a bola sair, em `nfl-plays-stage-in` (480ms no CSS do sheet).
+   *
+   * Entra na conta da APRESENTAÇÃO porque o lance só começa a acontecer na tela depois dela:
+   * entre a chegada do lance e o primeiro movimento da bola existe esse respiro.
+   */
+  stageEnter: 480,
   /** De quanto em quanto o relógio é recalculado. Meio segundo não deixa dígito atrasado. */
   tick: 500,
 } as const
@@ -101,8 +110,22 @@ const intervalOf = (step: NflFeedStep) => Math.min(
 export interface NflLiveFeedState {
   /** Posição no horizonte. 0 é o jogo no instante em que o protótipo abre. */
   index: number
-  /** O jogo AGORA, inteiro: placar, situação, campanhas, estatística, comparação. */
+  /** O jogo AGORA, inteiro: campanhas, estatística de jogador, comparação entre equipes. */
   step: NflFeedStep
+  /**
+   * O instante que o placar deve MOSTRAR: relógio, números, descida, ponto da bola, posse.
+   *
+   * Separado do passo porque atrasa em relação a ele. Enquanto o campo desenha o lance que
+   * acabou de chegar, o que vale na tela ainda é o instante ANTERIOR — a jogada nova não
+   * aconteceu. Ver `presentationOf`.
+   *
+   * Só este bloco atrasa. Campanhas e estatísticas continuam sendo as do passo atual: elas não
+   * descrevem um instante, e a lista de campanhas precisa conter a campanha do lance que acabou
+   * de entrar — sem ela o sheet ficaria com um lance órfão, sem campanha para reproduzir.
+   */
+  live: NflFeedStep['live']
+  /** O campo ainda está desenhando o lance que chegou. O placar espera por ele. */
+  isPresenting: boolean
   /** Relógio de jogo, no formato do placar. Vira `Intervalo` quando o quarter zera. */
   clock: string
   /** Os lances que já aconteceram. O que vem depois ainda não é público. */
@@ -114,21 +137,73 @@ export interface NflLiveFeedState {
 }
 
 /**
- * O relógio é DERIVADO dos lances, e não uma contagem independente.
+ * Quanto tempo o lance leva para ACONTECER NA TELA, do instante em que chega até a bola assentar.
  *
- * Entre um lance e o seguinte ele interpola do relógio de um até o relógio do outro, ao longo
- * do intervalo real. Com isso ele nunca deriva — cai sempre exatamente no relógio do próximo
- * lance — e reproduz de graça as paradas do jogo real: no ponto extra e no kickoff o
- * cronômetro está parado, e os dois lances têm o mesmo relógio no dado, então ele simplesmente
- * não anda. Nenhum caso especial aqui dentro.
+ * Existe porque o feed e o campo andavam em tempos diferentes: o passo trocava o jogo inteiro no
+ * instante da CHEGADA, e o campo levava de 1,2s (corrida curta) a 3,5s (passe profundo, com voo e
+ * avanço depois da recepção) para desenhar o mesmo lance. O placar ficava descrevendo um momento
+ * que a tela ainda não tinha alcançado — o número mudava antes de a bola voar, e o relógio já
+ * estava dentro do huddle enquanto o campo mostrava a jogada anterior.
  *
- * `advanceLiveClock` é o relógio compartilhado do app, e é ele que devolve `Intervalo` quando o
- * quarter zera. O último passo tem `gapSeconds` igual ao que falta para 00:00, então o fim do
- * horizonte é o fim do primeiro tempo — o protótipo TERMINA em vez de congelar outra vez.
+ * A duração sai da MESMA conta que o painel usa para animar (`segmentsFor` + `replayTotalDuration`),
+ * e não de uma estimativa: é a única forma de o placar virar exatamente quando o touchdown chega
+ * na end zone, que é o lance em que errar aparece.
  */
-const clockAt = (step: NflFeedStep, progress: number) => advanceLiveClock(
-  quarterClock(step.live.quarter, step.live.clock),
-  step.gapSeconds * progress,
+const presentationByIndex = new Map<number, number>()
+
+const presentationOf = (index: number) => {
+  const cached = presentationByIndex.get(index)
+  if (cached !== undefined) return cached
+
+  const play = nflLiveGame.plays[STEPS[index].playCount - 1]
+  const total = FEED_TIMING.stageEnter + replayTotalDuration(segmentsFor(play))
+  presentationByIndex.set(index, total)
+
+  return total
+}
+
+/**
+ * Quantos segundos de relógio DE JOGO já correram dentro do passo.
+ *
+ * O relógio é derivado dos lances, e nunca deriva: cada passo parte do relógio do lance ANTERIOR
+ * e chega exatamente no relógio do SEU lance — o `gapSeconds` do passo de trás é, por construção
+ * do gerador, a distância entre os dois.
+ *
+ * A descida acontece toda dentro da apresentação, e depois o relógio TRAVA. É isso que faz o
+ * número do placar ser sempre o número do lance que está na tela: na corrida de 6 jardas às
+ * 05:43, o relógio desce de 05:50 até 05:43 enquanto a jogada é desenhada e fica ali até o
+ * próximo lance chegar.
+ *
+ * O que se perde com isso, e é bom saber: a parada de relógio da regra da NFL deixa de aparecer
+ * como uma parada, porque agora o cronômetro fica travado entre TODOS os lances. A regra continua
+ * valendo no dado — é ela que faz a descida ser de 5 segundos depois de um passe incompleto e de
+ * 39 depois de uma corrida em campo —, e `check:nfl` continua protegendo isso.
+ *
+ * O ÚLTIMO passo é o único que continua descendo depois da apresentação: ali não há próximo snap,
+ * e o relógio simplesmente corre até zerar. É esse zero que leva o protótipo ao intervalo em vez
+ * de congelar no 00:02 do último lance.
+ */
+const burnedAt = (index: number, elapsed: number) => {
+  const step = STEPS[index]
+  const previous = index > 0 ? STEPS[index - 1] : null
+  const incoming = previous?.gapSeconds ?? 0
+  const presentation = presentationOf(index)
+
+  if (elapsed < presentation) return incoming * (elapsed / presentation)
+  if (!step.endsPeriod) return incoming
+
+  const runout = Math.max(1, intervalOf(step) - presentation)
+
+  return incoming + step.gapSeconds * Math.min(1, (elapsed - presentation) / runout)
+}
+
+/**
+ * `advanceLiveClock` é o relógio compartilhado do app, e é ele que devolve `Intervalo` quando o
+ * quarter zera.
+ */
+const clockAt = (live: NflFeedStep['live'], burnedSeconds: number) => advanceLiveClock(
+  quarterClock(live.quarter, live.clock),
+  burnedSeconds,
 )
 
 /**
@@ -155,16 +230,27 @@ const playsAt = (step: NflFeedStep) => {
   return plays
 }
 
-const stateAt = (index: number, progress: number): NflLiveFeedState => {
+const stateAt = (index: number, elapsed: number): NflLiveFeedState => {
   const step = STEPS[index]
+  const isPresenting = index > 0 && elapsed < presentationOf(index)
+  const live = isPresenting ? STEPS[index - 1].live : step.live
+  const burnedSeconds = burnedAt(index, elapsed)
 
   return {
     index,
     step,
-    clock: clockAt(step, progress),
+    live,
+    isPresenting,
+    // A descida SEMPRE parte do relógio do lance anterior — é de lá que ela vem. Depois da
+    // apresentação o `live` já é o deste passo, e aí `burnedSeconds` vale o intervalo inteiro:
+    // a conta cai exatamente no relógio dele, que é onde o cronômetro trava.
+    clock: clockAt(STEPS[index - 1]?.live ?? step.live, burnedSeconds),
     plays: playsAt(step),
     arrival: index > 0 ? nflLiveGame.plays[step.playCount - 1] : null,
-    isOver: step.endsPeriod && progress >= 1,
+    // O primeiro tempo acaba quando o CRONÔMETRO zera, e não quando a espera do passo termina.
+    // No último passo o relógio ainda desce depois da apresentação, até 00:00, e é aí que o
+    // apito soa. Medir pela espera deixaria o relógio mostrando `Intervalo` antes da tela.
+    isOver: step.endsPeriod && burnedSeconds >= (STEPS[index - 1]?.gapSeconds ?? 0) + step.gapSeconds,
   }
 }
 
@@ -179,7 +265,15 @@ const emit = (next: NflLiveFeedState) => {
   // `useSyncExternalStore` compara por identidade, então o objeto só pode ser trocado quando
   // algo que a tela mostra mudou. Trocá-lo a cada tique faria as três árvores renderizarem
   // duas vezes por segundo sem nada novo na tela.
-  if (next.index === state.index && next.clock === state.clock && next.isOver === state.isOver) return
+  if (
+    next.index === state.index
+    && next.clock === state.clock
+    && next.isOver === state.isOver
+    // A virada da apresentação troca o placar, a descida e o ponto da bola de uma vez, e pode
+    // cair num quadro em que o relógio já mostrava o horário do lance. Sem ela na comparação, o
+    // número do placar só mudaria no segundo seguinte.
+    && next.isPresenting === state.isPresenting
+  ) return
 
   state = next
   for (const listener of listeners) listener()
@@ -190,10 +284,8 @@ const tick = () => {
 
   const step = STEPS[index]
   const elapsed = Date.now() - startedAt
-  const interval = intervalOf(step)
-  const progress = Math.min(1, elapsed / interval)
 
-  if (progress >= 1 && index < STEPS.length - 1) {
+  if (elapsed >= intervalOf(step) && index < STEPS.length - 1) {
     index += 1
     startedAt = Date.now()
     emit(stateAt(index, 0))
@@ -201,7 +293,7 @@ const tick = () => {
     return
   }
 
-  emit(stateAt(index, progress))
+  emit(stateAt(index, elapsed))
 }
 
 /**

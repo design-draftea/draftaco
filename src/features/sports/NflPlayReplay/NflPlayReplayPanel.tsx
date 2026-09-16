@@ -7,13 +7,11 @@ import {
   getPlayResult,
   getPlaySituation,
   getPlayTitle,
-  hasBallFlight,
   isAnimatable,
-  isKick,
-  isRun,
   type NflPlay,
 } from './playNarrative'
-import { REPLAY_TIMING, timeScaler, usePlayReplay, type ReplaySegments, type ReplaySpeed } from './usePlayReplay'
+import { segmentsFor } from './playScene'
+import { REPLAY_TIMING, timeScaler, usePlayReplay, type ReplaySpeed } from './usePlayReplay'
 
 /**
  * "Touchdown" com as letras subindo e descendo em onda. Fica na linha de resultado, abaixo
@@ -39,52 +37,6 @@ function TouchdownLabel({ label }: { label: string }) {
       ))}
     </span>
   )
-}
-
-/**
- * Quanto a bola percorre no ar e quanto no chão, por tipo de lance. É daqui que a máquina
- * de estados tira a duração de cada fase.
- *
- * `hasFlight` não é `airYards > 0`: um passe na linha tem zero jarda aérea e mesmo assim
- * voa. Quem não voa é a corrida.
- */
-function segmentsFor(play: NflPlay): ReplaySegments {
-  // Chute: a bola voa a distância chutada e, quando alguém a pega, o retornador corre com
-  // ela. Não dá para usar `complete`/`yardsAfterCatch` aqui — são campos de passe, valem 0
-  // em qualquer chute, e por isso o retorno do kickoff não animava: ele ficava com zero
-  // jarda dos dois lados e a fase de corrida nunca abria.
-  if (isKick(play)) {
-    return {
-      airYards: play.kickDistance ?? 0,
-      runYards: Math.max(0, play.returnYards ?? 0),
-      hasFlight: true,
-    }
-  }
-
-  // Anulada que aconteceu: o texto dá o ganho total, mas não as jardas aéreas. Num passe o
-  // arco cobre o ganho inteiro; numa corrida é tudo chão, como em qualquer corrida.
-  if (play.noPlay && play.nullified?.complete) {
-    const anulada = play.nullified
-
-    return anulada.kind === 'run'
-      ? { airYards: 0, runYards: Math.abs(anulada.yards), hasFlight: false }
-      : { airYards: anulada.yards, runYards: 0, hasFlight: true }
-  }
-
-  // Corrida: nada no ar, tudo no chão.
-  if (isRun(play)) return { airYards: 0, runYards: Math.abs(play.yards), hasFlight: false }
-
-  // Passe: voo até a recepção e, se completou, o avanço depois dela. Passe que cai não tem
-  // avanço: o voo termina e acabou.
-  if (hasBallFlight(play)) {
-    return {
-      airYards: play.airYards ?? 0,
-      runYards: play.complete ? Math.max(0, play.yardsAfterCatch ?? 0) : 0,
-      hasFlight: true,
-    }
-  }
-
-  return { airYards: Math.abs(play.yards), runYards: 0, hasFlight: true }
 }
 
 /**
@@ -263,6 +215,14 @@ interface NflPlayReplayPanelProps {
    * no meio do jogo, não tem. Quem decide é o pai, que é quem sabe onde está a ponta ao vivo.
    */
   continuesAfter: boolean
+  /**
+   * O período acabou e este lance está SAINDO da tela para dar lugar ao intervalo.
+   *
+   * Diferente de `continuesAfter`: ali o palco sai porque vem outro lance, e espera o respiro
+   * de leitura antes de apagar. Aqui não vem lance nenhum, e a espera é zero — quem dá o tempo
+   * da saída é o apito, no componente de cima.
+   */
+  isPeriodOver?: boolean
   onReplaySequence: () => void
   /** Interrompe o encadeamento da campanha, para o botão de pausa valer no respiro. */
   onStopSequence: () => void
@@ -283,6 +243,7 @@ export function NflPlayReplayPanel({
   startDelay,
   isSequence,
   continuesAfter,
+  isPeriodOver = false,
   onReplaySequence,
   onStopSequence,
   children,
@@ -353,7 +314,8 @@ export function NflPlayReplayPanel({
           speed={speed}
           // Só sai apagando quando há um próximo lance para entrar. No último da campanha o
           // palco fica: ali a pessoa está olhando o desfecho, não esperando a troca.
-          leaving={replay.isEnded && isSequence && continuesAfter}
+          leaving={isPeriodOver || (replay.isEnded && isSequence && continuesAfter)}
+          exitNow={isPeriodOver}
         />
         {play.touchdown && (replay.phase === 'run' || replay.phase === 'result') && (
           <>

@@ -398,6 +398,10 @@ function parseNullified(descRaw) {
       rusher: null,
       complete: !passe[2],
       location: passe[4],
+      // Balde de profundidade da própria NFL: `short` abaixo de 15 jardas aéreas, `deep` daí
+      // para cima. É a ÚNICA medida de distância que sobra num passe anulado incompleto —
+      // ali não há ganho para contar, e sem isto o arco sairia com comprimento zero.
+      depth: passe[3],
       yards: passe[2] ? 0 : ganho(passe[6]),
       touchdown,
     }
@@ -415,12 +419,28 @@ function parseNullified(descRaw) {
       rusher: limpo(corrida[1]),
       complete: true,
       location: corrida[2] ?? 'middle',
+      // Corrida não tem balde de profundidade: a bola não subiu.
+      depth: null,
       yards: ganho(corrida[3]),
       touchdown,
     }
   }
 
   return null
+}
+
+/**
+ * Jardas da falta no referencial de quem tem a bola. `null` quando não há falta marcada.
+ *
+ * O nflverse dá o número sempre positivo e diz à parte de quem foi a falta (`penalty_team`).
+ * Quem desenha precisa do SENTIDO, e ele sai daí: falta do ataque, a bola volta.
+ */
+function penaltyMarch(play) {
+  if (play.penalty_yards === '' || play.penalty_yards === 'NA') return null
+  const jardas = Number(play.penalty_yards)
+  if (!Number.isFinite(jardas) || jardas === 0) return null
+
+  return play.penalty_team === play.posteam ? -jardas : jardas
 }
 
 const CENTERED_TYPES = new Set(['kickoff', 'field_goal', 'extra_point'])
@@ -478,11 +498,37 @@ function buildPlays(plays, home) {
         penalty: isOne(play.penalty),
         /** Tipo da falta, para a linha de resultado dizer por que foi anulada. */
         penaltyType: orEmpty(play.penalty_type),
+        /**
+         * Quem cometeu a falta. Numa falta SECA — falso início, atraso de jogo — é a única
+         * pessoa que fez alguma coisa no lance, e sem ela o campo mostrava um capacete
+         * cinza sem nome num lance em que quem saiu antes do snap foi o Tyreek Hill.
+         */
+        penaltyBy: orEmpty(play.penalty_player_name),
+        /**
+         * Jardas da falta, COM SINAL no referencial de quem tem a bola: negativo quando a
+         * falta é do ataque (a bola volta), positivo quando é da defesa.
+         *
+         * É o que o lance tem para mostrar quando a penalidade é a única coisa que houve. O
+         * `check:nfl` confere o número contra a linha de scrimmage do lance SEGUINTE — é ali
+         * que o recuo aparece de verdade, e é assim que se sabe que ele está certo.
+         */
+        penaltyYards: penaltyMarch(play),
         /** O que a jogada anulada foi, extraído do texto. `null` quando não houve jogada. */
         nullified,
         passer: orEmpty(play.passer_player_name),
         receiver: orEmpty(play.receiver_player_name),
         rusher: orEmpty(play.rusher_player_name),
+        /**
+         * Sack: o passe que nunca saiu. O nflverse marca `play_type: 'pass'`, deixa
+         * `air_yards` vazio e credita a perda em `yards_gained`.
+         *
+         * Sem esta marca o protótipo lia só "passe" + "não completou" e dizia PASSE
+         * INCOMPLETO num lance que não teve passe nenhum — e, sem jardas aéreas, não
+         * desenhava nada. O que o lance tem para contar é a perda: o QB andou para trás.
+         */
+        sack: isOne(play.sack),
+        /** Quem derrubou. Vai para a linha de resultado, como o autor do touchdown. */
+        sackedBy: orEmpty(play.sack_player_name),
         // Chutes. Atenção ao kickoff: ali `posteam` é quem RECEBE, e `yrdln` é a linha de
         // onde o adversário chuta. Logo, no referencial de `posteam` a bola voa para TRÁS
         // (em direção à própria end zone) e só o retorno anda para frente. Em punt, field
@@ -649,7 +695,7 @@ const demoPlay = (home, away, campos) => ({
   rusher_player_name: '', rusher_player_id: '', kicker_player_name: '', kicker_player_id: '',
   punter_player_name: '', punter_player_id: '', kickoff_returner_player_name: '',
   punt_returner_player_name: '', interception_player_name: '', interception_player_id: '',
-  sack_player_name: '', sack_player_id: '', td_player_name: '',
+  sack_player_name: '', sack_player_id: '', td_player_name: '', penalty_player_name: '',
   passing_yards: '0', receiving_yards: '0', rushing_yards: '0',
   total_home_score: '13', total_away_score: '7',
   ...campos,
@@ -1021,6 +1067,80 @@ function buildSnapshot(plays, home, away) {
   }
 }
 
+// ── Regra de relógio ───────────────────────────────────────────────────────
+//
+// O relógio da NFL não corre o tempo todo. Ele corre DURANTE o lance e, depois que a bola
+// morre, só continua correndo se o lance terminou em progresso normal dentro de campo. Passe
+// incompleto, jogador que sai pela lateral, pontuação, falta e pedido de tempo param o
+// cronômetro, que então só volta no snap seguinte (ou no apito de bola pronta, na falta).
+// Primeira descida NÃO para o relógio — isso é regra de futebol universitário.
+//
+// Sem esta separação o protótipo queimava o intervalo inteiro de forma UNIFORME até o próximo
+// snap, e o efeito era um relógio que nunca para: no passe incompleto, em que a regra manda
+// congelar, ele seguia descendo devagarinho.
+
+/**
+ * O relógio PARA quando este lance acaba?
+ *
+ * Tudo sai de coluna real do nflverse, menos o fora de campo, que só existe no texto da
+ * súmula (`ran ob`, `pushed ob`). Os lances fabricados da campanha de demonstração passam
+ * pelas mesmas conferências porque são linhas de pbp com as mesmas colunas e a mesma súmula.
+ */
+const OUT_OF_BOUNDS = /\b(?:ran ob|pushed ob|out of bounds)\b/i
+
+function stopsClock(play) {
+  const desc = String(play.desc ?? '')
+
+  // Passe incompleto: a bola cai no chão e o cronômetro para na hora.
+  if (isOne(play.incomplete_pass) || /pass incomplete/i.test(desc)) return true
+  // Fora de campo: o portador leva a bola para além da lateral.
+  if (OUT_OF_BOUNDS.test(desc)) return true
+  // Pontuação: touchdown, field goal (bom ou não), ponto extra e safety.
+  if (isOne(play.touchdown) || play.field_goal_result || play.extra_point_result) return true
+  if (isOne(play.safety)) return true
+  // Troca de posse. Punt e chute devolvido contam aqui; o fumble recuperado pelo PRÓPRIO time
+  // não para nada, e é justamente por isso que só `fumble_lost` entra.
+  if (play.play_type === 'punt' || isOne(play.interception) || isOne(play.fumble_lost)) return true
+  // Bola morta sem retorno: touchback e fair catch. O relógio só volta no snap.
+  if (isOne(play.touchback) || isOne(play.punt_fair_catch) || isOne(play.kickoff_fair_catch)) return true
+  // Falta e pedido de tempo. A falta devolve o relógio no apito de bola pronta, e não no snap,
+  // mas a distância até o snap seguinte já está medida em `gapSeconds` — aqui só interessa que
+  // o cronômetro parou quando o lance acabou.
+  if (isOne(play.penalty) || isOne(play.timeout)) return true
+  // Fim de período.
+  if (isOne(play.quarter_end)) return true
+
+  return false
+}
+
+/**
+ * Teto de quantos segundos de relógio o LANCE em si queima, do snap até a bola morrer.
+ *
+ * Só vale para lance que deixa o cronômetro correndo, porque aí o intervalo até o próximo
+ * snap é lance + huddle e o pbp não separa os dois. Quando o relógio PARA, o dado já separa
+ * sozinho: se o cronômetro congelou no fim do lance, o que sobra até o snap seguinte é zero, e
+ * o intervalo medido É a duração do lance. Confirmado neste jogo — os lances que param o
+ * relógio têm intervalos de 2 a 12 segundos (passe incompleto 4/5/7, fora de campo 8, chute 4,
+ * punt 7/12, touchdown 8), e os que não param têm 17 a 41.
+ */
+const PLAY_CLOCK_SECONDS = {
+  kickoff: 6,
+  punt: 8,
+  field_goal: 5,
+  extra_point: 4,
+  pass: 6,
+  run: 5,
+  qb_kneel: 2,
+  qb_spike: 1,
+  no_play: 0,
+}
+
+const playClockSeconds = (play, gapSeconds) => (
+  stopsClock(play)
+    ? gapSeconds
+    : Math.min(PLAY_CLOCK_SECONDS[play.play_type] ?? 6, gapSeconds)
+)
+
 /**
  * Um instante por lance que ainda vai chegar. O passo 0 é o jogo AGORA, no touchdown; cada
  * passo seguinte é o jogo com mais um lance visível.
@@ -1030,6 +1150,16 @@ function buildSnapshot(plays, home, away) {
  * extra e o kickoff saem no mesmo relógio (o cronômetro está parado), o passe incompleto quase
  * não anda, e a queima entre dois snaps anda quarenta segundos. Um intervalo fixo entre lances
  * seria um metrônomo, e metrônomo lê como animação em laço — não como jogo.
+ *
+ * `playSeconds` e `clockStops` MEDEM a regra: o primeiro é o que o lance queimou do snap até a
+ * bola morrer, e o segundo diz se o cronômetro parou ali. Os dois são conferidos por
+ * `check:nfl` e são o que prova que os intervalos deste recorte são os reais — um passe
+ * incompleto queima de 2 a 7 segundos e uma corrida em campo queima de 17 a 41, porque no
+ * primeiro caso o relógio para na hora e no segundo ele atravessa o huddle.
+ *
+ * O app NÃO usa mais `playSeconds` para desenhar a descida: o relógio da tela desce dentro da
+ * apresentação do lance e trava no horário DELE (ver `presentationOf`, em `nflLiveFeed.ts`).
+ * A regra continua valendo no dado, que é quem define o tamanho de cada descida.
  *
  * O ÚLTIMO passo mede até 00:00, e é por isso que o protótipo termina em vez de congelar:
  * depois do último snap o relógio simplesmente corre até o fim do quarter e vira `Intervalo`.
@@ -1043,14 +1173,17 @@ function buildSteps(now, horizon, home, away) {
 
     const current = visible[visible.length - 1]
     const next = horizon[index] ?? null
+    // Sem `next`, o que falta medir é o resto do quarter — do relógio deste lance até zero.
+    const gapSeconds = next
+      ? Math.max(0, clockToSeconds(current.time) - clockToSeconds(next.time))
+      : clockToSeconds(current.time)
 
     steps.push({
       playId: current.play_id,
       playCount: buildPlays(visible, home).length,
-      // Sem `next`, o que falta medir é o resto do quarter — do relógio deste lance até zero.
-      gapSeconds: next
-        ? Math.max(0, clockToSeconds(current.time) - clockToSeconds(next.time))
-        : clockToSeconds(current.time),
+      gapSeconds,
+      playSeconds: playClockSeconds(current, gapSeconds),
+      clockStops: stopsClock(current),
       endsPeriod: next === null,
       ...buildSnapshot(visible, home, away),
     })

@@ -30,11 +30,13 @@ import {
   isAnimatable,
   isKick,
   isRun,
+  isSack,
+  penaltyMarchYards,
   showsGainBadge,
   type NflPlay,
   type PlayOutcome,
 } from './playNarrative'
-import type { ReplayPhase } from './usePlayReplay'
+import type { ReplayPhase, ReplaySegments } from './usePlayReplay'
 
 /* Composição do palco. Retrato, haste e nome sobem 6px em relação ao estudo (centro em 58,
    haste em 78, nome em 30). Os três andam juntos: a haste tem de continuar saindo da base
@@ -92,9 +94,22 @@ const PATH_TONE: Record<PlayOutcome, PathTone> = {
   noGain: 'success',
   // A bola não chegou a ninguém: é o vermelho da referência.
   incomplete: 'error',
-  touchback: 'error',
+  /* O touchback ficava neste vermelho, pelo mesmo argumento — "não chegou a ninguém". O
+     argumento vale para o passe que cai e não vale para o chute: ele foi executado, andou as
+     jardas todas e a posse passou como devia. Um punt que entra na end zone é o desfecho
+     NORMAL dele, não uma falha, e o vermelho fazia dois punts lado a lado parecerem dois
+     lances diferentes. Quem diz que ninguém ficou com a bola é o X da chegada, e o texto. */
+  touchback: 'success',
+  // O sack também é vermelho: a bola ficou com quem a tinha, mas para o ataque o lance deu
+  // errado — e a cor aqui lê o lance, não a posse.
+  sack: 'error',
   // Cinza: o lance saiu bem, só não conta. Nem confirmação, nem erro.
   voided: 'void',
+  // Cinza pelo mesmo motivo, mesmo com a bola no chão: quem apagou o lance foi a
+  // penalidade, e não o passe errado. O X da chegada é que diz que ela caiu.
+  voidedIncomplete: 'void',
+  // A falta seca é a mesma bandeira: cinza.
+  penalty: 'void',
 }
 
 /** Marca de chegada: bolinha onde a posse ficou, X onde a bola caiu. */
@@ -102,8 +117,13 @@ const ARRIVAL_MARK: Record<PlayOutcome, 'dot' | 'cross'> = {
   gain: 'dot',
   noGain: 'dot',
   voided: 'dot',
+  // O passador terminou o lance com a bola, no chão: é posse, e posse é bolinha.
+  sack: 'dot',
   incomplete: 'cross',
+  voidedIncomplete: 'cross',
   touchback: 'cross',
+  // A bola parou na jarda nova, e continua sendo de quem era: é posse, e posse é bolinha.
+  penalty: 'dot',
 }
 
 /** O pulso é confirmação de recepção: só onde alguém ficou com a bola. */
@@ -111,8 +131,13 @@ const CONFIRMS_CATCH: Record<PlayOutcome, boolean> = {
   gain: true,
   noGain: true,
   voided: true,
+  // Ninguém recebeu nada num sack: a bola nunca saiu da mão de quem levou.
+  sack: false,
   incomplete: false,
+  voidedIncomplete: false,
   touchback: false,
+  // Não houve recepção nenhuma: a bola foi empurrada pela marcação, não recebida.
+  penalty: false,
 }
 
 /** Força do fim do gradiente: o caminho chega forte quando o lance chegou. */
@@ -120,9 +145,64 @@ const FLOW_END_OPACITY: Record<PlayOutcome, number> = {
   gain: 0.95,
   noGain: 0.95,
   voided: 0.95,
+  sack: 0.95,
+  penalty: 0.95,
   incomplete: 0.6,
-  touchback: 0.6,
+  voidedIncomplete: 0.6,
+  // O chute chegou onde ia dar: o caminho chega forte, como o dos outros chutes.
+  touchback: 0.95,
 }
+
+/**
+ * Alguém termina o lance COM a bola. Responde sozinha o que antes eram dois `!==` soltos no
+ * meio de `carriesBall` — e é essa tabela que impede a anulada incompleta de herdar a
+ * recepção da anulada comum: cinza as duas, com posse só uma.
+ */
+const KEEPS_POSSESSION: Record<PlayOutcome, boolean> = {
+  gain: true,
+  noGain: true,
+  voided: true,
+  sack: true,
+  penalty: true,
+  incomplete: false,
+  voidedIncomplete: false,
+  touchback: false,
+}
+
+/**
+ * A bola CAI no chão ao chegar: ela some e o X fica no lugar dela.
+ *
+ * Não é o contrário de `KEEPS_POSSESSION`. No touchback a bola também morre sem dono, mas
+ * fica desenhada onde parou: a posição dela dentro da end zone é a informação do lance.
+ */
+const BALL_FALLS: Record<PlayOutcome, boolean> = {
+  gain: false,
+  noGain: false,
+  voided: false,
+  sack: false,
+  penalty: false,
+  touchback: false,
+  incomplete: true,
+  voidedIncomplete: true,
+}
+
+/**
+ * Profundidade do arco num passe anulado INCOMPLETO, em jardas.
+ *
+ * O texto oficial de um lance anulado não traz jardas aéreas — traz o balde da própria NFL:
+ * `short` abaixo de 15 jardas aéreas, `deep` daí para cima. Estes dois números são a MEDIANA
+ * real de cada balde entre os passes incompletos da temporada 2023 (short: 5 jardas em
+ * 4.486 lances; deep: 24 em 1.828), medida no mesmo play-by-play do nflverse que gera o
+ * fixture. É a melhor resposta possível à pergunta "a que distância caiu", dado o que a
+ * súmula diz do lance — e nenhum número aparece na tela: a placa de jardas fica suprimida
+ * em toda anulada (`showsGainBadge`).
+ */
+const VOID_PASS_DEPTH = { short: 5, deep: 24 } as const
+
+/** Quanto o desenho de um passe anulado cobre: o ganho quando houve, o balde quando não. */
+const voidPassSpan = (anulada: { complete: boolean; yards: number; depth: string | null }) => (
+  anulada.complete ? anulada.yards : VOID_PASS_DEPTH[anulada.depth === 'deep' ? 'deep' : 'short']
+)
 
 export interface TrailDot {
   point: Point
@@ -223,7 +303,12 @@ export function buildPlayScene(play: NflPlay): PlayScene {
    */
   const voidPlay = hasNullifiedPlay(play) ? play.nullified : null
   const flies = hasBallFlight(play) || voidPlay?.kind === 'pass'
-  const runs = isRun(play) || voidPlay?.kind === 'run'
+  /* A falta seca também anda rasteiro: a bola sai da linha e é empurrada até a jarda nova.
+     O sinal da marcação cuida do sentido, como o ganho negativo cuida do sack. */
+  const march = penaltyMarchYards(play)
+  // O sack entra como corrida porque é isso que ele é no desenho: trecho rasteiro saindo da
+  // linha, só que no sentido contrário. O ganho negativo cuida do sentido sozinho.
+  const runs = isRun(play) || voidPlay?.kind === 'run' || isSack(play) || march !== 0
   const kick = isKick(play)
   // Field goal e ponto extra não andam `kickDistance` no campo: esse número é a distância
   // da TENTATIVA, que já inclui as 10 jardas da end zone e a profundidade do snap. Um field
@@ -247,15 +332,20 @@ export function buildPlayScene(play: NflPlay): PlayScene {
     catchYard = kickBackwards ? startYard - distance : startYard + distance
     endYard = kickBackwards ? catchYard + play.returnYards : catchYard
   } else if (voidPlay) {
-    // O texto traz o ganho total, mas não as jardas aéreas. Num passe anulado o arco cobre
-    // o ganho inteiro: separar voo de avanço exigiria um número que a súmula não dá.
-    catchYard = voidPlay.kind === 'run' ? startYard : startYard + voidPlay.yards
-    endYard = startYard + voidPlay.yards
+    // O texto traz o ganho total, mas não as jardas aéreas. Num passe anulado COMPLETO o
+    // arco cobre o ganho inteiro: separar voo de avanço exigiria um número que a súmula não
+    // dá. No INCOMPLETO não há ganho nenhum para cobrir, e a profundidade sai do balde.
+    const span = voidPlay.kind === 'run' ? voidPlay.yards : voidPassSpan(voidPlay)
+    catchYard = voidPlay.kind === 'run' ? startYard : startYard + span
+    endYard = startYard + span
   } else if (runs) {
     // A corrida inteira é o trecho rasteiro: sai da linha e vai até onde parou. Origem e
     // "recepção" no mesmo ponto, porque não há bola no ar entre os dois.
+    //
+    // Na falta seca o lance não credita jarda nenhuma (`play.yards` é zero, e tem de ser):
+    // o que a bola andou foi a marcação da falta.
     catchYard = startYard
-    endYard = startYard + play.yards
+    endYard = startYard + (march !== 0 ? march : play.yards)
   } else if (flies) {
     catchYard = startYard + (play.airYards ?? 0)
     // Passe que cai termina onde caiu: não há avanço depois dele.
@@ -294,7 +384,7 @@ export function buildPlayScene(play: NflPlay): PlayScene {
   // Num passe que cai o foco NÃO passa para o alvo: quem apareceria ali não ficou com a
   // bola, e trocar a foto dava a entender que ficou. Quem chuta também não sai do lugar
   // quando não há ninguém do outro lado (field goal, ponto extra, punt sem retorno).
-  const fallsIncomplete = animatable && outcome === 'incomplete'
+  const fallsIncomplete = animatable && BALL_FALLS[outcome]
   const staysAtOrigin = fallsIncomplete || (kick && !play.returner)
 
   /**
@@ -313,8 +403,7 @@ export function buildPlayScene(play: NflPlay): PlayScene {
    *   quem chutou, e mandá-la para o selo do chutador a faria voltar no tempo.
    */
   const carriesBall = !atGoal
-    && outcome !== 'incomplete'
-    && outcome !== 'touchback'
+    && KEEPS_POSSESSION[outcome]
     && (kick ? !!play.returner : (flies || runs))
 
   /**
@@ -368,10 +457,15 @@ export function buildPlayScene(play: NflPlay): PlayScene {
     flipsToGain: showsGainBadge(play),
     // Numa corrida não há passador: quem sai com a bola é o próprio corredor. Sem isto o
     // nome sumia durante a preparação e reaparecia quando a bola andava.
-    originName: kick ? play.kicker : (voidPlay?.passer || voidPlay?.rusher || play.passer || play.rusher),
+    // Na falta seca quem cometeu a falta é a única pessoa que fez alguma coisa no lance: é
+    // ela que aparece, e não um capacete cinza sem nome.
+    originName: kick
+      ? play.kicker
+      : (voidPlay?.passer || voidPlay?.rusher || play.passer || play.rusher || play.penaltyBy),
     targetName: kick
       ? (play.returner ?? play.kicker)
-      : (voidPlay?.receiver ?? voidPlay?.rusher ?? play.receiver ?? play.rusher ?? play.passer),
+      : (voidPlay?.receiver ?? voidPlay?.rusher ?? play.receiver ?? play.rusher ?? play.passer
+        ?? play.penaltyBy),
     // O selo fica sempre no mesmo canto do retrato, como no estudo — não espelha com o
     // sentido do ataque. Se algum dia precisar espelhar, é só multiplicar o `x` pela direção.
     carry: {
@@ -540,4 +634,62 @@ export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number):
       : null,
     flipsToGain: phase === 'result' && scene.flipsToGain,
   }
+}
+
+/**
+ * Quanto a bola percorre no ar e quanto no chão, por tipo de lance. É daqui que a máquina
+ * de estados tira a duração de cada fase.
+ *
+ * Mora aqui, e não no painel, porque tem DOIS consumidores: o painel, que anima o lance, e o
+ * feed ao vivo, que precisa saber quanto tempo o lance leva para ser apresentado — é esse tempo
+ * que segura o placar até a jogada acontecer na tela.
+ *
+ * `hasFlight` não é `airYards > 0`: um passe na linha tem zero jarda aérea e mesmo assim
+ * voa. Quem não voa é a corrida.
+ */
+export function segmentsFor(play: NflPlay): ReplaySegments {
+  // Chute: a bola voa a distância chutada e, quando alguém a pega, o retornador corre com
+  // ela. Não dá para usar `complete`/`yardsAfterCatch` aqui — são campos de passe, valem 0
+  // em qualquer chute, e por isso o retorno do kickoff não animava: ele ficava com zero
+  // jarda dos dois lados e a fase de corrida nunca abria.
+  if (isKick(play)) {
+    return {
+      airYards: play.kickDistance ?? 0,
+      runYards: Math.max(0, play.returnYards ?? 0),
+      hasFlight: true,
+    }
+  }
+
+  // Anulada que aconteceu: o texto dá o ganho total, mas não as jardas aéreas. Num passe o
+  // arco cobre o ganho inteiro — ou o balde de profundidade, quando o passe caiu e não há
+  // ganho; numa corrida é tudo chão, como em qualquer corrida.
+  if (play.noPlay && play.nullified) {
+    const anulada = play.nullified
+
+    return anulada.kind === 'run'
+      ? { airYards: 0, runYards: Math.abs(anulada.yards), hasFlight: false }
+      : { airYards: voidPassSpan(anulada), runYards: 0, hasFlight: true }
+  }
+
+  // Falta seca: nada no ar e ninguém correu. O que se percorre é a marcação da falta.
+  const march = penaltyMarchYards(play)
+  if (march !== 0) return { airYards: 0, runYards: Math.abs(march), hasFlight: false }
+
+  // Sack: nada no ar. A bola nunca saiu da mão, e o que se percorre é a perda, no chão.
+  if (isSack(play)) return { airYards: 0, runYards: Math.abs(play.yards), hasFlight: false }
+
+  // Corrida: nada no ar, tudo no chão.
+  if (isRun(play)) return { airYards: 0, runYards: Math.abs(play.yards), hasFlight: false }
+
+  // Passe: voo até a recepção e, se completou, o avanço depois dela. Passe que cai não tem
+  // avanço: o voo termina e acabou.
+  if (hasBallFlight(play)) {
+    return {
+      airYards: play.airYards ?? 0,
+      runYards: play.complete ? Math.max(0, play.yardsAfterCatch ?? 0) : 0,
+      hasFlight: true,
+    }
+  }
+
+  return { airYards: Math.abs(play.yards), runYards: 0, hasFlight: true }
 }
