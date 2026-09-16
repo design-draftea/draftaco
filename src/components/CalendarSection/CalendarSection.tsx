@@ -84,6 +84,7 @@ import escudoThunder from '../../assets/escudoThunder.png'
 import escudoCaxias from '../../assets/escudoCaxias.png'
 import escudoDefaultBasquete from '../../assets/escudoDefaultBasquete.png'
 import nflLiveGame from '../../data/nflLiveGame.json'
+import { getNflLiveFeed, hasNflLiveClock, useNflLiveFeed, NFL_LIVE_EVENT_ID } from '../../features/sports/NflLiveFeed'
 
 interface MarketChip {
   id: string
@@ -1945,6 +1946,8 @@ export interface CompetitionEvent {
     ballOn: string
     possession: 'home' | 'away'
     scoringPlay?: { result: string; scorer: string }
+    /** O período acabou e não há situação de campo para mostrar. Ver `LiveEventMatch`. */
+    isPeriodOver?: boolean
   }
 }
 
@@ -3238,11 +3241,16 @@ export const championships: Championship[] = [
     sport: 'nfl',
     events: [
       {
-        id: 'nfl-1',
+        id: NFL_LIVE_EVENT_ID,
         // Jogo ao vivo com dado real: placar, relógio e situação de campo vêm do recorte
         // do play-by-play do nflverse (KC x MIA, wild card de 2024-01-13), acumulado até a
         // jogada de corte. O mesmo fixture alimenta o bottom sheet de estatísticas, então
         // header e detalhe não conseguem divergir.
+        //
+        // O que está escrito aqui é o instante de ABERTURA. A partida continua sozinha, e os
+        // campos ao vivo são substituídos a cada lance que chega por `withNflLiveState`, logo
+        // abaixo — este literal é o passo 0 do feed, e existe para a lista renderizar certo
+        // mesmo antes de o feed montar.
         dateTime: `Q${nflLiveGame.live.quarter} ${nflLiveGame.live.clock}`,
         isLive: true,
         earlyPayout: false,
@@ -3372,6 +3380,58 @@ export interface DisplayedCompetitionEventGroup {
   events: CompetitionEvent[]
 }
 
+/**
+ * Troca os campos ao vivo do jogo de NFL pelo instante em que a partida está agora.
+ *
+ * Mora no ÚNICO ponto por onde toda lista de eventos passa — home, página de esporte, página
+ * de competição e trilho de jogos saem daqui. Espalhar a troca por cada tela daria versões
+ * diferentes do mesmo jogo na mesma sessão: o card da lista com um placar e a tela do evento
+ * com outro.
+ *
+ * Só aloca quando a liga da NFL está na lista; nas outras devolve o mesmo array.
+ *
+ * Esta função é pura e é chamada durante o render, então ela LÊ o feed sem assinar. Quem
+ * mostra o jogo assina com `useNflLiveFeed` — ler sem assinar devolve o valor certo, mas não
+ * provoca o render em que ele aparece.
+ */
+const withNflLiveState = (leagues: Championship[]): Championship[] => {
+  const index = leagues.findIndex((league) => league.sport === 'nfl')
+  if (index < 0) return leagues
+
+  const league = leagues[index]
+  const eventIndex = league.events.findIndex((event) => event.id === NFL_LIVE_EVENT_ID)
+  if (eventIndex < 0) return leagues
+
+  const { step, clock, isOver } = getNflLiveFeed()
+  const { live } = step
+  const events = [...league.events]
+  events[eventIndex] = {
+    ...events[eventIndex],
+    dateTime: clock,
+    homeScore: live.homeScore,
+    awayScore: live.awayScore,
+    footballSituation: {
+      // O 1ª & 10 é o recomeço depois de um chute ou de um kickoff, quando o instante não tem
+      // descida: a bola está parada num ponto e ninguém fez nada ainda.
+      down: live.down ?? 1,
+      distance: live.distance ?? 10,
+      ballOn: live.ballOn ?? '',
+      possession: live.possession as 'home' | 'away',
+      // No intervalo não há situação de campo: a descida e o ponto da bola são do último lance e
+      // não valem mais depois do apito. Ver `isPeriodOver` em `LiveEventMatch`.
+      ...(live.result && !isOver
+        ? { scoringPlay: { result: live.result, scorer: live.scorer ?? '' } }
+        : {}),
+      ...(isOver ? { isPeriodOver: true } : {}),
+    },
+  }
+
+  const next = [...leagues]
+  next[index] = { ...league, events }
+
+  return next
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function getCalendarChampionships(
   sportFilter?: string | null,
@@ -3387,7 +3447,7 @@ export function getCalendarChampionships(
     ? filteredBySport.filter((c) => c.id === mappedCompetitionId)
     : filteredBySport
 
-  return { mappedCompetitionId, championships: filtered }
+  return { mappedCompetitionId, championships: withNflLiveState(filtered) }
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -3756,6 +3816,9 @@ export function CalendarSection({
   const marketChipsRef = useRef<HTMLDivElement>(null)
   const marketStickyState = useHomeMarketStickyState(sectionRef, marketChipsRef)
   const [isCompetitionSheetOpen, setIsCompetitionSheetOpen] = useState(false)
+  // Assina o jogo de NFL que acontece sozinho: sem isto a tela leria o placar certo e só
+  // renderizaria de novo quando outro relógio a acordasse, atrasando o lance que chegou.
+  useNflLiveFeed()
   const [internalMatchTimes, setInternalMatchTimes] = useState<Record<string, string>>(() => {
     const times: Record<string, string> = {}
     championships.forEach((championship) => {
@@ -3876,6 +3939,8 @@ export function CalendarSection({
       setInternalMatchTimes((current) => {
         const next: Record<string, string> = {}
         Object.keys(current).forEach((id) => {
+          // Sem a chave, o consumidor cai no `dateTime` do evento — o relógio do feed.
+          if (hasNflLiveClock(id)) return
           next[id] = updateCompetitionMatchTime(current[id])
         })
         return next

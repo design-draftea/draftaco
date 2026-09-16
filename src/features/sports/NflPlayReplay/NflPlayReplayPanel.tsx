@@ -234,6 +234,13 @@ interface NflPlayReplayPanelProps {
   play: NflPlay
   /** Rótulo "2º quarter · Chiefs". */
   contextLabel: string
+  /**
+   * Escudo do time do lance, antes do rótulo. Quem monta é o pai, que é quem tem os times.
+   *
+   * O nome do time já está no rótulo; o escudo é o que deixa ler DE QUEM é o lance sem ler a
+   * linha, como na referência da Live Activity da NFL.
+   */
+  contextLogo?: React.ReactNode
   /** Rótulo "2 de 13". */
   counterLabel: string
   /** Time adversário, para o punt poder dizer a quem a posse passou. */
@@ -246,8 +253,16 @@ interface NflPlayReplayPanelProps {
   startDelay: number
   /** Verdadeiro durante a reprodução de uma campanha inteira. */
   isSequence: boolean
-  /** Último lance da campanha: ali o botão reinicia a campanha, não o lance. */
-  isLastPlay: boolean
+  /**
+   * A reprodução segue depois deste lance — o próximo lance da campanha, ou o primeiro da
+   * campanha seguinte quando quem assiste está acompanhando o jogo ao vivo.
+   *
+   * Era `isLastPlay`, "último lance da campanha". As duas perguntas eram a mesma enquanto o
+   * recorte estava congelado; com o jogo andando sozinho deixaram de ser: o último lance da
+   * campanha que acabou de pontuar TEM continuação, e o último lance de uma campanha antiga,
+   * no meio do jogo, não tem. Quem decide é o pai, que é quem sabe onde está a ponta ao vivo.
+   */
+  continuesAfter: boolean
   onReplaySequence: () => void
   /** Interrompe o encadeamento da campanha, para o botão de pausa valer no respiro. */
   onStopSequence: () => void
@@ -258,6 +273,7 @@ interface NflPlayReplayPanelProps {
 export function NflPlayReplayPanel({
   play,
   contextLabel,
+  contextLogo,
   counterLabel,
   opponent,
   speed,
@@ -266,7 +282,7 @@ export function NflPlayReplayPanel({
   onEnded,
   startDelay,
   isSequence,
-  isLastPlay,
+  continuesAfter,
   onReplaySequence,
   onStopSequence,
   children,
@@ -299,7 +315,7 @@ export function NflPlayReplayPanel({
   // No fim do último lance não sobra nada para repetir dentro dele: o gesto natural ali é
   // rever a campanha desde o começo, e não assistir de novo ao mesmo lance.
   const ended = replay.isEnded && animatable
-  const restartsSequence = ended && isLastPlay
+  const restartsSequence = ended && !continuesAfter
 
   /**
    * Este lance acabou mas a campanha continua: estamos no respiro antes do próximo entrar.
@@ -309,7 +325,7 @@ export function NflPlayReplayPanel({
    * ponto de vista de quem assiste a reprodução ainda está correndo, então o botão segue
    * sendo o de pausar.
    */
-  const holdingForNext = ended && isSequence && !isLastPlay
+  const holdingForNext = ended && isSequence && continuesAfter
 
   const showsPause = replay.isPlaying || holdingForNext
   const showsReset = !showsPause && ended
@@ -337,7 +353,7 @@ export function NflPlayReplayPanel({
           speed={speed}
           // Só sai apagando quando há um próximo lance para entrar. No último da campanha o
           // palco fica: ali a pessoa está olhando o desfecho, não esperando a troca.
-          leaving={replay.isEnded && isSequence && !isLastPlay}
+          leaving={replay.isEnded && isSequence && continuesAfter}
         />
         {play.touchdown && (replay.phase === 'run' || replay.phase === 'result') && (
           <>
@@ -350,6 +366,7 @@ export function NflPlayReplayPanel({
 
       <section className="nfl-plays__context" aria-label="Jogada em foco">
         <header className="nfl-plays__context-head">
+          {contextLogo}
           <p className="nfl-plays__context-title">{contextLabel}</p>
           <div className="nfl-plays__context-actions">
             <span className="nfl-plays__context-count">{counterLabel}</span>

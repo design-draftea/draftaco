@@ -32,6 +32,7 @@ import type { CasinoGameOpenPayload } from '../../../components/CasinoContent'
 import type { Banner, CasinoCategoryId, HomeCompetitionHighlight, HomeCompetitionMatch, HomeCompetitionOdd, HomeCompetitionPlayerProp, ProductMode } from '../../../shared/types/home'
 import { getTeamAbbreviation } from '../../../shared/utils/teamAbbreviations'
 import { getRailCompetitionId, type CompetitionLinkTarget } from '../../../shared/utils/competitionNavigation'
+import { hasNflLiveClock, useNflLiveFeed } from '../../sports/NflLiveFeed'
 import './Home.css'
 
 const CasinoGamePage = lazy(() => import('../../casino/CasinoGamePage').then((m) => ({ default: m.CasinoGamePage })))
@@ -247,6 +248,9 @@ function CompetitionEventRail({
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const eventsKey = useMemo(() => getCompetitionEventRailKey(events), [events])
   const initialLiveTimes = useMemo(() => getInitialCompetitionEventRailTimes(events), [events])
+  // Assina o jogo de NFL que acontece sozinho: sem isto a tela leria o placar certo e só
+  // renderizaria de novo quando outro relógio a acordasse, atrasando o lance que chegou.
+  useNflLiveFeed()
   const [liveTimesState, setLiveTimesState] = useState(() => ({
     key: eventsKey,
     times: initialLiveTimes,
@@ -283,7 +287,9 @@ function CompetitionEventRail({
         const next: Record<string, string> = {}
 
         events.forEach(({ event }) => {
-          if (event.isLive) {
+          // O jogo de NFL tem relógio próprio: sem a chave, o consumidor cai no `dateTime`,
+          // que é onde o feed escreve. Ver `hasNflLiveClock`.
+          if (event.isLive && !hasNflLiveClock(event.id)) {
             next[event.id] = updateCompetitionMatchTime(sourceTimes[event.id] ?? event.dateTime)
           }
         })
@@ -812,6 +818,14 @@ export function Home({
   onSportsOverviewChange,
 }: HomeProps = {}) {
   const { brandMode } = useFeatureFlags()
+  // A Home é quem MONTA os jogos: ela lê o calendário e passa o resultado pronto para a seção
+  // de competição, para o trilho e para a tela do evento. Sem assinar aqui, o jogo de NFL que
+  // acontece sozinho avançaria no store e nenhuma dessas telas renderizaria de novo.
+  //
+  // O valor entra como DEPENDÊNCIA das listas montadas abaixo. Só renderizar de novo não basta:
+  // cada uma delas é um `useMemo`, e sem o feed na lista de dependências a Home renderizaria
+  // com o jogo novo e devolveria o instantâneo antigo do cache.
+  const nflLiveFeed = useNflLiveFeed()
   const homeRef = useRef<HTMLDivElement>(null)
   const contentFilterStickyTopRef = useRef<HTMLDivElement>(null)
   const contentFilterContentTopRef = useRef<HTMLDivElement>(null)
@@ -856,7 +870,7 @@ export function Home({
           competitionId: selectedCompetition?.id ?? null,
         })
       : [],
-    [activeSport, isBetsProduct, selectedCompetition?.id]
+    [activeSport, isBetsProduct, nflLiveFeed, selectedCompetition?.id]
   )
   const sportsCarouselResetKey = `${activeSport ?? 'destaques'}:${selectedCompetition?.id ?? 'todas'}`
   const isCompetitionMode = isBetsProduct && !!selectedCompetition
@@ -864,7 +878,7 @@ export function Home({
     () => isCompetitionMode && activeSport && selectedCompetition
       ? getCompetitionPageEvents(activeSport, selectedCompetition.id)
       : [],
-    [activeSport, isCompetitionMode, selectedCompetition]
+    [activeSport, isCompetitionMode, nflLiveFeed, selectedCompetition]
   )
   const topGamesRailEvents = isCompetitionMode ? competitionRailEvents : sportsCarouselEvents
   const hasSportsCarouselEvents = isBetsProduct && !!activeSport && topGamesRailEvents.length > 0
@@ -884,7 +898,7 @@ export function Home({
   const shouldHideBetsBanner = isBetsProduct && (!!displayActiveSport || isInlineEventMode)
   const sportFeaturedCompetitionHighlights = useMemo(
     () => displayActiveSport ? getSportFeaturedCompetitionHighlights(displayActiveSport) : [],
-    [displayActiveSport]
+    [displayActiveSport, nflLiveFeed]
   )
   const sportFeaturedMarketFilters = useMemo(
     () => displayActiveSport ? getSportFeaturedMarketChips(displayActiveSport) : [],

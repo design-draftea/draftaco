@@ -43,6 +43,7 @@ import {
   normalizeBetslipIdPart,
 } from '../../shared/hooks/betslipUtils'
 import { useOddSelection } from '../../shared/hooks/useOddSelection'
+import { hasNflLiveClock, useNflLiveFeed } from '../../features/sports/NflLiveFeed'
 import chevronRight from '../../assets/iconsDraftaco/chevronRight.svg'
 import chevronDown from '../../assets/iconsDraftaco/chevronDown.svg'
 import './CompetitionPage.css'
@@ -621,6 +622,9 @@ function CompetitionMatchCarousel({
     }, {}))
   }, [matches])
 
+  // Assina o jogo de NFL que acontece sozinho: sem isto a tela leria o placar certo e só
+  // renderizaria de novo quando outro relógio a acordasse, atrasando o lance que chegou.
+  useNflLiveFeed()
   useEffect(() => {
     if (!matches.some((match) => match.live)) return
 
@@ -630,6 +634,11 @@ function CompetitionMatchCarousel({
 
         matches.forEach((match) => {
           if (!match.live) return
+          // O jogo de NFL tem relógio próprio. Ver `hasNflLiveClock`.
+          if (hasNflLiveClock(match.id)) {
+            delete nextTimes[match.id]
+            return
+          }
 
           const currentTime = currentTimes[match.id] ?? match.liveClock ?? match.footerLabel
           nextTimes[match.id] = updateCompetitionMatchTime(currentTime)
@@ -1134,6 +1143,12 @@ export function useCompetitionMarketSelection({
 }): CompetitionMarketSelection {
   const marketScopeKey = `${sport}:${competitionId}:${liveOnly ? 'live' : 'all'}`
   const [activeMarketState, setActiveMarketState] = useState<{ scopeKey: string; marketId?: string }>()
+  // Este hook é quem MONTA o card da competição na lista, e o card do jogo de NFL é o único que
+  // muda sozinho. Assinar o feed não basta: a lista abaixo é um `useMemo` com escopo de
+  // competição, então sem o feed nas dependências o hook renderizaria de novo a cada lance e
+  // devolveria sempre o instantâneo do cache — o placar parado num lance que já passou,
+  // enquanto a tela do evento e o sheet de jogadas seguem em frente.
+  const nflLiveFeed = useNflLiveFeed()
   const { groups } = useMemo(() => (
     competitionId
       ? getCalendarDisplayedEventGroups({
@@ -1142,7 +1157,7 @@ export function useCompetitionMarketSelection({
           liveOnly,
         })
       : { groups: [] as DisplayedCompetitionEventGroup[] }
-  ), [competitionId, liveOnly, sport])
+  ), [competitionId, liveOnly, nflLiveFeed, sport])
   const competitionView = useMemo(() => (
     getCompetitionHighlight(groups, liveOnly)
   ), [groups, liveOnly])

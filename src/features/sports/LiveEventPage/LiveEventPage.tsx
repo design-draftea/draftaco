@@ -48,6 +48,7 @@ import { useSportsDbTeamLogo } from '../../../shared/hooks/useSportsDbTeamLogo'
 import { getTeamAbbreviation } from '../../../shared/utils/teamAbbreviations'
 import { getDownAndDistanceLabel, getNflMarketColumns, nflEventMarketChips } from '../../../shared/utils/nflMarkets'
 import { shortName } from '../NflPlayReplay/playNarrative'
+import { hasNflLiveClock, useNflLiveFeed, type NflLiveFeedState } from '../NflLiveFeed'
 import { TEAM_LOGO_FALLBACK, isTeamLogoFallback } from '../../../shared/utils/teamLogoFallback'
 
 export interface LiveEventMatch {
@@ -80,6 +81,13 @@ export interface LiveEventMatch {
     ballOn: string
     possession: 'home' | 'away'
     scoringPlay?: { result: string; scorer: string }
+    /**
+     * O período acabou. Aqui não há situação de campo NENHUMA para mostrar: a descida, a
+     * distância e o ponto da bola são do último lance, e depois do apito eles não valem mais —
+     * a próxima posse começa depois do intervalo, em outro lugar do campo. O relógio logo acima
+     * já diz `Intervalo`, então a faixa fica só com o acesso às jogadas.
+     */
+    isPeriodOver?: boolean
   }
   extraBets?: number
 }
@@ -1953,7 +1961,9 @@ function LiveEventContent({
 
   useEffect(() => {
     const syncTimer = window.setTimeout(() => setDisplayTime(currentTime), 0)
-    if (!isLiveMatch) return () => window.clearTimeout(syncTimer)
+    // O jogo de NFL não conta sozinho: `currentTime` já chega comprimido pelo feed, e descontar
+    // mais um segundo por segundo em cima dele faria a etiqueta divergir do placar.
+    if (!isLiveMatch || hasNflLiveClock(match.id)) return () => window.clearTimeout(syncTimer)
     const parsed = parseLiveTime(currentTime)
     if (!parsed) return () => window.clearTimeout(syncTimer)
     let totalSeconds = parsed.totalSeconds
@@ -1965,7 +1975,7 @@ function LiveEventContent({
       window.clearTimeout(syncTimer)
       clearInterval(interval)
     }
-  }, [currentTime, isLiveMatch])
+  }, [currentTime, isLiveMatch, match.id])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -3387,7 +3397,19 @@ function LiveEventInlineScoreHeader({
               <span>:</span>
               <strong>{match.awayTeam.score}</strong>
             </span>
-            <span className="live-event-inline__score-time">
+            {/* No intervalo o estado desce para a linha da situação, que é onde a descida
+                ficava: assim ele aparece uma vez só e na mesma linha do "Ver mais".
+
+                A linha do relógio continua OCUPANDO o lugar dela, escondida. A coluna do placar
+                tem 52px e alinha por baixo, então tirá-la do fluxo escorregava o número para o
+                lugar do relógio — e o placar tem de ficar onde estava. */}
+            <span
+              className={[
+                'live-event-inline__score-time',
+                situation?.isPeriodOver ? 'live-event-inline__score-time--hidden' : '',
+              ].filter(Boolean).join(' ')}
+              aria-hidden={situation?.isPeriodOver ? true : undefined}
+            >
               <span className="live-event-inline__score-live-dot-wrap" aria-hidden="true">
                 <span className="live-event-inline__score-live-dot" />
               </span>
@@ -3429,7 +3451,11 @@ function LiveEventInlineScoreHeader({
         >
           {scoreMain}
           <span className="live-event-inline__summary-stats-row live-event-inline__situation-row">
-            {situation.scoringPlay ? (
+            {situation.isPeriodOver ? (
+              <span className="live-event-inline__situation-item live-event-inline__situation-item--state">
+                {getInlineMatchHeaderClockLabel(currentTime, true)}
+              </span>
+            ) : situation.scoringPlay ? (
               // Uma frase só, com separador: dois itens soltos no gap de 12px liam como
               // dois rótulos sem relação ("Touchdown" de um lado, "Hill" do outro), e não
               // como o lance e quem o fez. O sobrenome sai do MESMO helper da lista de
@@ -4092,7 +4118,9 @@ function LiveEventInlineMarkets({
 
   useEffect(() => {
     const syncTimer = window.setTimeout(() => setDisplayTime(currentTime), 0)
-    if (!isLiveMatch) return () => window.clearTimeout(syncTimer)
+    // O jogo de NFL não conta sozinho: `currentTime` já chega comprimido pelo feed, e descontar
+    // mais um segundo por segundo em cima dele faria a etiqueta divergir do placar.
+    if (!isLiveMatch || hasNflLiveClock(match.id)) return () => window.clearTimeout(syncTimer)
     const parsed = parseLiveTime(currentTime)
     if (!parsed) return () => window.clearTimeout(syncTimer)
     let totalSeconds = parsed.totalSeconds
@@ -4104,7 +4132,7 @@ function LiveEventInlineMarkets({
       window.clearTimeout(syncTimer)
       clearInterval(interval)
     }
-  }, [currentTime, isLiveMatch])
+  }, [currentTime, isLiveMatch, match.id])
 
   useLayoutEffect(() => {
     const animation = playerPropsAnimationRef.current
@@ -4336,6 +4364,88 @@ function LiveEventInlineMarkets({
   )
 }
 
+// ── O jogo de NFL que acontece sozinho ─────────────────────────────────────
+//
+// A tela do evento recebe os jogos num INSTANTÂNEO: a Home guarda o payload em estado quando a
+// pessoa abre o evento (`loadedEventContext`) e não o remonta mais. Para os jogos mockados isso
+// nunca importou — o placar deles nunca muda, e quem faz o relógio andar é o tique de 1s.
+//
+// Para a NFL importa, e é exatamente o que o protótipo estava mostrando: o placar e o campo
+// congelados no touchdown enquanto o relógio corria. Daqui em diante o jogo é trazido de volta
+// ao presente a cada lance que chega, no único lugar que o mostra.
+
+const nflLiveMatch = (match: LiveEventMatch, feed: NflLiveFeedState): LiveEventMatch => {
+  const { live } = feed.step
+  // No intervalo o desfecho do último lance também sai da faixa: `Touchdown · MIA · Hill` é o
+  // anúncio de um lance que acabou de acontecer, e no apito ele já não é a notícia.
+  const isPeriodOver = feed.isOver
+
+  return {
+    ...match,
+    time: feed.clock,
+    dateTime: feed.clock,
+    currentTime: feed.clock,
+    homeTeam: { ...match.homeTeam, score: live.homeScore },
+    awayTeam: { ...match.awayTeam, score: live.awayScore },
+    footballSituation: {
+      // Sem descida é recomeço — depois de um chute ou de um kickoff a bola está parada num
+      // ponto e ninguém fez nada ainda.
+      down: live.down ?? 1,
+      distance: live.distance ?? 10,
+      ballOn: live.ballOn ?? '',
+      possession: live.possession as 'home' | 'away',
+      ...(live.result && !isPeriodOver
+        ? { scoringPlay: { result: live.result, scorer: live.scorer ?? '' } }
+        : {}),
+      ...(isPeriodOver ? { isPeriodOver } : {}),
+    },
+  }
+}
+
+const withNflLiveMatches = (matches: LiveEventMatch[], feed: NflLiveFeedState) => {
+  const index = matches.findIndex((match) => hasNflLiveClock(match.id))
+  if (index < 0) return matches
+
+  const next = [...matches]
+  next[index] = nflLiveMatch(matches[index], feed)
+
+  return next
+}
+
+const withNflLiveRailItems = (items: LiveEventRailItem[], feed: NflLiveFeedState) => {
+  const index = items.findIndex((item) => hasNflLiveClock(getLiveEventRailIdentity(item)))
+  if (index < 0) return items
+
+  const item = items[index]
+  const { live } = feed.step
+  const next = [...items]
+  next[index] = {
+    ...item,
+    dateTime: feed.clock,
+    currentTime: feed.clock,
+    headerPrimary: item.headerPrimary === undefined ? undefined : feed.clock,
+    homeTeam: { ...item.homeTeam, score: live.homeScore },
+    awayTeam: { ...item.awayTeam, score: live.awayScore },
+  }
+
+  return next
+}
+
+/**
+ * O mapa de relógios que veio no payload também é instantâneo, e ele VENCE o `currentTime` do
+ * jogo. Tirar a chave da NFL de lá é o que deixa o relógio do feed passar.
+ */
+const withoutNflLiveClock = (times: Record<string, string> | undefined) => {
+  if (!times) return times
+  const chaves = Object.keys(times).filter((key) => hasNflLiveClock(key))
+  if (chaves.length === 0) return times
+
+  const next = { ...times }
+  for (const chave of chaves) delete next[chave]
+
+  return next
+}
+
 interface LiveEventInlineStateOptions {
   match?: LiveEventMatch
   matches?: LiveEventMatch[]
@@ -4361,9 +4471,11 @@ function useLiveEventInlineState({
   currentTime,
   onSelectedIndexChange,
 }: LiveEventInlineStateOptions) {
+  const feed = useNflLiveFeed()
+  const liveCurrentTimes = useMemo(() => withoutNflLiveClock(currentTimes), [currentTimes])
   const eventMatches = useMemo(
-    () => matches?.length ? matches : match ? [match] : [],
-    [match, matches]
+    () => withNflLiveMatches(matches?.length ? matches : match ? [match] : [], feed),
+    [feed, match, matches]
   )
   const eventMatchesKey = useMemo(
     () => eventMatches.map((eventMatch, index) => getLiveEventMatchIdentity(eventMatch, index)).join('|'),
@@ -4380,16 +4492,19 @@ function useLiveEventInlineState({
   const selectedMatch = eventMatches[selectedMatchIndex]
   const selectedMatchIdentity = selectedMatch ? getLiveEventMatchIdentity(selectedMatch, selectedMatchIndex) : ''
   const railItems = useMemo(
-    () => railEvents?.length
-      ? railEvents
-      : getLiveEventRailFallbackItems({
-          matches: eventMatches,
-          currentTimes,
-          leagueName,
-          leagueFlag,
-          sport,
-        }),
-    [currentTimes, eventMatches, leagueFlag, leagueName, railEvents, sport]
+    () => withNflLiveRailItems(
+      railEvents?.length
+        ? railEvents
+        : getLiveEventRailFallbackItems({
+            matches: eventMatches,
+            currentTimes: liveCurrentTimes,
+            leagueName,
+            leagueFlag,
+            sport,
+          }),
+      feed,
+    ),
+    [feed, liveCurrentTimes, eventMatches, leagueFlag, leagueName, railEvents, sport]
   )
   const railItemsKey = useMemo(
     () => railItems.map((item) => getLiveEventRailIdentity(item)).join('|'),
@@ -4397,7 +4512,11 @@ function useLiveEventInlineState({
   )
   const initialRailTimes = useMemo(
     () => railItems.reduce<Record<string, string>>((times, item) => {
-      times[getLiveEventRailIdentity(item)] = item.currentTime ?? item.headerPrimary ?? item.dateTime
+      const identity = getLiveEventRailIdentity(item)
+      // Fora do mapa de propósito: o relógio do jogo de NFL vem do feed, e quem não está aqui
+      // cai no `dateTime` do item, que é onde o feed escreve. Ver `hasNflLiveClock`.
+      if (hasNflLiveClock(identity)) return times
+      times[identity] = item.currentTime ?? item.headerPrimary ?? item.dateTime
       return times
     }, {}),
     [railItems]
@@ -4418,7 +4537,7 @@ function useLiveEventInlineState({
     ? getLiveEventMatchTime(
         selectedMatch,
         selectedMatchIndex,
-        currentTimes,
+        liveCurrentTimes,
         selectedMatchIndex === selectedIndex ? currentTime : undefined
       )
     : ''
@@ -4438,6 +4557,12 @@ function useLiveEventInlineState({
           if (!item.isLive) return
 
           const identity = getLiveEventRailIdentity(item)
+          // O jogo de NFL tem relógio próprio, comprimido e derivado dos lances. Apagar a
+          // chave é o que devolve o item ao `dateTime` do feed. Ver `hasNflLiveClock`.
+          if (hasNflLiveClock(identity)) {
+            delete next[identity]
+            return
+          }
           const sourceTime = next[identity] ?? item.currentTime ?? item.headerPrimary ?? item.dateTime
           const parsed = parseLiveTime(sourceTime)
           if (parsed) next[identity] = getNextLiveTime(parsed)
@@ -4665,9 +4790,11 @@ export function LiveEventPage({
   sport,
   currentTime,
 }: LiveEventPageProps) {
+  const feed = useNflLiveFeed()
+  const liveCurrentTimes = useMemo(() => withoutNflLiveClock(currentTimes), [currentTimes])
   const eventMatches = useMemo(
-    () => matches?.length ? matches : match ? [match] : [],
-    [match, matches]
+    () => withNflLiveMatches(matches?.length ? matches : match ? [match] : [], feed),
+    [feed, match, matches]
   )
   const eventMatchesKey = useMemo(
     () => eventMatches.map((eventMatch, index) => getLiveEventMatchIdentity(eventMatch, index)).join('|'),
@@ -4693,16 +4820,19 @@ export function LiveEventPage({
   const selectedMatch = eventMatches[selectedMatchIndex]
   const selectedMatchIdentity = selectedMatch ? getLiveEventMatchIdentity(selectedMatch, selectedMatchIndex) : ''
   const railItems = useMemo(
-    () => railEvents?.length
-      ? railEvents
-      : getLiveEventRailFallbackItems({
-          matches: eventMatches,
-          currentTimes,
-          leagueName,
-          leagueFlag,
-          sport,
-        }),
-    [currentTimes, eventMatches, leagueFlag, leagueName, railEvents, sport]
+    () => withNflLiveRailItems(
+      railEvents?.length
+        ? railEvents
+        : getLiveEventRailFallbackItems({
+            matches: eventMatches,
+            currentTimes: liveCurrentTimes,
+            leagueName,
+            leagueFlag,
+            sport,
+          }),
+      feed,
+    ),
+    [feed, liveCurrentTimes, eventMatches, leagueFlag, leagueName, railEvents, sport]
   )
   const railItemsKey = useMemo(
     () => railItems.map((item) => getLiveEventRailIdentity(item)).join('|'),
@@ -4722,7 +4852,11 @@ export function LiveEventPage({
   const activeRailIndex = railItems.findIndex((item) => getLiveEventRailIdentity(item) === selectedMatchIdentity)
   const initialRailTimes = useMemo(
     () => railItems.reduce<Record<string, string>>((times, item) => {
-      times[getLiveEventRailIdentity(item)] = item.currentTime ?? item.headerPrimary ?? item.dateTime
+      const identity = getLiveEventRailIdentity(item)
+      // Fora do mapa de propósito: o relógio do jogo de NFL vem do feed, e quem não está aqui
+      // cai no `dateTime` do item, que é onde o feed escreve. Ver `hasNflLiveClock`.
+      if (hasNflLiveClock(identity)) return times
+      times[identity] = item.currentTime ?? item.headerPrimary ?? item.dateTime
       return times
     }, {}),
     [railItems]
@@ -4875,6 +5009,11 @@ export function LiveEventPage({
           if (!item.isLive) return
 
           const identity = getLiveEventRailIdentity(item)
+          // O jogo de NFL tem relógio próprio. Ver `hasNflLiveClock`.
+          if (hasNflLiveClock(identity)) {
+            delete next[identity]
+            return
+          }
           const sourceTime = next[identity] ?? item.currentTime ?? item.headerPrimary ?? item.dateTime
           const parsed = parseLiveTime(sourceTime)
           if (parsed) {

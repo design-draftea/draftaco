@@ -153,6 +153,9 @@
 .nfl-stats-bs__body {
   display: flex;
   flex-direction: column;
+  /* Vale para as duas abas. A de jogadas tinha 8px e o placar encostava nos botões; com os
+     mesmos 24px do resto do sheet o modificador dela deixou de precisar de gap próprio, e o
+     espaço de dentro do bloco de jogadas é zero — cada parte traz o respiro que o desenho pede. */
   gap: 24px;
   /* Base com respiro maior: a comparação entre equipes é a última seção e encostava no
      fim do sheet. */
@@ -178,48 +181,6 @@
 }
 
 /* ── Placar por quarter ──────────────────────────────────────────────────── */
-.nfl-stats-bs__scoreboard-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 24px;
-  margin-bottom: 8px;
-}
-
-.nfl-stats-bs__scoreboard-head h3 {
-  margin: 0;
-  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
-  color: var(--ds-fill-primary, #fbfbfb);
-}
-
-.nfl-stats-bs__live {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-/* `--ds-live` é o token do ponto de "ao vivo" e vale exatamente este hex. Antes aqui havia
-   `--ds-feedback-error-default`, que não existe em nenhum lugar do projeto: caía sempre no
-   fallback, e por acaso o fallback era a cor certa. Parecia tokenizado e não estava. */
-.nfl-stats-bs__live-dot {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 6px;
-  border-radius: 50%;
-  background: var(--ds-live, #f43f5e);
-}
-
 .nfl-stats-bs__score-table,
 .nfl-stats-bs__table {
   width: 100%;
@@ -285,18 +246,6 @@
   height: 20px;
   flex: 0 0 20px;
   object-fit: contain;
-}
-
-.nfl-stats-bs__score-total span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 40px;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 100px;
-  background: var(--ds-background-opacity-tertiary, rgb(251 251 251 / 0.08));
-  font-weight: 700;
 }
 
 .nfl-stats-bs__note {
@@ -435,20 +384,9 @@
 /* No Figma os blocos do replay ficam a 8px um do outro, e não nos 24px que separam as
    seções de estatísticas. O mesmo vale para o espaço entre os chips e o campo, por isso o
    gap muda no corpo do sheet — só nesta aba, para não mexer em Estatísticas. */
-.nfl-stats-bs__body--plays {
-  gap: 8px;
-}
-
-/* Nesta aba o bloco dos chips tem exatamente os 40px do Figma: o evento ao vivo, de onde
-   vem a classe dos chips, acrescenta 8px abaixo. */
-.bottom-sheet.nfl-stats-bs .nfl-stats-bs__body--plays .nfl-stats-bs__chips.content-filter-chips {
-  padding: 0;
-}
-
 .nfl-plays {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 /* Campo: o frame tem a largura da tela (375) e a arte é maior (389.73), sobrando 7.37px
@@ -479,6 +417,17 @@
      está declarada acima e a altura vem do aspect-ratio, então conter o inline-size não
      muda o layout. */
   container-type: inline-size;
+}
+
+/* Intervalo: o campo fica, a jogada não. Sem o palco, o que sobra é a arte — e é ela que diz
+   que o jogo continua existindo, só não está acontecendo nada agora. */
+.nfl-plays__field--halftime {
+  animation: nfl-plays-halftime-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nfl-plays-halftime-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .nfl-plays__field-art {
@@ -1111,6 +1060,107 @@
   height: 20px;
 }
 
+/* ── Placar do sheet ─────────────────────────────────────────────────────────
+   Escudo e sigla nas pontas, o número grande por dentro deles e o relógio no meio, como na
+   referência da Live Activity da NFL. O do time visitante é espelhado, então os dois números
+   ficam encostados na coluna do meio e as duas siglas nas bordas.
+
+   Vale para as DUAS abas: na de jogadas ele fica acima do campo, e na de estatísticas ele entrou
+   no lugar de um cabeçalho menor (`Chiefs × Dolphins` com o relógio ao lado). */
+.nfl-stats-bs__live-score {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nfl-stats-bs__live-score-side {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+/* O visitante espelha: o placar encosta na coluna do meio e o escudo vai para a borda. */
+.nfl-stats-bs__live-score-side--reverse {
+  flex-direction: row-reverse;
+}
+
+.nfl-stats-bs__live-score-team {
+  display: flex;
+  width: 40px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.nfl-stats-bs__live-score-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.nfl-stats-bs__live-score-abbr {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  letter-spacing: 0.02em;
+}
+
+.nfl-stats-bs__live-score-number {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 32px;
+  color: var(--ds-fill-primary, #fbfbfb);
+  /* Sem isto o placar de dois dígitos empurra a coluna do meio ao virar de 9 para 10. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* A coluna do meio é a que cede espaço: o relógio e a situação são o texto mais longo aqui, e
+   é a única parte que pode quebrar sem desmontar o placar. */
+.nfl-stats-bs__live-score-state {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.nfl-stats-bs__live-score-clock {
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--ds-fill-primary, #fbfbfb);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.nfl-stats-bs__live-score-situation {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--ds-fill-secondary, rgb(251 251 251 / 0.7));
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Escudo do time do lance, antes do rótulo de contexto: menor que o da lista de campanhas (32px),
+   porque aqui ele acompanha uma linha de texto em vez de titular a linha. */
+.nfl-plays__context-logo {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  object-fit: contain;
+}
+
 /* ── Linha do tempo ─────────────────────────────────────────────────────── */
 .nfl-plays__timeline {
   display: flex;
@@ -1142,6 +1192,9 @@
 
 .nfl-plays__timeline-progress {
   background: var(--ds-current-score, #bb78ff);
+  /* Acompanha os marcadores: a barra avança junto com o ponto em foco em vez de pular para a
+     nova largura. Vale tanto para a troca de lance quanto para a chegada de um. */
+  transition: width 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .nfl-plays__timeline-marker {
@@ -1156,6 +1209,10 @@
   transform: translate(-50%, -50%);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* Os marcadores são posicionados por fração do trilho, então a chegada de um lance reposiciona
+     TODOS eles: o trilho de 5 vira o de 6 e cada ponto recua. Sem transição, essa redistribuição
+     é um salto — e um salto aqui lê como a lista tendo sido trocada, não como um lance a mais. */
+  transition: left 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Alvo de toque confortável sem mudar o desenho do ponto. */
@@ -1192,6 +1249,34 @@
   box-sizing: content-box;
   background: var(--ds-current-score, #bb78ff);
   background-clip: padding-box;
+}
+
+/* ── Chegada ao vivo ────────────────────────────────────────────────────────
+   O jogo continua com o sheet aberto, e cada lance que chega mexe na linha do tempo e na lista
+   de campanhas. Sem movimento próprio essas mudanças acontecem entre dois quadros: o marcador
+   já está lá, os números da campanha já são outros, a linha nova já está no lugar. O protótipo
+   executa estas animações mesmo quando o sistema pede movimento reduzido (ver AGENTS.md). */
+
+/* O ponto do lance que acabou de acontecer nasce no trilho em vez de aparecer pronto. */
+.nfl-plays__timeline-marker--arrived {
+  animation: nfl-plays-marker-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes nfl-plays-marker-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .nfl-plays__timeline-clock {
@@ -1273,6 +1358,56 @@
     var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08)) 0%,
     rgb(251 251 251 / 0) 100%
   );
+}
+
+/* A campanha que ESTREIA abre espaço em vez de empurrar a lista de uma vez.
+   A lista lê do mais recente para o mais antigo, então a linha nova entra no TOPO do quarter e
+   desloca todas as outras. Animar a altura é o que faz esse deslocamento ser um movimento — as
+   linhas de baixo descem acompanhando a nova, e não porque a lista pulou. Os 73px são a linha
+   (72) mais a divisória (1); `overflow` só existe enquanto a animação corre, e sai com a classe. */
+.nfl-plays__drive--entering {
+  overflow: hidden;
+  /* Sem `fill-mode`: a classe permanece na linha até a próxima chegada, e segurar o último
+     quadro deixaria a altura travada em 73px depois da animação. O estado natural da linha é
+     igual ao último quadro, então não há salto ao terminar. */
+  animation: nfl-plays-drive-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes nfl-plays-drive-in {
+  from {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    max-height: 73px;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A campanha que recebeu o lance: os números dela mudaram (mais um lance, mais jardas, mais
+   tempo de posse) e é só isso que a linha tem para contar. O brilho passa por cima e sai.
+
+   Elemento próprio, e não `background` da linha: a linha em foco já tem um gradiente, e animar o
+   fundo dela apagaria esse gradiente durante o brilho. É também o elemento cuja REMONTAGEM
+   dispara a animação — ver o bloco do movimento de chegada no componente. */
+.nfl-plays__drive-flash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--ds-current-score-rgb, 187 120 255) / 0.2) 0%,
+    rgb(187 120 255 / 0) 100%
+  );
+  pointer-events: none;
+  animation: nfl-plays-drive-tick 760ms ease-out forwards;
+}
+
+@keyframes nfl-plays-drive-tick {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 .nfl-plays__drive-logo {
