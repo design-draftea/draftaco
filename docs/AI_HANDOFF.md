@@ -54,6 +54,14 @@
   segundos por campanha, e a porta de entrada é uma faixa ao vivo; quem quer a campanha
   inteira tem o botão "Repetir campanha", os marcadores da timeline e o play de cada campanha
   na lista.
+- Objetivo 6 (pedido na mesma sessão): o fixture ganhou uma campanha FABRICADA para
+  demonstração — MIA, 5 jogadas, 71 jardas, terminando em touchdown de 47 jardas e ponto
+  extra, virando o jogo em 14 x 13. Ela mora em `scripts/build-nfl-live-fixture.mjs`, em
+  formato de play-by-play, e não editada no JSON gerado: assim passa pelas mesmas contas de
+  placar, estatística e campanhas. `--demo=0` gera o recorte real puro. O corte real subiu de
+  1520 para 1543 para a campanha do KC fechar no field goal. Antes de fabricar, o jogo real
+  foi conferido campanha a campanha: só três terminam em touchdown e nenhuma junta variedade
+  com tamanho curto.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
