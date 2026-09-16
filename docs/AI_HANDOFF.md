@@ -62,6 +62,12 @@
   1520 para 1543 para a campanha do KC fechar no field goal. Antes de fabricar, o jogo real
   foi conferido campanha a campanha: só três terminam em touchdown e nenhuma junta variedade
   com tamanho curto.
+- Objetivo 7 (pedido na mesma sessão): a palavra ANULADA sobre o campo saiu. Ela caía na
+  mesma coluna do nome e do retrato quando o lance acontecia no meio do campo. No lugar dela,
+  o selo da bola na mão mostra um X — a marca foi para a posse, que é o que a anulada desfaz.
+  Três variantes (X por cima com contorno, por cima sem contorno, e no lugar da bola) foram
+  implementadas e comparadas em tamanho real; venceu a do X no lugar da bola, porque num selo
+  de 16px cabe a bola ou o X, não os dois.
 - Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
   `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
