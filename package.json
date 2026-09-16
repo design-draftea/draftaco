@@ -10,6 +10,7 @@
     "check:player-props": "node scripts/check-player-props-coverage.mjs",
     "check:nfl": "node scripts/check-nfl-replay.mjs",
     "qa:nfl:typesafe": "node scripts/audit-nfl-scenes-typesafe.mjs",
+    "qa:copy:typesafe": "node scripts/audit-copy-typesafe.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -36,7 +37,7 @@
     "typescript-eslint": "^8.46.4",
     "vite": "^5.4.21"
   },
-  "description": "Protótipo mobile em React para explorar a experiência do Rei do Pitaco com apostas esportivas, cassino, promoções, betslip e regras de handoff de produto.",
+  "description": "Protótipo mobile em React para explorar a experiência do Rei do Pitaco com apostas esportivas, cassino, promoções e betslip.",
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",

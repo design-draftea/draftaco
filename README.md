@@ -1,6 +1,6 @@
 # Draftaco
 
-Protótipo mobile em React para explorar a experiência de Pitaco e Draftea com apostas esportivas, cassino, promoções, betslip e regras de handoff de produto.
+Protótipo mobile em React para explorar a experiência de Pitaco e Draftea com apostas esportivas, cassino, promoções e betslip.
 
 O projeto também funciona como uma camada prática de validação dos tokens exportados do Figma. A intenção é aproximar decisões de produto, comportamento de interface e uso real dos tokens em componentes navegáveis.
 
@@ -59,6 +59,30 @@ retorna código de saída `1`. É possível restringir lances ou mudar o limite:
 npm run qa:nfl:typesafe -- --ids=360,696 --threshold=0.8
 ```
 
+### Auditoria dos textos da Draftea e dos rótulos de aposta
+
+Mesma chave e mesmo princípio: o que o código resolve não vai para a IA. As verificações locais
+não custam nada e rodam sempre — ordem dos regexes, chave repetida no catálogo, texto que
+atravessa a tradução e continua em português, e jogador cujo time não joga na partida do bloco.
+
+```bash
+npm run qa:copy:typesafe -- --dry-run
+npm run qa:copy:typesafe
+```
+
+Só a equivalência de sentido vai ao Jev, e mesmo assim depois de dois filtros: entradas que
+apenas repetem um regex existente são puladas, e o resultado fica em cache pelo hash do estado
+e da pergunta. Dá para restringir o alcance e o gasto:
+
+```bash
+npm run qa:copy:typesafe -- --only=vazamento --path=src/features/betslip
+npm run qa:copy:typesafe -- --only=traducao --limit=40
+```
+
+O cabeçalho do script registra a calibração medida: divergência forte é confiável, a faixa
+intermediária tem falso positivo, e lote grande piora o julgamento. Como o auditor do NFL, ele é
+ferramenta de revisão manual e não deve virar bloqueio de CI antes de mais calibração.
+
 Em produção, o app usa o base path `/draftaco`.
 
 ## Fluxo de colaboração e deploy
@@ -81,7 +105,6 @@ Cassino está desativado nas duas marcas (`features.casino: false`): item visív
 - `/<marca>/apostas`: home de apostas esportivas.
 - `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
 - `/<marca>/promocoes`: página de promoções.
-- `/<marca>/handoff`: documentação viva de regras de produto e comportamento.
 
 Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 
@@ -90,7 +113,7 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 ```text
 src/
   brands/        configuração, logos e textos por marca
-  features/      auth, home, sports, casino, betslip, promotions, games, handoff
+  features/      auth, home, sports, casino, betslip, promotions e games
   shared/        brand, i18n, hooks, utils e types reutilizáveis
   assets/        recursos comuns existentes
   components/    biblioteca de componentes comuns
@@ -116,19 +139,6 @@ Ao alterar tokens, valide pelo menos:
 - estados de seleção, hover, pressed, disabled e focus-visible;
 - comportamento mobile com safe area e bottom navigation;
 - motion com `prefers-reduced-motion`.
-
-## Handoff de produto
-
-A rota `/<marca>/handoff` registra regras de ordem, curadoria e comportamento para Home, Esporte e Competição. Use essa página como contrato de produto antes de alterar a arquitetura da experiência.
-
-Ainda faltam completar as abas de Evento, Promoções e Cassino. Essas telas devem documentar:
-
-- objetivo da tela;
-- ordem esperada dos blocos;
-- estados principais;
-- regras de conteúdo;
-- limites de acessibilidade e motion;
-- critérios de aceite para implementação.
 
 ## Cuidados de design
 
