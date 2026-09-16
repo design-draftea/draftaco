@@ -9,6 +9,7 @@
     "check:brands": "node scripts/check-brand-contracts.mjs",
     "check:player-props": "node scripts/check-player-props-coverage.mjs",
     "check:nfl": "node scripts/check-nfl-replay.mjs",
+    "qa:nfl:typesafe": "node scripts/audit-nfl-scenes-typesafe.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

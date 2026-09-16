@@ -35,8 +35,28 @@ Scripts úteis:
 npm run dev      # servidor local
 npm run build    # typecheck + build de produção
 npm run check:brands # contratos das marcas
+npm run check:nfl # contratos determinísticos do replay NFL
 npm run lint     # ESLint
 npm run preview  # preview do build
+```
+
+### Auditoria semântica opcional do replay NFL
+
+O campinho continua determinístico e não chama IA durante a reprodução. Para comparar os
+lances ambíguos (`no_play` e sack) com o texto oficial do nflverse, copie `.env.example` para
+`.env.typesafe.local`, preencha `TYPESAFE_API_KEY` e execute:
+
+```bash
+npm run qa:nfl:typesafe -- --dry-run
+npm run qa:nfl:typesafe
+```
+
+O auditor envia os candidatos em uma única chamada ao Jev, informa uso de tokens e confiança,
+e não altera o fixture. Por padrão, confiança abaixo de `0.75` ou divergência exige revisão e
+retorna código de saída `1`. É possível restringir lances ou mudar o limite:
+
+```bash
+npm run qa:nfl:typesafe -- --ids=360,696 --threshold=0.8
 ```
 
 Em produção, o app usa o base path `/draftaco`.
