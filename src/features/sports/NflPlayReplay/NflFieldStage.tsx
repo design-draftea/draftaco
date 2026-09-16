@@ -188,9 +188,17 @@ interface NflFieldStageProps {
   speed: ReplaySpeed
   /** Verdadeiro quando este lance vai dar lugar ao próximo: o palco sai apagando. */
   leaving: boolean
+  /**
+   * Zera o respiro de leitura antes de o palco sair.
+   *
+   * A espera padrão (`stageExitDelay`) existe para o lance ficar INTEIRO na tela antes de dar
+   * lugar ao próximo. No apito do fim do período não há próximo lance nem o que ler: o jogo
+   * acabou, e um segundo de lance parado ali é o contrário do que a tela está dizendo.
+   */
+  exitNow?: boolean
 }
 
-export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFieldStageProps) {
+export function NflFieldStage({ play, phase, progress, speed, leaving, exitNow = false }: NflFieldStageProps) {
   const scene = buildPlayScene(play)
   const frame = frameAt(scene, phase, progress)
   const ms = timeScaler(speed)
@@ -313,16 +321,24 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
     animationDuration: ms(REPLAY_TIMING.focusSwap),
   } as React.CSSProperties)
 
+  const exitDelay = exitNow
+    ? 0
+    : (frame.flipsToGain ? REPLAY_TIMING.stageExitDelayGain : REPLAY_TIMING.stageExitDelay)
+
   const exitStyle = leaving
     ? {
-      animationDelay: ms(frame.flipsToGain ? REPLAY_TIMING.stageExitDelayGain : REPLAY_TIMING.stageExitDelay),
+      animationDelay: ms(exitDelay),
       animationDuration: ms(REPLAY_TIMING.stageExitDuration),
     }
     : undefined
 
   return (
     <svg
-      className={`nfl-plays__stage${leaving ? ' nfl-plays__stage--leaving' : ''}`}
+      className={[
+        'nfl-plays__stage',
+        leaving ? 'nfl-plays__stage--leaving' : '',
+        leaving && exitNow ? 'nfl-plays__stage--whistle' : '',
+      ].filter(Boolean).join(' ')}
       style={exitStyle}
       viewBox={`0 0 ${FIELD_FRAME.width} ${FIELD_FRAME.height}`}
       aria-hidden="true"
@@ -400,8 +416,10 @@ export function NflFieldStage({ play, phase, progress, speed, leaving }: NflFiel
         scene.arrivalMark === 'dot'
           ? <ellipse cx={scene.arrivalX} cy={scene.depthY} rx={4} ry={2} fill={pathColor} opacity={0.9} />
           : (
-            // X no ponto onde o passe caiu, como na referência.
-            <g className="nfl-plays__stage-miss" stroke={INCOMPLETE_COLOR} strokeWidth={2.4} strokeLinecap="round">
+            // X no ponto onde o passe caiu, como na referência. A cor é a do caminho, e não a
+            // do erro: num passe anulado que caiu, o caminho é cinza porque quem apagou o
+            // lance foi a penalidade, e um X vermelho no fim dele diria o contrário.
+            <g className="nfl-plays__stage-miss" stroke={pathColor} strokeWidth={2.4} strokeLinecap="round">
               <line
                 x1={scene.landing.x - INCOMPLETE_MARK}
                 y1={scene.depthY - INCOMPLETE_MARK / 2}

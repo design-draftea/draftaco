@@ -4375,7 +4375,9 @@ function LiveEventInlineMarkets({
 // ao presente a cada lance que chega, no único lugar que o mostra.
 
 const nflLiveMatch = (match: LiveEventMatch, feed: NflLiveFeedState): LiveEventMatch => {
-  const { live } = feed.step
+  // `feed.live`, e não `feed.step.live`: o placar mostra o instante do lance que está na tela, e
+  // ele atrasa em relação ao passo enquanto o lance é desenhado. Ver `presentationOf` no feed.
+  const { live } = feed
   // No intervalo o desfecho do último lance também sai da faixa: `Touchdown · MIA · Hill` é o
   // anúncio de um lance que acabou de acontecer, e no apito ele já não é a notícia.
   const isPeriodOver = feed.isOver
@@ -4417,7 +4419,9 @@ const withNflLiveRailItems = (items: LiveEventRailItem[], feed: NflLiveFeedState
   if (index < 0) return items
 
   const item = items[index]
-  const { live } = feed.step
+  // `feed.live`, e não `feed.step.live`: o placar mostra o instante do lance que está na tela, e
+  // ele atrasa em relação ao passo enquanto o lance é desenhado. Ver `presentationOf` no feed.
+  const { live } = feed
   const next = [...items]
   next[index] = {
     ...item,

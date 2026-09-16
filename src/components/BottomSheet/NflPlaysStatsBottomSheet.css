@@ -430,6 +430,51 @@
   to { opacity: 1; }
 }
 
+/* Depois do apito a arte JÁ ESTÁ na tela: quem saiu foi o lance, e o campo vazio é o mesmo
+   campo de antes. Repetir a entrada aqui faria o gramado piscar no meio da transição. */
+.nfl-plays__field--after-whistle {
+  animation: none;
+}
+
+/* ── O apito do fim do primeiro tempo ────────────────────────────────────────
+
+   Antes disto a troca era um corte: no MESMO quadro o relógio virava `Intervalo`, o lance, o
+   cartão e a linha do tempo sumiam, e a lista de campanhas subia 146px de uma vez.
+
+   A saída tem ordem, e a ordem é a do jogo: o relógio anuncia (é ele que vira `Intervalo`), o
+   LANCE sai do campo, e só então dobram as duas coisas que descrevem um lance em foco. O campo
+   fica, porque no intervalo ele continua ali, vazio.
+
+   O palco sai por `nfl-plays__stage--leaving`, que já existia para a troca entre lances; o que o
+   apito muda é a espera antes de apagar, que vai a zero (`exitNow`, em `NflFieldStage`). São
+   380ms de `stageExitDuration`.
+
+   O tempo total está em `HALFTIME_WHISTLE`, no componente, e é ele que segura a troca para o
+   campo vazio. Mexer aqui pede mexer lá — trocar antes do fim da dobra devolve o salto. */
+.nfl-plays--whistle .nfl-plays__context,
+.nfl-plays--whistle .nfl-plays__timeline {
+  overflow: hidden;
+  animation: nfl-plays-whistle-fold 360ms 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* A dobra precisa de uma altura de PARTIDA em pixels: `auto` não interpola. As duas são fixas e
+   a conta está ao lado de cada uma, junto das regras que a produzem — ver `--whistle-fold` em
+   `.nfl-plays__context` e `.nfl-plays__timeline`. Sem dobrar a altura de verdade, a lista de
+   campanhas subiria por cima do cartão ainda visível. */
+@keyframes nfl-plays-whistle-fold {
+  from {
+    height: var(--whistle-fold);
+    opacity: 1;
+    transform: none;
+  }
+
+  to {
+    height: 0;
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
 .nfl-plays__field-art {
   position: absolute;
   top: 10.811%;
@@ -510,6 +555,23 @@
   animation-name: nfl-plays-fade-out;
   animation-timing-function: ease-in;
   animation-fill-mode: forwards;
+}
+
+/* O apito chega com o palco quase sempre JÁ em `--leaving`, parado na espera do respiro de
+   leitura (1020ms, ou 1680ms quando a placa das jardas gira). Zerar essa espera não faz o fade
+   acontecer: a animação continua sendo A MESMA, e o navegador recalcula o tempo dela contra a
+   espera nova — como já se passou mais do que a duração, o palco pula direto para o fim.
+   Medido no navegador: opacidade de 1,00 para 0,00 entre dois quadros.
+
+   Trocar o NOME é o que cancela a animação e começa outra do zero. As duas apagam a mesma coisa;
+   o que muda é o navegador tratá-las como animações diferentes. */
+.nfl-plays__stage--whistle {
+  animation-name: nfl-plays-whistle-stage-out;
+}
+
+@keyframes nfl-plays-whistle-stage-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* ── Fogos de artifício do touchdown ─────────────────────────────────────────
@@ -893,6 +955,11 @@
 
 /* ── Jogada em foco ─────────────────────────────────────────────────────── */
 .nfl-plays__context {
+  /* 32 do cabeçalho + 4 de gap + 48 da linha do lance. Título e detalhe são `nowrap` com
+     reticências, então a altura não varia com o texto. Serve à dobra do apito, que precisa de
+     uma altura em pixels para interpolar — ver `nfl-plays-whistle-fold`. */
+  --whistle-fold: 84px;
+
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1116,6 +1183,59 @@
   color: var(--ds-fill-primary, #fbfbfb);
   /* Sem isto o placar de dois dígitos empurra a coluna do meio ao virar de 9 para 10. */
   font-variant-numeric: tabular-nums;
+  /* Dois dígitos SEMPRE, mesmo com um dígito na tela.
+
+     As duas pontas têm largura de conteúdo, então a coluna do meio — relógio e situação — é
+     centralizada no que sobra ENTRE elas, e não na faixa. Com 13 x 7 a ponta da esquerda media
+     83,6px e a da direita 66,8px, e o relógio nascia 8,4px à direita do centro: metade da
+     largura do dígito que faltava. Só centralizava quando a MIA fazia o touchdown e o placar
+     virava 13 x 14. Com a caixa fixa em 2ch (tabular, então 2ch É a largura de dois dígitos), as
+     duas pontas medem igual desde o primeiro lance. `min-width` e não `width` porque um placar
+     de três dígitos tem de caber — ele desloca de novo, mas não existe primeiro tempo de NFL
+     que chegue a 100 pontos. */
+  min-width: 2ch;
+  text-align: center;
+}
+
+/* ── A bobina do placar ─────────────────────────────────────────────────────
+
+   Quando o time pontua, o número velho desce e sai e o novo entra por cima. Antes disto o texto
+   trocava entre dois quadros — o lance mais importante do jogo passava sem nada acontecer no
+   número que ele mudou.
+
+   Quem faz "sumir" e "aparecer" é o RECORTE da caixa, e não um fade: os dois números percorrem
+   exatamente a altura da linha, na mesma curva, e nunca se sobrepõem. Bobina não tem meio-termo
+   translúcido — com fade, na metade do caminho as duas cifras aparecem pela metade e o placar
+   fica ilegível justo no instante em que alguém está olhando para ele.
+
+   A altura vem do `line-height` de 32px do número; o recorte precisa de uma caixa com altura, e
+   ela é a linha. O que entra fica no fluxo (é ele que dá a altura) e o que sai é absoluto, para
+   a caixa não virar duas linhas durante a troca. */
+.nfl-stats-bs__live-score-roll {
+  position: relative;
+  display: block;
+  overflow: hidden;
+}
+
+.nfl-stats-bs__live-score-roll-in {
+  display: block;
+  animation: nfl-score-roll-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.nfl-stats-bs__live-score-roll-out {
+  position: absolute;
+  inset: 0;
+  animation: nfl-score-roll-out 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nfl-score-roll-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes nfl-score-roll-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
 }
 
 /* A coluna do meio é a que cede espaço: o relógio e a situação são o texto mais longo aqui, e
@@ -1137,6 +1257,25 @@
   color: var(--ds-fill-primary, #fbfbfb);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* A troca para `Intervalo` entra subindo, e não num quadro só: é ela que anuncia o apito, antes
+   de o lance sair do campo. A regra vale a partir do momento em que a classe chega, então a
+   animação roda uma vez — na virada, ou na abertura de um sheet com o jogo já parado. */
+.nfl-stats-bs__live-score-clock--state {
+  animation: nfl-plays-whistle-clock 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes nfl-plays-whistle-clock {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .nfl-stats-bs__live-score-situation {
@@ -1163,6 +1302,9 @@
 
 /* ── Linha do tempo ─────────────────────────────────────────────────────── */
 .nfl-plays__timeline {
+  /* 4 de gap + 40 do trilho + 18 da linha dos relógios. Ver `nfl-plays-whistle-fold`. */
+  --whistle-fold: 62px;
+
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1212,7 +1354,11 @@
   /* Os marcadores são posicionados por fração do trilho, então a chegada de um lance reposiciona
      TODOS eles: o trilho de 5 vira o de 6 e cada ponto recua. Sem transição, essa redistribuição
      é um salto — e um salto aqui lê como a lista tendo sido trocada, não como um lance a mais. */
-  transition: left 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition:
+    left 320ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    /* O ponto que a cabeça de leitura deixa para trás acende no roxo à medida que ela sai de
+       cima dele: a bola pinta o rastro, em vez de o trecho inteiro trocar de cor num quadro. */
+    background-color 260ms ease-out;
 }
 
 /* Alvo de toque confortável sem mudar o desenho do ponto. */
@@ -1232,23 +1378,68 @@
   background: var(--ds-current-score, #bb78ff);
 }
 
-/* O marcador em foco é um círculo de 14px com anel de 4px POR FORA — 22px no total,
-   conferido no render do Figma (4px de anel, 14px de núcleo, 4px de anel). O código que o
-   Figma gera diz `size-[14px] border-4`, que em `border-box` daria 14px no total com
-   núcleo de 6px; daí o `content-box`. */
-.nfl-plays__timeline-marker--current {
+/* ── A cabeça de leitura ────────────────────────────────────────────────────
+
+   A bolinha da jogada em foco é UM objeto que viaja pela trilha, e não o estado de cada ponto.
+   Enquanto ela era um estado (`--current` no marcador da vez), a troca de lance destruía o
+   destaque num ponto e o criava no outro: a barra de progresso e a redistribuição dos pontos já
+   deslizavam em 320ms, então tudo escorregava e só a bola teleportava.
+
+   A viagem é a transição de `left`, na MESMA curva e duração da barra e dos pontos — é isso que
+   faz os três lerem como uma peça só em vez de três coisas quase sincronizadas.
+
+   Dois elementos porque são dois transforms que não podem disputar o mesmo atributo: o de fora
+   centraliza no ponto (`translate(-50%, -50%)`) e o de dentro deforma na viagem.
+
+   `pointer-events: none` porque quem recebe o toque continua sendo o marcador debaixo — a
+   cabeça cobre o ponto em foco e não pode roubar o alvo de 40px dele. */
+.nfl-plays__timeline-head {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: left 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Círculo de 14px com anel de 4px POR FORA — 22px no total, conferido no render do Figma (4px de
+   anel, 14px de núcleo, 4px de anel). O código que o Figma gera diz `size-[14px] border-4`, que
+   em `border-box` daria 14px no total com núcleo de 6px; daí o `content-box`.
+
+   Anel na própria cor a 40%: lê como halo do ponto atual, e não como borda de outra cor.
+   `background-clip: padding-box` é obrigatório. Por padrão o fundo é pintado por baixo da borda
+   também, então o roxo sólido aparecia através dos 40% e o anel ficava indistinguível do núcleo.
+   Mesma armadilha da borda em degradê dos chips. */
+.nfl-plays__timeline-head-core {
+  display: block;
   width: 14px;
   height: 14px;
-  /* Anel na própria cor do marcador a 40%: lê como halo do ponto atual, e não como uma
-     borda de outra cor.
-
-     `background-clip: padding-box` é obrigatório aqui. Por padrão o fundo é pintado por
-     baixo da borda também, então o roxo sólido aparecia através dos 40% e o anel ficava
-     indistinguível do núcleo. Mesma armadilha da borda em degradê dos chips. */
   border: 4px solid rgb(var(--ds-current-score-rgb, 187 120 255) / 0.4);
+  border-radius: 99px;
   box-sizing: content-box;
   background: var(--ds-current-score, #bb78ff);
   background-clip: padding-box;
+  animation: nfl-plays-head-travel 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* A deformação da viagem: a bola se estica no sentido em que anda e assenta na chegada. Sem ela
+   o objeto muda de lugar; com ela ele se DESLOCA, que é a diferença entre ter peso e não ter.
+
+   O pico fica em 22% porque a curva da viagem é dianteira — quase toda a distância é vencida no
+   começo —, então é ali que está a velocidade máxima. O leve contra-esmagamento em 60% é o corpo
+   alcançando a frente depois de parar; sem ele a bola chega dura.
+
+   Simétrica de propósito: serve tanto para quem avança quanto para quem toca num lance anterior
+   e volta. Direcional exigiria saber o sentido, e o ganho não paga o estado a mais.
+
+   A `key` no índice do lance é quem dispara: elemento novo, animação do zero. Na abertura do
+   sheet ela também corre uma vez, e ali lê como a cabeça assentando na jogada em foco. */
+@keyframes nfl-plays-head-travel {
+  0% { transform: scale(1, 1); }
+  22% { transform: scale(1.2, 0.88); }
+  60% { transform: scale(0.95, 1.05); }
+  100% { transform: scale(1, 1); }
 }
 
 /* ── Chegada ao vivo ────────────────────────────────────────────────────────

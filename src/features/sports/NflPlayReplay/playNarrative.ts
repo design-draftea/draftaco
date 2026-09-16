@@ -42,15 +42,45 @@ export const hasBallFlight = (play: NflPlay) => (
 export const isRun = (play: NflPlay) => play.type === 'run' && !play.noPlay
 
 /**
+ * Sack. Não é passe incompleto: o passe nunca saiu, e quem andou foi o passador — para
+ * trás. O nflverse guarda o lance como `pass` com `air_yards` vazio, então sem esta
+ * pergunta ele caía nas duas regras erradas ao mesmo tempo: era CHAMADO de passe incompleto
+ * e não era DESENHADO, porque não havia jardas aéreas para o arco.
+ *
+ * O que ele tem é o trecho rasteiro da corrida, andando no sentido contrário.
+ */
+export const isSack = (play: NflPlay) => play.type === 'pass' && !play.noPlay && !!play.sack
+
+/**
  * Jogada anulada que REALMENTE aconteceu em campo e dá para desenhar.
  *
  * Nem toda anulada teve jogada: falta antes do snap para o lance antes de ele existir, e ali
  * mostrar algo seria invenção. O fixture já separa isso (`nullified` vem `null`).
  *
- * Passe incompleto anulado fica de fora mesmo tendo acontecido: o texto diz "short right"
- * mas não diz quantas jardas, e arbitrar uma distância seria inventar o lance.
+ * O passe anulado INCOMPLETO ficava de fora, com o argumento de que o texto diz "short
+ * right" mas não diz quantas jardas. O argumento não se sustentava por duas razões: o passe
+ * anulado COMPLETO já é desenhado com uma aproximação (o ganho total no lugar das jardas
+ * aéreas, ver `playScene`), e "short"/"deep" é o balde oficial da NFL — uma medida, não um
+ * chute. A profundidade sai da mediana real daquele balde (`VOID_PASS_DEPTH`), e nenhum
+ * número aparece na tela: `showsGainBadge` continua suprimindo a placa em toda anulada.
  */
-export const hasNullifiedPlay = (play: NflPlay) => !!(play.noPlay && play.nullified?.complete)
+export const hasNullifiedPlay = (play: NflPlay) => !!(play.noPlay && play.nullified)
+
+/**
+ * Falta SECA: a penalidade é o lance inteiro. Falso início, atraso de jogo — a bola nem foi
+ * snapada, e o que aconteceu em campo foi a bandeira e o recuo.
+ *
+ * Quanto a bola andou por causa dela, com sinal (negativo quando a falta é do ataque). Zero
+ * quando não há falta seca, e é assim que o resto do código pergunta se existe uma.
+ *
+ * Não vale para a anulada que TEVE jogada: ali o que importa é a jogada, e o recuo brigaria
+ * com ela pela atenção.
+ */
+export const penaltyMarchYards = (play: NflPlay) => (
+  play.noPlay && !play.nullified ? (play.penaltyYards ?? 0) : 0
+)
+
+export const hasPenaltyMarch = (play: NflPlay) => penaltyMarchYards(play) !== 0
 
 /**
  * Nome da falta por marca. O que não estiver aqui cai no termo original em inglês — é como
@@ -79,7 +109,9 @@ export const getPenaltyName = (tipo: string | null | undefined) => {
 }
 
 /** Tem alguma coisa para animar: voo, corrida, ou os dois. */
-export const isAnimatable = (play: NflPlay) => hasBallFlight(play) || isRun(play) || hasNullifiedPlay(play)
+export const isAnimatable = (play: NflPlay) => (
+  hasBallFlight(play) || isRun(play) || isSack(play) || hasNullifiedPlay(play) || hasPenaltyMarch(play)
+)
 
 /**
  * Desfecho do lance, do ponto de vista de QUEM DESENHA.
@@ -102,15 +134,37 @@ export const isAnimatable = (play: NflPlay) => hasBallFlight(play) || isRun(play
  *   lance não chegou a existir (falso início) — nos dois não há posse no fim.
  * - `voided`: aconteceu em campo e a penalidade apagou. Não é erro do lance, e por isso
  *   não divide cor com `incomplete`.
+ * - `voidedIncomplete`: a anulada em que a bola também caiu. Precisa ser variante própria e
+ *   não pode dividir nenhuma das duas: é cinza como a anulada, porque a penalidade apagou o
+ *   lance, mas termina SEM POSSE como o incompleto. Herdando `voided` a bola subiria para o
+ *   retrato, contando uma recepção que não houve.
+ * - `penalty`: a falta seca. Ninguém correu nem lançou; o que andou foi a bola, empurrada
+ *   pela marcação. Cinza como a anulada — é a mesma bandeira —, e com posse no fim, porque
+ *   a bola continua sendo de quem era.
+ * - `sack`: o passe não saiu e quem andou foi o passador, para trás. Termina com a bola —
+ *   ela nunca deixou a mão dele — e mesmo assim é vermelho: para o ataque o lance deu
+ *   errado, e essa é a leitura da cor.
  * - `touchback`: o chute morreu na end zone e não houve retorno para contar.
  */
-export type PlayOutcome = 'gain' | 'noGain' | 'incomplete' | 'voided' | 'touchback'
+export type PlayOutcome =
+  | 'gain'
+  | 'noGain'
+  | 'incomplete'
+  | 'voided'
+  | 'voidedIncomplete'
+  | 'penalty'
+  | 'sack'
+  | 'touchback'
 
 export function getPlayOutcome(play: NflPlay): PlayOutcome {
   // A ordem importa: uma anulada é antes de tudo uma anulada, e um chute nunca é lido
   // pelas colunas de passe (`complete` vale 0 em qualquer chute).
-  if (hasNullifiedPlay(play)) return 'voided'
+  if (hasNullifiedPlay(play)) return play.nullified?.complete ? 'voided' : 'voidedIncomplete'
   if (isKick(play)) return play.touchback ? 'touchback' : 'gain'
+  // Antes do ramo do passe: num sack `complete` também vale 0, e ele cairia em `incomplete`.
+  if (isSack(play)) return 'sack'
+  if (hasPenaltyMarch(play)) return 'penalty'
+  // Sobra a anulada sem jogada NEM recuo para desenhar: pedido de tempo, falta sem jardas.
   if (play.noPlay) return 'incomplete'
   if (play.type === 'pass' && !play.complete) return 'incomplete'
 
@@ -135,11 +189,17 @@ export function getPlayTitle(play: NflPlay): string {
       return `${verbo} de ${anulada.yards} ${isDraftea() ? 'yardas' : 'jardas'}`
     }
 
-    return isDraftea() ? 'Jugada anulada' : 'Jogada anulada'
+    // Sem jogada, o lance É a falta: "Falso início" diz o que houve, e "Jogada anulada" só
+    // dizia que algo foi apagado. Sem o nome da falta no dado, fica o texto genérico.
+    return getPenaltyName(play.penaltyType) ?? (isDraftea() ? 'Jugada anulada' : 'Jogada anulada')
   }
 
   const yards = play.yards
   const yardWord = isDraftea() ? 'yardas' : 'jardas'
+
+  // "Sack" fica no original nas duas marcas, como touchdown e field goal: é a palavra que a
+  // transmissão usa. O número é a perda, sempre positivo aqui — o sinal está na placa.
+  if (isSack(play)) return `Sack de ${Math.abs(yards)} ${yardWord}`
 
   if (play.type === 'pass') {
     if (!play.complete) return isDraftea() ? 'Pase incompleto' : 'Passe incompleto'
@@ -184,7 +244,8 @@ export function getPlayTitle(play: NflPlay): string {
  */
 export const showsGainBadge = (play: NflPlay) => (
   // Anulada não entra: não houve jardas para creditar, é justamente o ponto dela.
-  isAnimatable(play) && !isKick(play) && !play.noPlay && (isRun(play) || play.complete)
+  // O sack entra: a perda é o que o lance tem para contar, e ela conta na súmula.
+  isAnimatable(play) && !isKick(play) && !play.noPlay && (isRun(play) || isSack(play) || play.complete)
 )
 
 /**
@@ -256,12 +317,24 @@ export function getPlayResult(play: NflPlay, opponent?: string): { label: string
   const yardWord = isDraftea() ? 'yardas' : 'jardas'
 
   if (play.noPlay) {
+    // Na falta seca o título já é o nome dela, e o que falta dizer é o que ela custou.
+    if (hasPenaltyMarch(play)) {
+      const marcha = penaltyMarchYards(play)
+
+      return { label: getPlayTitle(play), gain: `${marcha > 0 ? '+' : ''}${marcha} ${yardWord}` }
+    }
+
     // O motivo é a informação que faltava: "anulada" sem dizer por quê deixa a pessoa sem
     // saber o que aconteceu no jogo.
     return { label: getPlayTitle(play), gain: getPenaltyName(play.penaltyType) }
   }
 
   if (play.touchdown) return { label: 'Touchdown', gain: `+${play.yards} ${yardWord}` }
+
+  // Quem derrubou vai no lugar do ganho, no mesmo formato do autor do touchdown na lista de
+  // campanhas ("Touchdown · Hill"). A perda em jardas não entra aqui: ela já está no título
+  // e na placa que gira, e repetir o mesmo número três vezes na mesma tela não informa nada.
+  if (isSack(play)) return { label: getPlayTitle(play), gain: shortName(play.sackedBy) || null }
 
   if (play.type === 'pass' && !play.complete) {
     return { label: isDraftea() ? 'Pase incompleto' : 'Passe incompleto', gain: null }
@@ -275,9 +348,14 @@ export function getPlayResult(play: NflPlay, opponent?: string): { label: string
       return { label: getPlayTitle(play), gain: `${isDraftea() ? 'Posesión para' : 'Posse para'} ${opponent}` }
     }
     if (play.touchback) return { label: getPlayTitle(play), gain: 'Touchback' }
-    if (play.fieldGoalResult === 'made') return { label: getPlayTitle(play), gain: isDraftea() ? 'bueno' : 'bom' }
+    // O gamebook diz "the field goal is GOOD", e traduzir isso por "bom" punha um adjetivo
+    // solto num espaço que em todo o resto da tela carrega uma quantidade ("+12 jardas",
+    // "Touchback", "Posse para Dolphins"). "Convertido" é o que a transmissão fala.
+    if (play.fieldGoalResult === 'made') {
+      return { label: getPlayTitle(play), gain: 'convertido' }
+    }
     if (play.fieldGoalResult && play.fieldGoalResult !== 'made') {
-      return { label: getPlayTitle(play), gain: isDraftea() ? 'fallado' : 'errado' }
+      return { label: getPlayTitle(play), gain: isDraftea() ? 'fallado' : 'perdido' }
     }
     if (play.returnYards > 0) {
       return { label: getPlayTitle(play), gain: `+${play.returnYards} ${yardWord}` }

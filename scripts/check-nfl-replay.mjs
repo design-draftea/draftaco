@@ -153,6 +153,113 @@ const anuladaComJardas = anuladas.filter((play) => play.yards !== 0).map((play) 
 conferir('anulada: nenhuma credita jardas', anuladaComJardas.length === 0,
   `creditaram jardas: ${anuladaComJardas.join(', ')}`)
 
+// As duas anuladas INCOMPLETAS do horizonte. Elas ficaram meses mostrando campo vazio, e a
+// segunda é a que prova o caminho sem recebedor: o texto oficial dela não nomeia ninguém.
+const anuladaIncompleta = anulada('1962')
+conferir('anulada 1962: passe Mahomes -> Kelce, curto à direita, que caiu',
+  !!anuladaIncompleta?.nullified
+  && anuladaIncompleta.nullified.kind === 'pass'
+  && anuladaIncompleta.nullified.complete === false
+  && anuladaIncompleta.nullified.passer === 'P.Mahomes'
+  && anuladaIncompleta.nullified.receiver === 'T.Kelce'
+  && anuladaIncompleta.nullified.depth === 'short',
+  `nullified=${JSON.stringify(anuladaIncompleta?.nullified)}`)
+
+const anuladaSemAlvo = anulada('2248')
+conferir('anulada 2248: passe do Tagovailoa que caiu, sem recebedor no texto',
+  !!anuladaSemAlvo?.nullified
+  && anuladaSemAlvo.nullified.complete === false
+  && anuladaSemAlvo.nullified.passer === 'T.Tagovailoa'
+  && anuladaSemAlvo.nullified.receiver === null
+  && anuladaSemAlvo.nullified.depth === 'short',
+  `nullified=${JSON.stringify(anuladaSemAlvo?.nullified)}`)
+
+// A regra do produto: o que foi anulado TEM de mostrar a jogada. Quem passou pelo parser
+// aconteceu em campo, e cada um desses lances precisa de uma distância para desenhar — o
+// ganho quando houve, o balde de profundidade quando o passe caiu. Sem ela o arco sai com
+// comprimento zero, que na tela é exatamente o campo vazio que isto veio corrigir.
+const anuladaSemDesenho = anuladas
+  .filter((play) => play.nullified)
+  .filter((play) => (play.nullified.kind === 'pass' && !play.nullified.complete
+    ? !play.nullified.depth
+    : play.nullified.yards === 0 && !play.nullified.touchdown))
+  .map((play) => play.id)
+conferir('anulada: toda anulada que aconteceu tem o que desenhar', anuladaSemDesenho.length === 0,
+  `sem distância para o desenho: ${anuladaSemDesenho.join(', ')}`)
+
+const baldeInvalido = anuladas
+  .filter((play) => play.nullified?.depth && !['short', 'deep'].includes(play.nullified.depth))
+  .map((play) => play.id)
+conferir('anulada: o balde de profundidade é short ou deep', baldeInvalido.length === 0,
+  `balde fora do vocabulário da NFL: ${baldeInvalido.join(', ')}`)
+
+// ── Falta seca ─────────────────────────────────────────────────────────────
+//
+// A anulada em que o lance NÃO chegou a existir: falso início, atraso de jogo. Ali a
+// penalidade é o lance inteiro, e o que ela tem para mostrar é quem a cometeu e quanto a bola
+// voltou. Sem isso o campo ficava com um capacete cinza sem nome e nada se movendo.
+const indiceDe = (id) => jogadas.findIndex((play) => play.id === id)
+const faltasSecas = jogadas.filter((play) => play.noPlay && !play.nullified && play.penaltyYards)
+
+conferir('falta seca: o recorte tem os três falsos inícios',
+  faltasSecas.length === 3 && faltasSecas.every((play) => play.penaltyType === 'False Start'),
+  `encontradas ${faltasSecas.length}: ${faltasSecas.map((play) => play.id + ':' + play.penaltyType).join(', ')}`)
+
+const faltaSemAutor = faltasSecas.filter((play) => !play.penaltyBy).map((play) => play.id)
+conferir('falta seca: tem quem cometeu', faltaSemAutor.length === 0,
+  `sem \`penaltyBy\` — o retrato fica sem nome: ${faltaSemAutor.join(', ')}`)
+
+// A conferência que dá o direito de desenhar o recuo: ele tem de bater com a linha de
+// scrimmage do lance SEGUINTE, que é onde a marcação aparece de verdade. Meia distância para
+// a end zone, faltas compensadas ou falta recusada quebram a conta — e aí o desenho estaria
+// mostrando a bola parando onde ela não parou.
+const recuoQueNaoFecha = jogadas
+  .map((play, i) => ({ play, seguinte: jogadas[i + 1] }))
+  .filter(({ play, seguinte }) => play.noPlay && play.penaltyYards && seguinte)
+  .filter(({ play, seguinte }) => seguinte.startYard - play.startYard !== play.penaltyYards)
+  .map(({ play }) => play.id)
+conferir('falta: o recuo fecha com a linha do lance seguinte', recuoQueNaoFecha.length === 0,
+  `marcação e linha seguinte discordam: ${recuoQueNaoFecha.join(', ')}`)
+
+// Numa falta antes do snap a bola volta mas a linha da descida FICA: é por isso que a
+// distância cresce junto ("3ª e 8" vira "3ª e 13"). O desenho conta com isso — a bola recua
+// para longe de uma linha amarela parada.
+const descidaQueAndou = faltasSecas
+  .map((play) => ({ play, seguinte: jogadas[indiceDe(play.id) + 1] }))
+  .filter(({ play, seguinte }) => seguinte && play.distance !== null && seguinte.distance !== null)
+  .filter(({ play, seguinte }) => play.startYard + play.distance !== seguinte.startYard + seguinte.distance)
+  .map(({ play }) => play.id)
+conferir('falta seca: a linha da descida não anda com a bola', descidaQueAndou.length === 0,
+  `linha da descida mudou de jarda: ${descidaQueAndou.join(', ')}`)
+
+// ── Sack ───────────────────────────────────────────────────────────────────
+//
+// O nflverse guarda o sack como `play_type: 'pass'` com `air_yards` vazio. Sem a marca
+// própria, o protótipo lia "passe" + "não completou" e escrevia PASSE INCOMPLETO num lance
+// em que passe nenhum saiu — e, sem jardas aéreas, não desenhava nada.
+//
+// Esta é a conferência que teria pegado aquilo: um passe sem jardas aéreas ou é sack, ou é
+// um lance que vai ficar parado na tela sem ninguém perceber.
+const passeSemDesenho = jogadas
+  .filter((play) => play.type === 'pass' && !play.noPlay && play.airYards === null && !play.sack)
+  .map((play) => play.id)
+conferir('passe: sem jardas aéreas, só se for sack', passeSemDesenho.length === 0,
+  `passe parado, sem arco e sem marca de sack: ${passeSemDesenho.join(', ')}`)
+
+const sacks = jogadas.filter((play) => play.sack)
+conferir('sack: o recorte tem o do Tagovailoa no fim do 2º quarto',
+  sacks.length === 1 && sacks[0].id === '1915',
+  `encontrados ${sacks.length}: ${sacks.map((play) => play.id).join(', ')}`)
+
+const sackSemPerda = sacks.filter((play) => play.yards >= 0).map((play) => play.id)
+conferir('sack: a perda é negativa', sackSemPerda.length === 0,
+  `sem perda em jardas: ${sackSemPerda.join(', ')}`)
+
+// Quem derrubou vai para a linha de resultado. Sem o nome ela fica com um `·` e nada depois.
+const sackSemAutor = sacks.filter((play) => !play.sackedBy).map((play) => play.id)
+conferir('sack: tem quem derrubou', sackSemAutor.length === 0,
+  `sem \`sackedBy\`: ${sackSemAutor.join(', ')}`)
+
 // `fixed_drive_result` já traz o desfecho FINAL da campanha, inclusive da que ainda está
 // correndo. Mostrar isso entregaria o que ainda não aconteceu no jogo.
 const emAndamento = jogo.drives.filter((drive) => drive.inProgress)
@@ -288,6 +395,51 @@ const gapsErrados = PASSOS
   .map(({ indice }) => indice)
 conferir('feed: `gapSeconds` desagua no relógio do passo seguinte', gapsErrados.length === 0,
   `passos com sobra: ${gapsErrados.join(', ')}`)
+
+// ── Regra de relógio da NFL ────────────────────────────────────────────────
+//
+// `playSeconds` e `clockStops` MEDEM a regra no dado: quanto o lance queimou do snap até a bola
+// morrer, e se o cronômetro parou ali. São eles que provam que os intervalos deste recorte são os
+// reais — errados, não quebram nada: produzem um jogo plausível cujos tempos ignoram a regra.
+// O app desenha a descida do relógio dentro da apresentação do lance e trava no horário dele, mas
+// o TAMANHO de cada descida continua saindo daqui.
+const foraDoIntervalo = PASSOS
+  .map((passo, indice) => ({ indice, passo }))
+  .filter(({ passo }) => !Number.isInteger(passo.playSeconds)
+    || passo.playSeconds < 0
+    || passo.playSeconds > passo.gapSeconds)
+  .map(({ indice }) => indice)
+conferir('feed: o tempo do lance cabe dentro do intervalo', foraDoIntervalo.length === 0,
+  `passos fora: ${foraDoIntervalo.join(', ')}`)
+
+// Lance que para o relógio não deixa tempo morto: o cronômetro congela no fim do lance e só
+// volta no snap seguinte. Sem isto o passe incompleto volta a escorregar pela espera inteira.
+const paradaQueNaoPara = PASSOS
+  .map((passo, indice) => ({ indice, passo }))
+  .filter(({ passo }) => passo.clockStops && passo.playSeconds !== passo.gapSeconds)
+  .map(({ indice }) => indice)
+conferir('feed: lance que para o relógio não deixa tempo morto', paradaQueNaoPara.length === 0,
+  `passos com sobra: ${paradaQueNaoPara.join(', ')}`)
+
+// O caso que originou a regra, preso pelo dado e não pelo tipo: passe incompleto PARA.
+const incompletos = PASSOS.filter((passo) => {
+  const jogada = jogadas[passo.playCount - 1]
+  return jogada.type === 'pass' && !jogada.complete && !jogada.noPlay && jogada.yards === 0
+})
+conferir('feed: todo passe incompleto para o relógio',
+  incompletos.length > 0 && incompletos.every((passo) => passo.clockStops),
+  `${incompletos.length} incompleto(s), ${incompletos.filter((p) => !p.clockStops).length} sem parada`)
+
+// E o contrário: jogada que termina em campo NÃO para. Sem esta, marcar tudo como parada
+// passaria nas conferências acima e devolveria um relógio congelado o jogo inteiro.
+const corridasEmCampo = PASSOS.filter((passo) => {
+  const jogada = jogadas[passo.playCount - 1]
+  return jogada.type === 'run' && !jogada.touchdown && !jogada.penalty && passo.gapSeconds > 20
+})
+conferir('feed: corrida derrubada em campo mantém o relógio correndo',
+  corridasEmCampo.length > 0
+  && corridasEmCampo.every((passo) => !passo.clockStops && passo.gapSeconds > passo.playSeconds),
+  `${corridasEmCampo.length} corrida(s), ${corridasEmCampo.filter((p) => p.clockStops).length} marcadas como parada`)
 
 // Só o último passo encerra o período, e o intervalo dele tem de chegar a 00:00 exatamente.
 // É esse zero que faz o protótipo TERMINAR no intervalo em vez de congelar de novo.
@@ -475,6 +627,28 @@ const CARRY_OFFSET_Y = constante(cena, 'playScene.ts', 'CARRY_OFFSET_Y')
 const CARRY_BADGE_SIZE = constante(palco, 'NflFieldStage.tsx', 'CARRY_BADGE_SIZE')
 const CARRY_BADGE_BORDER = constante(palco, 'NflFieldStage.tsx', 'CARRY_BADGE_BORDER')
 const CARRY_BADGE_PADDING = constante(palco, 'NflFieldStage.tsx', 'CARRY_BADGE_PADDING')
+
+// Um chute nunca é desenhado como ERRO. O touchback já esteve no vermelho do passe que cai,
+// pelo argumento de que a bola não chegou a ninguém — e o resultado eram dois punts lado a
+// lado com linguagens visuais diferentes, um lilás e um vermelho. A regressão é silenciosa:
+// basta alguém trocar uma linha da tabela, e nada quebra.
+const TOM_DO_TOUCHBACK = /touchback: '(\w+)'/.exec(cena)
+conferir('chute: touchback não é desenhado como erro',
+  !!TOM_DO_TOUCHBACK && TOM_DO_TOUCHBACK[1] !== 'error',
+  `PATH_TONE.touchback = ${TOM_DO_TOUCHBACK ? TOM_DO_TOUCHBACK[1] : '(não encontrado)'}`)
+
+// A profundidade desenhada num passe anulado incompleto não é escolhida a dedo: é a mediana
+// real de cada balde entre os passes incompletos de 2023. O que este arquivo pode conferir é
+// que os dois números continuam DENTRO da definição da NFL para o balde que representam —
+// `short` abaixo de 15 jardas aéreas, `deep` daí para cima. Um "short" de 20 desenharia um
+// lance que contradiz o próprio texto que o gerou.
+const BALDE_CURTO = extrairNumero(cena, 'playScene.ts',
+  /VOID_PASS_DEPTH = \{ short: (\d+)/, 'VOID_PASS_DEPTH.short')
+const BALDE_LONGO = extrairNumero(cena, 'playScene.ts',
+  /VOID_PASS_DEPTH = \{ short: \d+, deep: (\d+)/, 'VOID_PASS_DEPTH.deep')
+conferir('anulada: a profundidade cabe no balde que representa',
+  BALDE_CURTO > 0 && BALDE_CURTO < 15 && BALDE_LONGO >= 15,
+  `short=${BALDE_CURTO}, deep=${BALDE_LONGO} (a NFL separa os dois em 15 jardas aéreas)`)
 
 // A bola tem de caber no selo com o respiro do estudo, e sobrar selo para o aro aparecer.
 const bolaNoSelo = CARRY_BADGE_SIZE - CARRY_BADGE_PADDING * 2
