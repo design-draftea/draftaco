@@ -3,25 +3,93 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-16.
-- Checkout: worktree `.worktrees/typesafe-nfl-semantic-audit`, branch
-  `feature/typesafe-nfl-semantic-audit`, criada a partir de `origin/main` em `2ae8231`.
-- **Auditor semântico opcional implementado, validado localmente e aprovado para entrega.**
-- Objetivo: comparar apenas os lances semanticamente ambíguos do campinho (`no_play` e sack)
-  com a descrição oficial do nflverse, em uma única chamada ao Jev, sem alterar o fixture nem
-  chamar IA durante a reprodução.
-- Critérios de aceite cumpridos: chave lida somente do ambiente ou de `.env.typesafe.local`;
-  `--dry-run`, `--ids`, `--threshold` e `--json`; confiança baixa ou divergência retorna código
-  `1`; falhas de configuração/API retornam `2`; lance sintético sem súmula é ignorado e informado.
-- Arquivos alterados: `scripts/audit-nfl-scenes-typesafe.mjs`, `package.json`, `.env.example`,
-  `README.md` e este handoff.
-- Decisão: o auditor é uma ferramenta de QA manual; não muda a regra determinística, não entra
-  no app e não deve virar bloqueio de CI antes de ser calibrado em mais jogos.
-- Validações: `npm ci`; `node --check`; ajuda e dry-run; chamada real ao Jev 1.13.0 com oito
-  lances (todos OK, confiança mínima 88%, 3359 tokens, 904 ms); `npm run check:nfl` (66);
-  `npm run check:brands`; ESLint do script; `npm run build`; `git diff --check`.
-- Fluxo Git autorizado pela pessoa responsável em 2026-09-16: commit, Pull Request, merge em
-  `main` e publicação automática. No momento deste registro, os identificadores remotos e a
-  validação pós-deploy ainda não existiam e deveriam ser conferidos no GitHub.
+- Checkout: worktree `.worktrees/qa-copy-typesafe`, branch `chore/qa-copy-typesafe`, criada a
+  partir de `origin/main` em `6200465`.
+- **Implementado e validado localmente. Não há Pull Request, merge nem deploy.**
+- Duas frentes: a página de handoff de produto saiu do app, e o catálogo de textos da Draftea
+  ganhou conferência automática.
+
+### A página `/marca/handoff` foi removida
+
+Decisão da pessoa responsável pelo protótipo em 2026-09-16: a página não servia para nada.
+
+Antes de remover, ela havia sido corrigida nesta mesma branch, porque a Regra 05 descrevia uma
+Home que não existe mais — "cinco campeonatos, dois abertos e três fechados" e "no máximo três
+jogos por campeonato", quando a Home renderiza um bloco único alimentado por quatro campeonatos
+com limites de 1, 2, 2 e 3. Esse commit foi descartado junto com a página; o diagnóstico fica
+registrado aqui porque ele continua valendo sobre a Home.
+
+Removidos: `src/features/handoff/` inteiro e os sete pontos que a citavam em `src/App.tsx` — o
+import preguiçoso, `handoffRouteSegment`, `isHandoffPath`, o `useMemo` de `isHandoffPage`, a
+entrada em `isStandalonePage`, a condição do `MobileOnly` e o ramo de renderização. As citações
+em `README.md`, `docs/AI_CONTEXT.md`, `docs/COLLABORATION.md` e `package.json` também saíram.
+
+`/pitaco/handoff` e `/draftea/handoff` passam a cair na regra de rota desconhecida e normalizam
+para `/marca/apostas`, conferido no navegador nas duas marcas.
+
+### `qa:copy:typesafe`: o que o código resolve não vai para a IA
+
+Mesmo molde do auditor do NFL. Quatro verificações locais, sem custo, todas confirmadas por
+mutação — perturbei o dado de propósito e conferi que acusam:
+
+- `regex`: padrão literal posterior que nunca dispara por já estar contido num anterior, e saída
+  de um regex reescrita por um posterior. Zero achados hoje; a ordem atual está correta.
+- `duplicatas`: chave repetida no mapa exato, em que a última vence em silêncio. Zero hoje.
+- `vazamento`: texto que atravessa `localizeCopy` intacto e tem marcador forte de português.
+  88 achados, concentrados nas telas de jogos e no betslip. Eram 116 antes de a página de
+  handoff sair: 28 vinham só dela.
+- `mercado`: jogador cujo time não está entre os times das partidas do mesmo bloco. Zero hoje.
+
+Só a equivalência de sentido vai ao Jev, depois de dois filtros de código: 92 das 406 entradas
+do mapa exato apenas repetem um regex existente e são puladas, e o resultado fica em cache pelo
+hash do estado e da pergunta.
+
+### O que foi medido, incluindo o que não funciona
+
+- Lote grande degrada o julgamento. Com 40 perguntas por requisição, `Para Ganhar -> Para Ganar`
+  caiu para 15%; isolado dá 95%; com seis por requisição, empata com o isolado. Daí `--batch=6`.
+- A faixa DIVERGE (<= 0,25) é confiável: pegou as quatro trocas de sentido plantadas, entre 2% e
+  9%. A faixa REVISAR tem cerca de 9% de falso positivo.
+- A verificação de identidade foi **retirada do caminho pago**. O Jev não separa "Saldo", certo
+  nas duas línguas, de "Tempo de posse", esquecido em português: as duas formulações testadas
+  reprovaram os 13 termos corretos ou aprovaram os errados. São 13 entradas; o script as lista de
+  graça para conferência humana.
+- Ponto cego conhecido: uma tradução aparente que continua em português passa pela pergunta de
+  equivalência, porque ela é de fato equivalente.
+
+### Achado real do catálogo
+
+O auditor encontrou **inglês no catálogo espanhol**, em `src/brands/draftea/legacyCopy.ts`:
+linha 89 (`'Ativa a experiencia em prototipo de Apostas Gratis.'` -> `'Enable the Free Bets
+prototype experience.'`) e linha 106 (`'Desativar Apostas Gratis disponivel'` -> `'Disable Free
+Bets available'`). São textos do painel de feature flags. **Não foram corrigidos**: estão fora
+do escopo autorizado desta tarefa.
+
+### Arquivos alterados
+
+Removidos: `src/features/handoff/` (`HandoffPage.tsx`, `HandoffPage.css`, `index.ts`).
+Alterados: `src/App.tsx`, `README.md`, `package.json`, `docs/AI_CONTEXT.md`,
+`docs/COLLABORATION.md` e este handoff. Novo: `scripts/audit-copy-typesafe.mjs`.
+
+### Validações executadas
+
+`npm ci`; `node --check`; ajuda e dry-run; testes de mutação nas quatro verificações locais;
+chamadas reais ao Jev 1.13.0 (equivalência, identidade e as sondas de calibração);
+`npm run build`; `npm run check:brands`; `npm run check:nfl` (66); ESLint do script novo, sem
+apontamento; `git diff --check`. No navegador, depois da remoção: `/pitaco/handoff` e
+`/draftea/handoff` normalizam para `/marca/apostas`, a Home renderiza e uma aba limpa não
+registra erro de console.
+
+### Pendências e próximo passo concreto
+
+- Aguardando aprovação da versão local em `http://localhost:5186/pitaco/apostas`. Sem ela, não
+  abrir Pull Request.
+- O servidor local usa uma configuração `draftaco-qa-copy` acrescentada a `.claude/launch.json`
+  do checkout principal, apontando para este worktree. O arquivo é ignorado pelo Git; remover a
+  entrada quando o worktree sair.
+- Os dois textos em inglês do catálogo pedem uma tarefa própria.
+- O auditor é ferramenta de revisão manual. Não transformar em bloqueio de CI antes de calibrar
+  em mais rodadas, como já vale para `qa:nfl:typesafe`.
 
 ## Histórico anterior — correções do replay incorporadas em `origin/main`
 
@@ -414,6 +482,10 @@ vermelho, conferido.
 
 ## Histórico das entregas
 
+- [2026-09-16 — Auditor semântico do replay NFL com TypeSafe](handoffs/2026-09-16-auditor-nfl-typesafe.md):
+  o primeiro uso do Jev no projeto, restrito a `no_play` e sack, fora do app e sem tocar no
+  fixture. Define o molde que `qa:copy:typesafe` reaproveita: chave fora do navegador,
+  `--dry-run`, saída 1 para revisão e 2 para falha de configuração.
 - [2026-09-16 — O jogo de NFL andando sozinho até o intervalo](handoffs/2026-09-16-nfl-jogo-ao-vivo.md):
   o feed que entrega os lances um a um, o sheet acompanhando o jogo, o movimento de chegada, o
   estado de intervalo e o placar próprio do sheet. É a base sobre a qual a regra de relógio

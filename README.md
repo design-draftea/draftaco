@@ -59,6 +59,30 @@ retorna código de saída `1`. É possível restringir lances ou mudar o limite:
 npm run qa:nfl:typesafe -- --ids=360,696 --threshold=0.8
 ```
 
+### Auditoria dos textos da Draftea e dos rótulos de aposta
+
+Mesma chave e mesmo princípio: o que o código resolve não vai para a IA. As verificações locais
+não custam nada e rodam sempre — ordem dos regexes, chave repetida no catálogo, texto que
+atravessa a tradução e continua em português, e jogador cujo time não joga na partida do bloco.
+
+```bash
+npm run qa:copy:typesafe -- --dry-run
+npm run qa:copy:typesafe
+```
+
+Só a equivalência de sentido vai ao Jev, e mesmo assim depois de dois filtros: entradas que
+apenas repetem um regex existente são puladas, e o resultado fica em cache pelo hash do estado
+e da pergunta. Dá para restringir o alcance e o gasto:
+
+```bash
+npm run qa:copy:typesafe -- --only=vazamento --path=src/features/betslip
+npm run qa:copy:typesafe -- --only=traducao --limit=40
+```
+
+O cabeçalho do script registra a calibração medida: divergência forte é confiável, a faixa
+intermediária tem falso positivo, e lote grande piora o julgamento. Como o auditor do NFL, ele é
+ferramenta de revisão manual e não deve virar bloqueio de CI antes de mais calibração.
+
 Em produção, o app usa o base path `/draftaco`.
 
 ## Fluxo de colaboração e deploy

@@ -10,6 +10,7 @@
     "check:player-props": "node scripts/check-player-props-coverage.mjs",
     "check:nfl": "node scripts/check-nfl-replay.mjs",
     "qa:nfl:typesafe": "node scripts/audit-nfl-scenes-typesafe.mjs",
+    "qa:copy:typesafe": "node scripts/audit-copy-typesafe.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
