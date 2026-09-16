@@ -1,6 +1,6 @@
 # Draftaco
 
-Protótipo mobile em React para explorar a experiência de Pitaco e Draftea com apostas esportivas, cassino, promoções, betslip e regras de handoff de produto.
+Protótipo mobile em React para explorar a experiência de Pitaco e Draftea com apostas esportivas, cassino, promoções e betslip.
 
 O projeto também funciona como uma camada prática de validação dos tokens exportados do Figma. A intenção é aproximar decisões de produto, comportamento de interface e uso real dos tokens em componentes navegáveis.
 
@@ -81,7 +81,6 @@ Cassino está desativado nas duas marcas (`features.casino: false`): item visív
 - `/<marca>/apostas`: home de apostas esportivas.
 - `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
 - `/<marca>/promocoes`: página de promoções.
-- `/<marca>/handoff`: documentação viva de regras de produto e comportamento.
 
 Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 
@@ -90,7 +89,7 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas.
 ```text
 src/
   brands/        configuração, logos e textos por marca
-  features/      auth, home, sports, casino, betslip, promotions, games, handoff
+  features/      auth, home, sports, casino, betslip, promotions e games
   shared/        brand, i18n, hooks, utils e types reutilizáveis
   assets/        recursos comuns existentes
   components/    biblioteca de componentes comuns
@@ -116,19 +115,6 @@ Ao alterar tokens, valide pelo menos:
 - estados de seleção, hover, pressed, disabled e focus-visible;
 - comportamento mobile com safe area e bottom navigation;
 - motion com `prefers-reduced-motion`.
-
-## Handoff de produto
-
-A rota `/<marca>/handoff` registra regras de ordem, curadoria e comportamento para Home, Esporte e Competição. Use essa página como contrato de produto antes de alterar a arquitetura da experiência.
-
-Ainda faltam completar as abas de Evento, Promoções e Cassino. Essas telas devem documentar:
-
-- objetivo da tela;
-- ordem esperada dos blocos;
-- estados principais;
-- regras de conteúdo;
-- limites de acessibilidade e motion;
-- critérios de aceite para implementação.
 
 ## Cuidados de design
 

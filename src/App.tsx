@@ -34,7 +34,6 @@ const CamisaPremiadaStaticPreviewPage = lazy(() => import('./features/betslip/Be
   default: m.CamisaPremiadaStaticPreviewPage,
 })))
 const LiveEventPage = lazy(() => import('./features/sports/LiveEventPage').then((m) => ({ default: m.LiveEventPage })))
-const HandoffPage = lazy(() => import('./features/handoff/Handoff').then((m) => ({ default: m.HandoffPage })))
 const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
 const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
 const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
@@ -50,7 +49,6 @@ const defaultProduct: ProductMode = 'apostas'
 const productRoutes: ProductMode[] = ['apostas', 'cassino']
 const sportsV2RouteSegment = 'apostas2'
 const promotionsRouteSegment = 'promocoes'
-const handoffRouteSegment = 'handoff'
 const embaixadinhaRouteSegment = 'embaixadinha'
 const memoriaRouteSegment = 'memoria'
 const pongRouteSegment = 'pong'
@@ -82,12 +80,6 @@ const isSportsV2Path = (pathname: string) => {
   const routeSegments = getRouteSegments(pathname)
 
   return routeSegments.length === 1 && routeSegments[0] === sportsV2RouteSegment
-}
-
-const isHandoffPath = (pathname: string) => {
-  const routeSegments = getRouteSegments(pathname)
-
-  return routeSegments.length === 1 && routeSegments[0] === handoffRouteSegment
 }
 
 const isEmbaixadinhaPath = (pathname: string) => {
@@ -294,15 +286,13 @@ function AppContent() {
   const actualProductRoute = useMemo(() => resolveProductFromPath(pathname), [pathname])
   const isCurrentSportsV2Page = useMemo(() => isSportsV2Path(pathname), [pathname])
   const isCurrentPromotionsPage = useMemo(() => isPromotionsPath(pathname), [pathname])
-  const isHandoffPage = useMemo(() => isHandoffPath(pathname), [pathname])
   const isEmbaixadinhaPage = useMemo(() => isEmbaixadinhaPath(pathname), [pathname])
   const isMemoriaPage = useMemo(() => isMemoriaPath(pathname), [pathname])
   const isPongPage = useMemo(() => isPongPath(pathname), [pathname])
   const isCurrentCamisaPremiadaPage = useMemo(() => isCamisaPremiadaPath(pathname), [pathname])
   const isCurrentPenaltiPremiadoPage = useMemo(() => isPenaltiPremiadoPath(pathname), [pathname])
   const isCamisaPremiadaStaticPreview = isCurrentCamisaPremiadaPage && hasCamisaPremiadaStaticParam(search)
-  const isStandalonePage = isHandoffPage
-    || isEmbaixadinhaPage
+  const isStandalonePage = isEmbaixadinhaPage
     || isMemoriaPage
     || isPongPage
     || isCamisaPremiadaStaticPreview
@@ -1018,12 +1008,10 @@ function AppContent() {
   return (
     <div className="app-shell">
       <LocationPermissionGate isEnabled={!isStandalonePage} />
-      {!isHandoffPage && !isCamisaPremiadaStaticPreview ? <MobileOnly /> : null}
+      {!isCamisaPremiadaStaticPreview ? <MobileOnly /> : null}
       <Suspense fallback={<RouteFallback />}>
         {isCamisaPremiadaStaticPreview ? (
           <CamisaPremiadaStaticPreviewPage />
-        ) : isHandoffPage ? (
-          <HandoffPage />
         ) : isEmbaixadinhaPage ? (
           <EmbaixadinhaPage />
         ) : isMemoriaPage ? (

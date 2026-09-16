@@ -4,7 +4,7 @@ Este arquivo contém contexto durável para Codex e Claude. Para o estado da tar
 
 ## Produto
 
-- Draftaco é um protótipo mobile em React para explorar experiências de Pitaco (pt-BR) e Draftea (es-MX) relacionadas a apostas esportivas, cassino, promoções, betslip e handoff de produto.
+- Draftaco é um protótipo mobile em React para explorar experiências de Pitaco (pt-BR) e Draftea (es-MX) relacionadas a apostas esportivas, cassino, promoções e betslip.
 - O projeto também valida, em componentes navegáveis, tokens e decisões provenientes do Figma.
 - Use dados mockados. O protótipo público não deve conter credenciais, dados pessoais nem endpoints internos.
 
@@ -27,7 +27,6 @@ Cassino está desativado nas duas marcas (`features.casino: false`): item visív
 - `/<marca>/apostas`: home de apostas esportivas.
 - `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
 - `/<marca>/promocoes`: promoções.
-- `/<marca>/handoff`: contrato vivo de produto e comportamento.
 
 `<marca>` é `pitaco` ou `draftea`. `/pitaco` e `/draftea` abrem apostas. `/<marca>/entrar` abre login. Somente `/pitaco/criar-conta` permite cadastro; a mesma rota na Draftea volta para apostas. O botão Crear cuenta permanece visível e sem ação.
 

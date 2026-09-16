@@ -4,7 +4,7 @@
 
 Pitaco e Draftea compartilham um aplicativo. Cada marca tem sua configuração em `src/brands/<marca>/config.ts`, assets próprios e textos. Não crie branches permanentes por marca nem copie o app para implementar variações.
 
-- `src/features`: telas e comportamento por domínio: auth, home, sports, casino, betslip, promotions, games e handoff.
+- `src/features`: telas e comportamento por domínio: auth, home, sports, casino, betslip, promotions e games.
 - `src/shared/brand`: contrato das marcas, resolução de URLs, inicialização e persistência.
 - `src/shared/hooks`, `src/shared/utils`, `src/shared/types`: estado e regras reutilizados entre funcionalidades.
 - `src/shared/i18n`: tradução durante a criação dos elementos React. Não há MutationObserver alterando o DOM.
