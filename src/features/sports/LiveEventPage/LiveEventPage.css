@@ -3226,7 +3226,9 @@
 }
 
 .live-event-inline__market-chips.content-filter-chips {
-  padding: 0 0 8px;
+  /* Sem padding: o respiro abaixo dos chips é de quem vem depois. Eram 8px aqui, e o sheet de
+     jogadas — que reusa esta classe — os cancelava num override só para isso. */
+  padding: 0;
   position: static;
   z-index: auto;
   background: transparent;
@@ -3430,4 +3432,17 @@
   line-height: 18px;
   color: rgb(var(--tokens-text-text-01-rgb) / 0.5);
   white-space: nowrap;
+}
+
+/* No intervalo a linha do relógio fica invisível, mas continua ocupando o lugar: a coluna do
+   placar alinha por baixo, e sem esse espaço o número escorregaria para onde o relógio estava. */
+.live-event-inline__score-time--hidden {
+  visibility: hidden;
+}
+
+/* O estado do jogo (`Intervalo`) desce para esta linha quando o período acaba. Fica com a cor do
+   relógio, e não com a dos itens de situação: é o estado da partida, não um detalhe do lance. */
+.live-event-inline__situation-item--state {
+  color: rgb(var(--tokens-text-text-01-rgb) / 0.7);
+  font-weight: 700;
 }

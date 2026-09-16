@@ -7,6 +7,7 @@ import {
   type DisplayedCompetitionEvent,
 } from '../CalendarSection'
 import type { LiveEventOpenPayload, LiveEventRailItem } from '../../features/sports/LiveEventPage'
+import { hasNflLiveClock, useNflLiveFeed } from '../../features/sports/NflLiveFeed'
 import { getTeamLogo } from '../../data/teamLogos'
 import { TeamLogo } from '../TeamLogo'
 import iconAoVivo from '../../assets/iconAoVivo.png'
@@ -137,6 +138,9 @@ export function SportsMatchCarousel({
     key: eventsKey,
     times: initialLiveTimes,
   }))
+  // Assina o jogo de NFL que acontece sozinho: sem isto a tela leria o placar certo e só
+  // renderizaria de novo quando outro relógio a acordasse, atrasando o lance que chegou.
+  useNflLiveFeed()
   const localLiveTimes = localLiveTimesState.key === eventsKey
     ? localLiveTimesState.times
     : initialLiveTimes
@@ -150,7 +154,8 @@ export function SportsMatchCarousel({
         const sourceTimes = current.key === eventsKey ? current.times : initialLiveTimes
         const next: Record<string, string> = {}
         events.forEach(({ event }) => {
-          if (event.isLive) {
+          // O jogo de NFL tem relógio próprio. Ver `hasNflLiveClock`.
+          if (event.isLive && !hasNflLiveClock(event.id)) {
             next[event.id] = updateCompetitionMatchTime(sourceTimes[event.id] ?? event.dateTime)
           }
         })

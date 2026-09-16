@@ -78,6 +78,18 @@ const chutes = jogadas.filter((play) => TIPOS_DE_CHUTE.has(play.type) && !play.n
 
 conferir('fixture: tem jogadas', jogadas.length > 0, 'o recorte veio vazio')
 
+// ── AGORA e HORIZONTE ──────────────────────────────────────────────────────
+//
+// `plays` traz o recorte INTEIRO, incluindo os lances que ainda não aconteceram e vão chegar
+// sozinhos enquanto a pessoa olha a tela. Quase tudo daqui em diante vale para os dois — um
+// lance do horizonte é desenhado pelo mesmo replay —, mas o que descreve O INSTANTE EM QUE O
+// PROTÓTIPO ABRE precisa parar onde o jogo está agora. Sem esta separação, as conferências de
+// recorte passariam a ler o fim do 2º quarto como se fosse o presente.
+const PASSOS = jogo.feed?.steps ?? []
+const AGORA = PASSOS.length > 0 ? PASSOS[0].playCount : jogadas.length
+const jogadasAgora = jogadas.slice(0, AGORA)
+const jogadasHorizonte = jogadas.slice(AGORA)
+
 // Punt guarda quem chutou em `punter_player_name`, e não em `kicker_player_name`: sem o
 // fallback no gerador, TODO punt aparecia sem nome e o card ficava com uma linha vazia.
 const semChutador = chutes.filter((play) => !play.kicker).map((play) => play.id)
@@ -97,7 +109,7 @@ conferir('chute: sem retorno, diz por quê', semDesfecho.length === 0,
 // demonstração, fabricada no gerador — ela entra pelo mesmo parser, então também prova que
 // o texto dela está no formato do nflverse.
 const anuladas = jogadas.filter((play) => play.noPlay)
-const anuladasReais = anuladas.filter((play) => Number(play.id) < 9000)
+const anuladasReais = jogadasAgora.filter((play) => play.noPlay && Number(play.id) < 9000)
 conferir('anulada: o recorte real tem as três', anuladasReais.length === 3,
   `encontradas ${anuladasReais.length}: ${anuladasReais.map((play) => play.id).join(', ')}`)
 
@@ -148,7 +160,7 @@ const emAndamento = jogo.drives.filter((drive) => drive.inProgress)
 // campanha acabou e a seguinte ainda não começou. Fora desse caso, uma campanha tem de
 // estar correndo, senão o jogo não está ao vivo e a faixa de situação não tem o que
 // mostrar.
-const ULTIMA = jogo.plays[jogo.plays.length - 1]
+const ULTIMA = jogadasAgora[jogadasAgora.length - 1]
 const CHUTE_DE_PONTO = ULTIMA.type === 'extra_point' || ULTIMA.type === 'field_goal'
 const TOUCHDOWN = ULTIMA.touchdown === true
 const PONTUOU = CHUTE_DE_PONTO || TOUCHDOWN
@@ -176,14 +188,203 @@ if (TOUCHDOWN) {
     + `result ${jogo.live.result}, scorer ${jogo.live.scorer}`)
   // O placar do topo é o do INSTANTE do touchdown, com o ponto extra ainda por chutar. Se
   // alguém devolver o ponto extra ao recorte, o sheet volta a abrir num chute.
-  conferir('recorte: o ponto extra não entra no replay',
-    jogo.plays.every((jogada) => jogada.type !== 'extra_point')
-    || jogo.plays.findIndex((jogada) => jogada.type === 'extra_point') < jogo.plays.length - 1,
-    'o último lance do recorte é um ponto extra')
+  conferir('recorte: o ponto extra não abre o sheet',
+    ULTIMA.type !== 'extra_point',
+    'o último lance do instante de abertura é um ponto extra')
 }
 conferir('campanha em andamento: não vaza o futuro',
   emAndamento.every((drive) => drive.result === null && drive.scorer === null),
   JSON.stringify(emAndamento.map((drive) => ({ id: drive.id, result: drive.result, scorer: drive.scorer }))))
+
+// ── 2b. O feed ao vivo ─────────────────────────────────────────────────────
+//
+// O feed é a sequência de instantes pela qual o protótipo passa SOZINHO, um lance por vez,
+// enquanto a pessoa olha a tela. Cada passo é o jogo inteiro recalculado pelo gerador — placar,
+// situação, campanhas, estatística e comparação —, e é por isso que o navegador não refaz
+// conta nenhuma.
+//
+// Erro aqui não quebra nada: produz um jogo plausível e errado. Um placar que anda para trás,
+// um relógio que volta, um lance que some da lista — tudo isso renderiza sem reclamar, e só
+// aparece para quem ficar olhando a tela pelos três minutos inteiros.
+const segundos = (relogio) => {
+  const [minuto, segundo] = String(relogio).split(':').map(Number)
+
+  return minuto * 60 + segundo
+}
+const mesmoJson = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+conferir('feed: existe e tem mais de um passo', PASSOS.length > 1,
+  `${PASSOS.length} passo(s) — sem horizonte o jogo volta a congelar na corrida de abertura`)
+
+// O passo 0 é o jogo AGORA. Se ele divergir do topo do fixture, a tela mostra um estado antes
+// de o feed montar e OUTRO logo depois: um pisca de placar na abertura.
+const forasDoPasso0 = ['live', 'quarterScores', 'players', 'drives', 'teamComparison']
+  .filter((campo) => !mesmoJson(PASSOS[0]?.[campo], jogo[campo]))
+conferir('feed: o passo 0 é exatamente o estado de abertura', forasDoPasso0.length === 0,
+  `divergem: ${forasDoPasso0.join(', ')}`)
+
+// Um lance por passo, sem buraco e sem repetição: é o `playCount` que fatia `plays`, então um
+// salto aqui some com um lance da lista e da linha do tempo.
+const saltos = PASSOS
+  .map((passo, indice) => ({ indice, passo }))
+  .filter(({ indice, passo }) => indice > 0 && passo.playCount !== PASSOS[indice - 1].playCount + 1)
+  .map(({ indice }) => indice)
+conferir('feed: cada passo mostra exatamente um lance a mais', saltos.length === 0,
+  `passos fora da conta: ${saltos.join(', ')}`)
+
+conferir('feed: o último passo mostra o recorte inteiro',
+  PASSOS[PASSOS.length - 1]?.playCount === jogadas.length,
+  `último passo mostra ${PASSOS[PASSOS.length - 1]?.playCount} de ${jogadas.length}`)
+
+// O `playId` é como o app sabe QUAL lance acabou de chegar — é dele que sai o anúncio na
+// faixa e o lance que o sheet abre. Se ele apontar para outro lugar, a tela anuncia um lance
+// e mostra outro.
+const idsTrocados = PASSOS
+  .filter((passo) => jogadas[passo.playCount - 1]?.id !== passo.playId)
+  .map((passo) => passo.playId)
+conferir('feed: o `playId` do passo é o último lance visível dele', idsTrocados.length === 0,
+  `ids que não batem: ${idsTrocados.join(', ')}`)
+
+// Placar só sobe, e sempre bate com a soma dos quarters daquele instante. As duas contas saem
+// de lugares diferentes do gerador (o acumulado do lance e a diferença por período), então
+// divergirem é sinal de que uma das duas parou de enxergar um lance de pontuação.
+const placarParaTras = PASSOS
+  .map((passo, indice) => ({ indice, passo }))
+  .filter(({ indice, passo }) => indice > 0 && (
+    passo.live.homeScore < PASSOS[indice - 1].live.homeScore
+    || passo.live.awayScore < PASSOS[indice - 1].live.awayScore
+  ))
+  .map(({ indice }) => indice)
+conferir('feed: o placar nunca anda para trás', placarParaTras.length === 0,
+  `passos que baixam o placar: ${placarParaTras.join(', ')}`)
+
+const placarDivergente = PASSOS
+  .filter((passo) => passo.live.homeScore !== passo.quarterScores.homeTotal
+    || passo.live.awayScore !== passo.quarterScores.awayTotal
+    || passo.quarterScores.home.reduce((a, b) => a + b, 0) !== passo.quarterScores.homeTotal
+    || passo.quarterScores.away.reduce((a, b) => a + b, 0) !== passo.quarterScores.awayTotal)
+  .map((passo) => passo.playId)
+conferir('feed: o placar do topo bate com a soma dos quarters', placarDivergente.length === 0,
+  `passos divergentes: ${placarDivergente.join(', ')}`)
+
+// O relógio do quarter conta PARA TRÁS. Um passo que sobe o relógio é um lance fora de ordem,
+// e fora de ordem a campanha fica com a cronologia invertida na lista.
+const relogioParaTras = PASSOS
+  .map((passo, indice) => ({ indice, passo }))
+  .filter(({ indice, passo }) => indice > 0
+    && passo.live.quarter === PASSOS[indice - 1].live.quarter
+    && segundos(passo.live.clock) > segundos(PASSOS[indice - 1].live.clock))
+  .map(({ indice }) => indice)
+conferir('feed: o relógio nunca volta', relogioParaTras.length === 0,
+  `passos que sobem o relógio: ${relogioParaTras.join(', ')}`)
+
+// `gapSeconds` é a distância até o lance SEGUINTE, e é com ela que o app faz o relógio andar
+// entre um lance e outro. Se ela não fechar, o relógio chega ao próximo lance adiantado ou
+// atrasado e corrige num salto — o salto é justamente o que denuncia simulação.
+const gapsErrados = PASSOS
+  .map((passo, indice) => ({ indice, passo, proximo: PASSOS[indice + 1] }))
+  .filter(({ passo, proximo }) => proximo
+    && segundos(passo.live.clock) - passo.gapSeconds !== segundos(proximo.live.clock))
+  .map(({ indice }) => indice)
+conferir('feed: `gapSeconds` desagua no relógio do passo seguinte', gapsErrados.length === 0,
+  `passos com sobra: ${gapsErrados.join(', ')}`)
+
+// Só o último passo encerra o período, e o intervalo dele tem de chegar a 00:00 exatamente.
+// É esse zero que faz o protótipo TERMINAR no intervalo em vez de congelar de novo.
+const ultimoPasso = PASSOS[PASSOS.length - 1]
+conferir('feed: só o último passo encerra o período',
+  PASSOS.filter((passo) => passo.endsPeriod).length === 1 && ultimoPasso?.endsPeriod === true,
+  `${PASSOS.filter((passo) => passo.endsPeriod).length} passo(s) marcados`)
+
+conferir('feed: o último intervalo zera o relógio do quarter',
+  ultimoPasso && ultimoPasso.gapSeconds === segundos(ultimoPasso.live.clock),
+  `relógio ${ultimoPasso?.live.clock}, intervalo ${ultimoPasso?.gapSeconds}s`)
+
+// O TOUCHDOWN é a primeira coisa que chega sozinha. Esta é a decisão que define a demonstração:
+// a tela abre na corrida de 16 jardas, em 3ª & 4, e o melhor lance do recorte não é o estado de
+// abertura — é o que ACONTECE com a pessoa olhando. Devolvê-lo ao recorte gasta o lance antes de
+// alguém ter visto a tela.
+conferir('feed: o touchdown é o primeiro lance a chegar',
+  jogadasHorizonte[0]?.touchdown === true,
+  `primeiro do horizonte: ${jogadasHorizonte[0]?.type} (${jogadasHorizonte[0]?.id}), `
+  + `touchdown ${jogadasHorizonte[0]?.touchdown}`)
+
+conferir('feed: o ponto extra vem logo depois do touchdown',
+  jogadasHorizonte[1]?.type === 'extra_point',
+  `segundo do horizonte: ${jogadasHorizonte[1]?.type} (${jogadasHorizonte[1]?.id})`)
+
+conferir('feed: o kickoff vem logo depois do ponto extra',
+  jogadasHorizonte[2]?.type === 'kickoff',
+  `terceiro do horizonte: ${jogadasHorizonte[2]?.type} (${jogadasHorizonte[2]?.id})`)
+
+// A abertura tem de ser um lance COMUM, com a campanha correndo. Num lance de pontuação a
+// campanha fecha, a faixa passa a descrever um desfecho e o sheet abre num lance que encerra o
+// assunto — é justamente o que esta mudança desfez.
+conferir('feed: a abertura é um lance comum, com a campanha em andamento',
+  ULTIMA.touchdown === false && ULTIMA.type !== 'extra_point' && ULTIMA.type !== 'field_goal'
+  && emAndamento.length === 1,
+  `último lance da abertura: ${ULTIMA.type} (${ULTIMA.id}), touchdown ${ULTIMA.touchdown}, `
+  + `campanhas em andamento ${emAndamento.length}`)
+
+// As duas conferências que o instante de abertura tinha quando ele PARAVA no touchdown. Elas não
+// deixam de valer por ele ter virado o primeiro lance do horizonte: agora valem no PASSO em que
+// ele chega, que é onde a faixa precisa manter a posse com quem marcou e trocar a descida pelo
+// `Touchdown · T.Hill`.
+const passoDoTouchdown = PASSOS.find((passo) => jogadas[passo.playCount - 1]?.touchdown === true)
+const lanceDoTouchdown = jogadas[(passoDoTouchdown?.playCount ?? 0) - 1]
+conferir('feed: o passo do touchdown mantém a posse e descreve o lance',
+  !!passoDoTouchdown
+  && passoDoTouchdown.live.possession === lanceDoTouchdown?.side
+  && passoDoTouchdown.live.down === null
+  && passoDoTouchdown.live.result === 'Touchdown'
+  && !!passoDoTouchdown.live.scorer,
+  `posse ${passoDoTouchdown?.live.possession}, lado ${lanceDoTouchdown?.side}, `
+  + `descida ${passoDoTouchdown?.live.down}, result ${passoDoTouchdown?.live.result}, `
+  + `scorer ${passoDoTouchdown?.live.scorer}`)
+
+conferir('feed: a campanha do touchdown fecha com o desfecho no passo dele',
+  !!passoDoTouchdown
+  && passoDoTouchdown.drives.some((campanha) => campanha.result === 'Touchdown'
+    && campanha.scorer === passoDoTouchdown.live.scorer
+    && campanha.inProgress === false),
+  JSON.stringify(passoDoTouchdown?.drives.slice(-2)))
+
+// A EMENDA. Os lances fabricados da ponte existem para entregar a bola ao jogo real no ponto
+// exato em que ele recomeça: `1ª & 10 na KC 45`. Mexer nas jardas ou na descida de qualquer
+// lance da ponte desalinha isso em silêncio — a campanha continua desenhando, só que a bola
+// teleporta entre o último lance fabricado e o primeiro real.
+const ultimoFabricado = jogadasHorizonte.filter((play) => Number(play.id) >= 9000).pop()
+const primeiroReal = jogadasHorizonte.find((play) => Number(play.id) < 9000)
+conferir('feed: a emenda com o jogo real fecha no mesmo ponto do campo',
+  !!ultimoFabricado && !!primeiroReal
+  && ultimoFabricado.startYard + ultimoFabricado.yards === primeiroReal.startYard
+  && primeiroReal.down === 1 && primeiroReal.distance === 10,
+  `fabricado ${ultimoFabricado?.id} termina na ${ultimoFabricado?.startYard + ultimoFabricado?.yards}, `
+  + `real ${primeiroReal?.id} começa na ${primeiroReal?.startYard} em ${primeiroReal?.down}ª & ${primeiroReal?.distance}`)
+
+// A regra de "não vazar o futuro" vale em TODO passo, não só no de abertura: o feed passa por
+// campanhas em andamento que o recorte estático nunca mostrava.
+const passosQueVazam = PASSOS
+  .filter((passo) => passo.drives.some((drive) => drive.inProgress && (drive.result !== null || drive.scorer !== null)))
+  .map((passo) => passo.playId)
+conferir('feed: nenhum passo entrega o desfecho de campanha em andamento', passosQueVazam.length === 0,
+  `passos que vazam: ${passosQueVazam.join(', ')}`)
+
+// Uma campanha correndo, ou nenhuma logo depois de a bola trocar de dono. Duas ao mesmo tempo
+// significa que o gerador perdeu o fim de uma delas.
+const ENTREGA_A_BOLA = new Set(['extra_point', 'field_goal', 'punt'])
+const passosComCampanhaErrada = PASSOS
+  .filter((passo) => {
+    const correndo = passo.drives.filter((drive) => drive.inProgress).length
+    const ultima = jogadas[passo.playCount - 1]
+    const entregou = ENTREGA_A_BOLA.has(ultima?.type) || ultima?.touchdown === true
+
+    return !(correndo === 1 || (correndo === 0 && entregou))
+  })
+  .map((passo) => passo.playId)
+conferir('feed: uma campanha em andamento, ou nenhuma depois de entregar a bola',
+  passosComCampanhaErrada.length === 0,
+  `passos fora da regra: ${passosComCampanhaErrada.join(', ')}`)
 
 // O lado do campo é a profundidade em que o lance é desenhado. Se o gerador voltar a emitir
 // a chave antiga (`lateral`), todo lance cai no centro sem erro nenhum aparecer.

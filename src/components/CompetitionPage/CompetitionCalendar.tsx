@@ -11,6 +11,7 @@ import { useSlidingActiveIndicator } from '../../shared/hooks/useSlidingActiveIn
 import iconAoVivo from '../../assets/iconAoVivo.png'
 import pagamentoAntecipado from '../../assets/pagamentoAntecipado.png'
 import { TeamLogo } from '../TeamLogo'
+import { hasNflLiveClock } from '../../features/sports/NflLiveFeed'
 
 import type { CompetitionMatch } from './competitionData'
 
@@ -77,7 +78,10 @@ export function CompetitionCalendar({ sport, competitionId, competitionName, mat
     const i = setInterval(() => {
       setLiveTimes((current) => {
         const next: Record<string, string> = {}
-        Object.keys(current).forEach((k) => { next[k] = tickLive(current[k]) })
+        // O jogo de NFL tem relógio próprio. Ver `hasNflLiveClock`.
+        Object.keys(current).forEach((k) => {
+          if (!hasNflLiveClock(k)) next[k] = tickLive(current[k])
+        })
         return next
       })
     }, 1000)
