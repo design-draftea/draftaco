@@ -3368,25 +3368,45 @@
   flex: 0 0 12px;
 }
 
-/* Faixa de situação de campo: substitui a linha de estatísticas do basquete e leva ao
-   detalhe de jogadas e estatísticas. A situação fica centrada, como no Figma, e o
-   "Ver mais" ancora na direita sem deslocá-la. */
+/* Gatilho das jogadas e estatísticas: o placar inteiro, e não só a faixa de situação.
+   Reproduz a coluna da `section` que o envolve — o botão entrou POR DENTRO dela, para o
+   bottom sheet ficar fora do alvo clicável. */
+.live-event-inline__score-trigger {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 4px;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* Botão reseta fonte, cor e alinhamento no Safari; placar e faixa têm estilo próprio. */
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.live-event-inline__score-trigger:focus-visible {
+  outline: 2px solid var(--ds-fill-primary, #fbfbfb);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/* Sem isto o toque não tem resposta nenhuma até o bottom sheet subir, e o placar parece
+   não ter sido tocado. Mesma resposta da linha de campanha no sheet de jogadas. */
+.live-event-inline__score-trigger:active {
+  background: var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08));
+  border-radius: 8px;
+}
+
+/* Faixa de situação de campo: substitui a linha de estatísticas do basquete. A situação
+   fica centrada, como no Figma, e o "Ver mais" ancora na direita sem deslocá-la. */
 .live-event-inline__situation-row {
   position: relative;
   gap: 12px;
   width: 100%;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  /* A faixa tem 26px de altura visual, mas o alvo de toque cresce com o padding
-     inferior que ela já tinha. */
-  -webkit-tap-highlight-color: transparent;
-}
-
-.live-event-inline__situation-row:focus-visible {
-  outline: 2px solid var(--ds-fill-primary, #fbfbfb);
-  outline-offset: -2px;
-  border-radius: 8px;
 }
 
 .live-event-inline__situation-more {

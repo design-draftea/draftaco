@@ -512,16 +512,19 @@ function buildDrives(plays, cutoffPlay, home) {
   }
 
   const lastDriveId = [...byDrive.keys()].pop()
-  /* Campanha que terminou num chute de pontuação está ENCERRADA, mesmo sendo a última do
-     recorte: ela já entregou a bola ao adversário. Sem isto ela apareceria sem desfecho na
-     lista — um touchdown sem a palavra "Touchdown" ao lado. */
+  /* Campanha que PONTUOU está ENCERRADA, mesmo sendo a última do recorte: ela já entregou a
+     bola ao adversário. Sem isto ela apareceria sem desfecho na lista — um touchdown sem a
+     palavra "Touchdown" ao lado — e as contas de "em andamento" valeriam: o ganho de campo
+     pararia no último snap em vez da end zone, e a contagem de lances trocaria a oficial
+     pela parcial. O touchdown conta junto com os chutes porque o que encerra a campanha é a
+     pontuação, e não o tipo do lance. */
   const SCORING_KICKS = new Set(['extra_point', 'field_goal'])
+  const isScoringPlay = (play) => SCORING_KICKS.has(play.play_type) || isOne(play.touchdown)
 
   return [...byDrive.entries()].map(([id, drivePlays]) => {
     const first = drivePlays[0]
     const last = drivePlays[drivePlays.length - 1]
-    const inProgress = id === lastDriveId
-      && !SCORING_KICKS.has(drivePlays[drivePlays.length - 1].play_type)
+    const inProgress = id === lastDriveId && !isScoringPlay(drivePlays[drivePlays.length - 1])
     const startQuarter = Number(first.drive_quarter_start || first.qtr)
 
     const playCount = inProgress
@@ -595,7 +598,8 @@ function buildDrives(plays, cutoffPlay, home) {
 // A história: KC acabou de fazer o field goal de 26 jardas (13 x 7, jogada real 1543).
 // MIA recebe e responde em 1:43 — retorno de 27, passe de 18 para primeira descida, bomba
 // incompleta, uma anulada por holding, corrida de 16 e o touchdown de 47 jardas numa 3ª &
-// 4. Com o ponto extra, MIA vira o jogo em 14 x 13.
+// 4, que empata o jogo em 13 x 13. O recorte termina AÍ, no touchdown: o ponto extra é o
+// próximo lance do jogo e ainda não foi chutado.
 const DEMO_DRIVE = '8'
 
 /** Linha de pbp com todas as colunas que o gerador lê, para cada lance preencher só o seu. */
@@ -683,46 +687,64 @@ function demoPlays(home, away) {
       total_home_score: '13', total_away_score: '13',
       desc: '(5:58) (Shotgun) 1-T.Tagovailoa pass deep right to 10-T.Hill for 47 yards, TOUCHDOWN.',
     }),
-    // 7. Ponto extra: a bola para entre os postes, no alto.
-    demoPlay(home, away, {
-      play_id: '9007', time: '05:50', play_type: 'extra_point', yrdln: `${home} 15`,
-      // A distância é o que faz o lance ter voo (`isKick` em `playNarrative`): sem ela o
-      // ponto extra não anima, e o sheet abriria no touchdown em vez de nele. São as 33
-      // jardas de sempre — 15 do snap mais 18 da end zone e do fundo.
-      kick_distance: '33',
-      extra_point_result: 'good', kicker_player_name: 'J.Sanders', kicker_player_id: ID.sanders,
-      total_home_score: '13', total_away_score: '14',
-      desc: '7-J.Sanders extra point is GOOD, Center-44-B.Ferguson, Holder-16-J.Bailey.',
-    }),
+    // O ponto extra que vinha aqui SAIU. Ele era o lance de corte, então o sheet abria num
+    // chute entre os postes em vez de abrir no touchdown — e a faixa do placar descrevia o
+    // recomeço do adversário (`1ª & 10 na KC 25`) em vez do lance que acabou de acontecer.
+    // O corte no touchdown custa o 14º ponto: o placar fica 13 x 13, que é o placar CERTO
+    // nesse instante, com o PAT ainda por chutar. Decisão da pessoa responsável pelo
+    // protótipo, com a alternativa (manter 13 x 14 e esconder o ponto extra só do replay)
+    // considerada e descartada.
   ]
 }
 
 /**
  * Descida, distância, posição e posse no instante do corte.
  *
- * Caso normal: sai do próprio lance do corte. Mas quando o corte cai num chute de
- * PONTUAÇÃO — ponto extra ou field goal — não existe descida nem distância: o lance
- * acabou, a posse já mudou de dono e quem recebe ainda não começou. Ler o lance do corte
- * ali diria que quem acabou de marcar está com a bola no campo de defesa do adversário, e é
- * essa faixa que abre o sheet de jogadas.
+ * Caso normal: sai do próprio lance do corte. Depois de um lance de PONTUAÇÃO não existe
+ * descida nem distância — o lance acabou e ninguém está com a bola em jogo —, e ler o lance
+ * do corte ali descreveria um snap que não vai acontecer. São dois casos, e eles não são o
+ * mesmo:
  *
- * Nesse caso a situação descreve o recomeço: quem sofreu o ponto assume na própria 25, que
- * é onde o kickoff para quando vira touchback. A descida fica nula de propósito — a bola
- * ainda não foi chutada —, e o app já trata isso caindo em 1ª & 10.
+ * 1. Chute de pontuação (ponto extra ou field goal): a posse já mudou de dono e quem recebe
+ *    ainda não começou. A situação descreve o RECOMEÇO — quem sofreu o ponto assume na
+ *    própria 25, que é onde o kickoff para quando vira touchback.
+ *
+ * 2. Touchdown: a posse continua com quem marcou, porque o ponto extra é dele e ainda não
+ *    foi chutado. Aqui não há recomeço para descrever, então a situação descreve o LANCE:
+ *    `result` e `scorer`, no mesmo par que a lista de campanhas usa. É essa faixa que abre o
+ *    sheet de jogadas, e o que ela promete passa a ser o touchdown que acabou de sair.
+ *
+ * Nos dois casos a descida fica nula de propósito.
  */
 function liveSituation(cutoffPlay, home, away) {
+  const side = (team) => (team === home ? 'home' : 'away')
   const SCORING_KICKS = new Set(['extra_point', 'field_goal'])
+  const base = { down: null, distance: null, result: null, scorer: null }
+
   if (SCORING_KICKS.has(cutoffPlay.play_type)) {
     const receiving = cutoffPlay.posteam === home ? away : home
 
-    return { down: null, distance: null, ballOn: `${receiving} 25`, possession: receiving === home ? 'home' : 'away' }
+    return { ...base, ballOn: `${receiving} 25`, possession: side(receiving) }
+  }
+
+  if (isOne(cutoffPlay.touchdown)) {
+    return {
+      ...base,
+      ballOn: null,
+      possession: side(cutoffPlay.posteam),
+      result: 'Touchdown',
+      scorer: orEmpty(cutoffPlay.td_player_name)
+        ?? orEmpty(cutoffPlay.receiver_player_name)
+        ?? orEmpty(cutoffPlay.rusher_player_name),
+    }
   }
 
   return {
+    ...base,
     down: Number(cutoffPlay.down) || null,
     distance: Number(cutoffPlay.ydstogo) || null,
     ballOn: cutoffPlay.yrdln || null,
-    possession: cutoffPlay.posteam === home ? 'home' : 'away',
+    possession: side(cutoffPlay.posteam),
   }
 }
 
@@ -824,7 +846,12 @@ async function main() {
 
   process.stdout.write(`\n${GAME_ID} até a jogada ${CUTOFF}\n`)
   process.stdout.write(`  Q${fixture.live.quarter} ${fixture.live.clock} · ${home} ${fixture.live.homeScore} x ${fixture.live.awayScore} ${away}\n`)
-  process.stdout.write(`  ${fixture.live.down}ª & ${fixture.live.distance} na ${fixture.live.ballOn}, posse ${fixture.live.possession}\n`)
+  const situationLog = fixture.live.result
+    ? `${fixture.live.result} de ${fixture.live.scorer}`
+    : (fixture.live.down
+      ? `${fixture.live.down}ª & ${fixture.live.distance} na ${fixture.live.ballOn}`
+      : `recomeço na ${fixture.live.ballOn}`)
+  process.stdout.write(`  ${situationLog}, posse ${fixture.live.possession}\n`)
   process.stdout.write(`  lances considerados: ${plays.length} de ${allPlays.length}\n`)
   process.stdout.write(`  lances no replay: ${fixture.plays.length}, passes completos: ${fixture.plays.filter((p) => p.type === 'pass' && p.complete && !p.noPlay).length}\n`)
   process.stdout.write(`  campanhas: ${fixture.drives.length} (quarters ${[...new Set(fixture.drives.map((d) => d.quarter))].join(', ')})\n`)
