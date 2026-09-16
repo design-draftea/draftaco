@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { GarantidaPromoBottomSheet } from '../../../components/BottomSheet/GarantidaPromoBottomSheet'
+import { useFeatureFlags } from '../../../shared/hooks/useFeatureFlags'
 import './PromoDraftaco.css'
 
 import bgAumentada from '../../../assets/iconsDraftaco/bgAumentada.png'
@@ -59,6 +60,10 @@ interface SimplePromoItem {
 type PromoDraftacoItem = MarketPromoItem | SimplePromoItem
 
 const GARANTIDA_PROMO_ID = 'garantida-lewandowski'
+
+// A Draftea não oferece Aumentada nem Super Aumentada: o carrossel fica só com a promoção
+// da vez e os cards de missão/torneio.
+const DRAFTEA_HIDDEN_PROMO_VARIANTS: MarketPromoVariant[] = ['aumentada', 'super-aumentada']
 
 const promoDraftacoItems: PromoDraftacoItem[] = [
   {
@@ -290,6 +295,17 @@ const renderSimplePromo = (promo: SimplePromoItem, countdown: PromoCountdownPart
 )
 
 export function PromoDraftaco() {
+  const { brandMode } = useFeatureFlags()
+  const visiblePromoItems = useMemo(
+    () => (
+      brandMode === 'draftea'
+        ? promoDraftacoItems.filter((promo) => (
+          promo.type !== 'market' || !DRAFTEA_HIDDEN_PROMO_VARIANTS.includes(promo.variant)
+        ))
+        : promoDraftacoItems
+    ),
+    [brandMode]
+  )
   const [activeMarketPromo, setActiveMarketPromo] = useState<MarketPromoItem | null>(null)
   const [countdownDeadlines] = useState(() => {
     const createdAt = Date.now()
@@ -315,7 +331,7 @@ export function PromoDraftaco() {
     <>
       <section className="promo-draftaco" aria-label="Promoções">
         <div className="promo-draftaco__track">
-          {promoDraftacoItems.map((promo) => {
+          {visiblePromoItems.map((promo) => {
             const countdown = getPromoCountdownParts(getCountdownDeadline(promo, countdownDeadlines, now) - now)
             return (
               <div className="promo-draftaco__item" key={promo.id}>

@@ -54,14 +54,21 @@ export function Navbar({
   const { brandMode } = useFeatureFlags()
   const baseNavbarConfig = productNavbarConfigs[activeProduct]
   const isCasinoEnabled = getBrandConfig(brandMode).features.casino
-  const navbarConfig = brandMode === 'draftea'
-    ? {
-        ...baseNavbarConfig,
-        mainItems: baseNavbarConfig.mainItems.map((item) =>
-          item.id === 'promocoes' ? { ...item, icon: navClubDrafteaIniciante } : item
-        ),
-      }
-    : baseNavbarConfig
+  // Os rótulos vêm da marca, e não do catálogo legado: na Draftea eles são nomes próprios
+  // (Bets, Mis entradas, Gaming, Rewards), não a tradução do texto da Pitaco.
+  const navbarItemLabels = getBrandConfig(brandMode).messages.navbarItems
+  const withBrandLabel = <TItem extends { id: string; label: string }>(item: TItem): TItem => (
+    navbarItemLabels[item.id] ? { ...item, label: navbarItemLabels[item.id] } : item
+  )
+  const navbarConfig = {
+    ...baseNavbarConfig,
+    mainItems: baseNavbarConfig.mainItems.map((item) => withBrandLabel(
+      brandMode === 'draftea' && item.id === 'promocoes'
+        ? { ...item, icon: navClubDrafteaIniciante }
+        : item
+    )),
+    searchItem: withBrandLabel(baseNavbarConfig.searchItem),
+  }
   const isControlledActiveItem = controlledActiveItemId !== undefined
   const configuredActiveItemId = controlledActiveItemId ?? navbarConfig.activeItemId
   const [selectedItemId, setSelectedItemId] = useState(configuredActiveItemId)
@@ -235,7 +242,7 @@ export function Navbar({
             onClick={isItemDisabled(navbarConfig.searchItem.id) ? undefined : handleItemClick(navbarConfig.searchItem.id)}
             aria-current={activeItemId === navbarConfig.searchItem.id ? 'page' : undefined}
             aria-disabled={isItemDisabled(navbarConfig.searchItem.id)}
-            aria-label="Buscar"
+            aria-label={navbarConfig.searchItem.label}
             data-navbar-item-id={navbarConfig.searchItem.id}
           >
             {activeItemId === navbarConfig.searchItem.id ? (
