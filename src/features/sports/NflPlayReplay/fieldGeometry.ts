@@ -224,9 +224,30 @@ export function arcHeight(fromX: number, toX: number, kind: FlightKind = 'pass')
  * corcova por cima dela — com destino no chão vira a parábola simétrica do estudo, e com
  * destino no alto (chute ao gol) a mesma conta serve sem caso especial.
  */
-const flightHeight = (from: Point, to: Point, kind: FlightKind) => (
-  kind === 'goal' ? GOAL_ARC_HEIGHT : arcHeight(from.x, to.x, kind)
-)
+/**
+ * Voo que termina LÁ EM CIMA — o passe que chega à mão do jogador, no selo sobre o retrato —
+ * tem teto para a corcova: UM QUARTO DA SUBIDA é a altura em que a bola chega ao destino no
+ * ponto mais alto do arco, com velocidade vertical zero. Até esse valor ela sobe o caminho
+ * inteiro e assenta na mão; acima dele passa por cima do retrato e desce nele de volta,
+ * atravessando a foto — e volta a ser o que não podia ser, uma bola que cai e sobe.
+ *
+ * Não é constante ajustada: sai da própria parábola. Com `y(t) = y0 + Δt - 4h·t(1-t)`, a
+ * derivada em t=1 é `Δ + 4h`, que zera em `h = -Δ/4`.
+ *
+ * Quem mira o gramado não passa por aqui — a subida é zero e a corcova fica inteira. É o
+ * caso do tracejado do passe, que continua desenhando o arco sobre o campo.
+ *
+ * Chute ao gol também fica de fora: lá a altura é fixa e a bola PRECISA subir bem acima do
+ * alvo para descer entre os postes.
+ */
+const flightHeight = (from: Point, to: Point, kind: FlightKind) => {
+  if (kind === 'goal') return GOAL_ARC_HEIGHT
+
+  const height = arcHeight(from.x, to.x, kind)
+  const climb = from.y - to.y
+
+  return climb > 0 ? Math.min(height, climb / 4) : height
+}
 
 export function arcPoint(from: Point, to: Point, t: number, kind: FlightKind = 'pass'): Point {
   const clamped = Math.max(0, Math.min(1, t))

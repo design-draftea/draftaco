@@ -22,6 +22,24 @@ export const REPLAY_TIMING = {
   airMax: 1700,
   /** Pulso de confirmação da recepção. */
   catchPulse: 460,
+  /**
+   * Troca de foco no lançamento: o retrato de quem lançou sai e o de quem recebe entra.
+   *
+   * Os 220ms da primeira versão passavam despercebidos, e a duração era só metade do
+   * motivo: com a curva de entrada da casa, um ease-out forte, o retrato novo chegava a 90%
+   * de opacidade em 100ms. A troca inteira acontecia enquanto o olho ainda estava na bola
+   * saindo da mão do passador, que é o movimento grande daquele instante.
+   *
+   * A espera abaixo é a outra metade. Sem ela os dois gestos acontecem juntos e se cancelam;
+   * com ela viram uma sequência — a bola sai, quem lançou apaga, quem recebe aparece — e é a
+   * sequência que se lê, não a duração.
+   *
+   * O teto é a chegada da bola: 130 + 380 = 510ms, e o voo mais curto (`airMin`) dura 780ms,
+   * então o recebedor está inteiro bem antes de a bola chegar à mão dele.
+   */
+  focusSwap: 380,
+  /** Espera de quem ENTRA, para não disputar o olho com a bola saindo. */
+  focusSwapDelay: 130,
   /** Avanço rasteiro depois da recepção. */
   runBase: 320,
   runPerYard: 28,
@@ -37,14 +55,20 @@ export const REPLAY_TIMING = {
    * Saída do palco ao encadear uma campanha. Entra depois do fadeOut da bola, para a
    * sequência ser: bola assenta -> bola apaga -> o resto do lance apaga -> próximo entra.
    * Antes disso o palco antigo sumia num quadro só e a troca parecia um corte.
+   *
+   * Esta espera é também O TEMPO EM QUE O LANCE TERMINADO FICA INTEIRO NA TELA, e é ela — não
+   * o `SEQUENCE_PAUSE` — que se mexe para dar mais respiro de leitura antes da troca: a
+   * pausa depois da saída é campo vazio, e esticá-la só atrasa o próximo lance. Saiu de 620
+   * para 1020 a pedido da pessoa responsável pelo protótipo, com o respiro entre lances
+   * acompanhando os mesmos 400ms.
    */
-  stageExitDelay: 620,
+  stageExitDelay: 1020,
   /**
    * Quando a placa gira mostrando as jardas, o palco só pode começar a sair DEPOIS de o
-   * número estar legível. Com os 620ms normais o fade começava no meio do giro e o número
-   * apagava enquanto aparecia.
+   * número estar legível. Com os 620ms de antes o fade começava no meio do giro e o número
+   * apagava enquanto aparecia. Leva os mesmos 400ms a mais do caso sem placa.
    */
-  stageExitDelayGain: 1280,
+  stageExitDelayGain: 1680,
   stageExitDuration: 380,
   /**
    * Palavra TOUCHDOWN sobre o campo. Primeiro cada letra nasce grande e assenta no tamanho
@@ -67,7 +91,7 @@ export const REPLAY_TIMING = {
    * entre a bola assentar e a placa virar.
    *
    * O total (220 + 200 + 280 = 700ms) tem de caber no respiro entre lances (`SEQUENCE_PAUSE`,
-   * 1100ms), senão a placa viraria com o lance já trocando.
+   * 1500ms), senão a placa viraria com o lance já trocando.
    */
   badgeFlipDelay: 220,
   /**

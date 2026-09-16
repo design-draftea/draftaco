@@ -460,13 +460,24 @@
    Figma em 375 e escala sem cortar nas demais larguras. */
 /* O frame do replay tem 185 de altura, e não os 157 da arte: os 20px de folga em cima
    abrem espaço para o retrato e o nome do jogador, que sobem acima do gramado. */
+/* A largura é DECLARADA, e não deixada por conta do esticamento do flex. O Safari
+   transfere o `aspect-ratio` a partir da largura do CONTÊINER e ignora a sangria das
+   margens negativas, que é justamente o que leva a caixa à largura da tela: o frame saía
+   mais baixo do que a proporção pede, e aí o palco — SVG com viewBox 375x185 e o `meet`
+   padrão — encolhia para caber na altura e se centralizava na horizontal. Retrato, nome,
+   rastro e linhas saíam de registro com a arte, que continua ocupando a largura inteira,
+   e o `cover` ainda cortava as traves no topo. O Chrome usa a largura de uso e nunca
+   mostrou o defeito, então isto só aparece no iPhone. `calc(100% + 32px)` é a mesma
+   sangria das margens abaixo, escrita como largura. */
 .nfl-plays__field {
   position: relative;
+  width: calc(100% + 32px);
   aspect-ratio: 375 / 185;
   margin: 0 -16px;
   overflow: hidden;
   /* Contexto de container para a palavra TOUCHDOWN acompanhar a largura do campo. A largura
-     vem do pai e a altura do aspect-ratio, então conter o inline-size não muda o layout. */
+     está declarada acima e a altura vem do aspect-ratio, então conter o inline-size não
+     muda o layout. */
   container-type: inline-size;
 }
 
@@ -550,38 +561,6 @@
   animation-name: nfl-plays-fade-out;
   animation-timing-function: ease-in;
   animation-fill-mode: forwards;
-}
-
-/* Selo de jogada anulada. Mesma posição da palavra TOUCHDOWN, mas em cinza e sem festa: a
-   jogada aconteceu, só não conta. Assenta de cima para baixo, como um carimbo. */
-.nfl-plays__field-void {
-  position: absolute;
-  top: 14%;
-  right: 0;
-  left: 0;
-  font-family: 'Red Hat Display', 'Red Hat Text', sans-serif;
-  font-size: 13px;
-  font-size: 3.467cqw;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
-  text-align: center;
-  color: #9aa0a6;
-  pointer-events: none;
-  animation: nfl-plays-void-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes nfl-plays-void-in {
-  from {
-    opacity: 0;
-    transform: translateY(-5px) scale(1.25);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 /* ── Fogos de artifício do touchdown ─────────────────────────────────────────
@@ -780,6 +759,60 @@
   14% { transform: scale(1.35); }
   37% { transform: scale(1); }
   100% { transform: scale(1); }
+}
+
+/* ── Troca de foco no lançamento ─────────────────────────────────────────────
+
+   Até a bola sair, o lance é de quem a tem; a partir dali é de quem vai recebê-la. Antes os
+   dois marcadores trocavam no mesmo quadro — o retrato, o nome e a posição de uma vez —, e
+   isso lia como um sumindo e o outro aparecendo. Aqui eles se cruzam: um apaga encolhendo,
+   o outro aparece crescendo, cada um no seu lugar em campo.
+
+   A escala é discreta de propósito. O que precisa ser lido é a TROCA, não um zoom; e os dois
+   ficam visíveis ao mesmo tempo por alguns instantes, então quanto menos movimento, menos
+   parecem dois jogadores em campo.
+
+   A duração vem do componente, escalada pela velocidade, e a origem da escala é o centro do
+   retrato — as duas coisas chegam em `style`. */
+.nfl-plays__focus-in,
+.nfl-plays__focus-out {
+  transform-box: view-box;
+  animation-fill-mode: both;
+}
+
+.nfl-plays__focus-in {
+  animation-name: nfl-plays-focus-in;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sai com `ease-in`: começa devagar e acelera para fora, o oposto de quem entra. */
+.nfl-plays__focus-out {
+  animation-name: nfl-plays-focus-out;
+  animation-timing-function: ease-in;
+}
+
+@keyframes nfl-plays-focus-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes nfl-plays-focus-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
 }
 
 /* ── Giro da placa no fim do lance ───────────────────────────────────────────
@@ -1204,10 +1237,32 @@
 
 .nfl-plays__drive {
   position: relative;
-  display: flex;
-  align-items: center;
-  height: 72px;
   border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+/* O gatilho é a linha inteira. Fica no botão, e não no `li`, porque o alvo tem de ser
+   focável pelo teclado e anunciado como botão — o `li` com `onClick` seria só um retângulo
+   que reage ao toque. */
+.nfl-plays__drive-row {
+  display: flex;
+  width: 100%;
+  height: 72px;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* Botão reseta fonte e cor no Safari; o texto da linha tem estilo próprio. */
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Sem isto o toque não tem resposta nenhuma até o campo trocar de jogada, e a linha parece
+   não ter sido tocada. */
+.nfl-plays__drive-row:active {
+  background: var(--ds-fill-opacity-quinary, rgb(251 251 251 / 0.08));
 }
 
 /* A campanha em foco recebe o brilho que no Figma é um asset `light` desfocado no topo
@@ -1259,22 +1314,17 @@
   white-space: nowrap;
 }
 
-.nfl-plays__drive-button {
+/* Só o sinal do que o toque faz: quem recebe o clique é a linha inteira. */
+.nfl-plays__drive-play {
   display: flex;
   flex: 0 0 44px;
   width: 44px;
   height: 44px;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  border: 0;
-  border-radius: 56px;
-  background: transparent;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.nfl-plays__drive-button img {
+.nfl-plays__drive-play img {
   display: block;
   width: 44px;
   height: 44px;

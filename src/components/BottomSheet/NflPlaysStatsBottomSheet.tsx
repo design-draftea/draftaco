@@ -12,7 +12,7 @@ import playerAvatarNFL from '../../assets/playerAvatarNFL.svg'
 import nflLiveGame from '../../data/nflLiveGame.json'
 import { NflPlayReplayPanel } from '../../features/sports/NflPlayReplay/NflPlayReplayPanel'
 import { REPLAY_SPEEDS, REPLAY_TIMING, type ReplaySpeed } from '../../features/sports/NflPlayReplay/usePlayReplay'
-import { getDriveTitle, getPlayTitle, hasBallFlight, showsGainBadge, type NflPlay } from '../../features/sports/NflPlayReplay/playNarrative'
+import { getDriveTitle, getPlayTitle, isAnimatable, showsGainBadge, type NflPlay } from '../../features/sports/NflPlayReplay/playNarrative'
 import campinhoNFL from '../../assets/iconsDraftaco/campinhoNFL.png'
 import campoDraftea from '../../assets/iconsDraftaco/campoDraftea.png'
 import campoPitaco from '../../assets/iconsDraftaco/campoPitaco.png'
@@ -176,21 +176,24 @@ const groupPlaysByDrive = (plays: readonly NflPlay[]) => {
  * Respiro entre um lance e o seguinte ao reproduzir uma campanha inteira.
  *
  * Precisa comportar as duas saídas em sequência: a bola apaga (180 + 420 = 600ms) e então
- * o palco inteiro apaga (620 + 380 = 1000ms). Trocar antes disso atropela a transição — era
+ * o palco inteiro apaga (1020 + 380 = 1400ms). Trocar antes disso atropela a transição — era
  * o que acontecia com os 320ms originais e ainda com 780ms. Os ~100ms que sobram são o
  * campo limpo antes do próximo lance entrar, que por sua vez leva 480ms para aparecer.
+ *
+ * Quem manda no respiro de LEITURA é o `stageExitDelay`: até ele o lance está inteiro na
+ * tela, e daqui em diante é campo vazio. Este número acompanha aquele.
  */
-const SEQUENCE_PAUSE = 1100
+const SEQUENCE_PAUSE = 1500
 
 /**
  * Respiro maior quando a placa gira mostrando as jardas. Sem isto o lance trocava com o
  * número ainda aparecendo, e a informação não chegava a ser lida.
  *
  * Contas: giro pronto em 700ms, brilho assenta perto de 870ms, o palco começa a sair em
- * 1280ms (`stageExitDelayGain`) e leva 380ms. Sobram ~90ms de campo limpo antes da troca,
+ * 1680ms (`stageExitDelayGain`) e leva 380ms. Sobram ~90ms de campo limpo antes da troca,
  * o mesmo do caso sem placa.
  */
-const SEQUENCE_PAUSE_GAIN = 1750
+const SEQUENCE_PAUSE_GAIN = 2150
 
 const nextSpeed = (speed: ReplaySpeed): ReplaySpeed => (
   REPLAY_SPEEDS[(REPLAY_SPEEDS.indexOf(speed) + 1) % REPLAY_SPEEDS.length]
@@ -229,14 +232,28 @@ function PlaysView({
   const [driveId, setDriveId] = useState<string | null>(initialDriveId)
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [speed, setSpeed] = useState<ReplaySpeed>(1)
-  // Abre no lance mais recente que TEM replay. Abrir no último lance da campanha deixava a
-  // tela num passe incompleto — sem animação nesta entrega — e o botão de reproduzir
-  // nascia desabilitado, dando a impressão de que nada funcionava.
+  /**
+   * Abre no lance mais recente que TEM replay. A porta de entrada é a faixa de situação, e o
+   * que ela promete é o lance que explica a descida e a distância de agora — não a campanha
+   * desde o começo, que leva de 15 a 48 segundos para chegar até aqui.
+   *
+   * "Tem replay" é `isAnimatable`, e não `hasBallFlight`. A diferença é a corrida: ela não
+   * tem arco, mas tem trecho rasteiro, retrato e nome — tem o que mostrar. Com o teste do
+   * voo, uma campanha que acabou de terminar em corrida abria numa jogada anterior e parava
+   * ali, porque na abertura não há encadeamento: quem tocou em "3ª & 4" via um lance de duas
+   * descidas atrás. E não é caso de borda — simulando cada estado pelo qual as campanhas
+   * deste fixture passam ao vivo (cada campanha passa por todos os próprios prefixos), 17 dos
+   * 56 abriam antes da última jogada; com `isAnimatable`, 1.
+   *
+   * A volta para trás continua existindo, e é ela que sobra nesse 1: um lance anulado antes
+   * do snap não tem nada para desenhar, e abrir nele deixaria o botão de reproduzir
+   * desabilitado, dando a impressão de que nada funciona.
+   */
   const [playIndex, setPlayIndex] = useState(() => {
     const initialPlays = playsByDrive.get(initialDriveId ?? '') ?? []
-    const lastAnimatable = initialPlays.map(hasBallFlight).lastIndexOf(true)
+    const lastWithReplay = initialPlays.map(isAnimatable).lastIndexOf(true)
 
-    return lastAnimatable >= 0 ? lastAnimatable : Math.max(0, initialPlays.length - 1)
+    return lastWithReplay >= 0 ? lastWithReplay : Math.max(0, initialPlays.length - 1)
   })
   const [runId, setRunId] = useState(0)
   // O sheet desmonta este componente ao fechar, então "primeira montagem" é o mesmo que
@@ -284,6 +301,23 @@ function PlaysView({
     setAutoAdvance(false)
   }
 
+  const playsRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * Leva a pessoa até o campo ao disparar uma campanha pela lista. O botão de play fica lá
+   * embaixo, entre as campanhas do quarter, e sem isto o lance corria fora da tela: tocava
+   * em play e continuava olhando para a lista.
+   *
+   * Rola o CORPO do sheet até o topo, e não o campo até a borda: o campo é o primeiro bloco
+   * depois dos chips, então o topo já o mostra inteiro, e é uma posição estável — não depende
+   * de quanto o conteúdo acima mede nem mexe em rolagem de outro elemento.
+   *
+   * Não vale para os marcadores da timeline: eles já ficam colados no campo.
+   */
+  const scrollToField = () => {
+    playsRef.current?.closest('.bottom-sheet__body')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const selectPlay = (nextDriveId: string, index: number, sequence: boolean) => {
     if (advanceTimer.current !== null) window.clearTimeout(advanceTimer.current)
     setIsFirstOpen(false)
@@ -294,7 +328,7 @@ function PlaysView({
   }
 
   return (
-    <div className="nfl-plays">
+    <div className="nfl-plays" ref={playsRef}>
       {play && (
         <NflPlayReplayPanel
           // A key por lance faz a troca ser uma remontagem: o laço de animação morre na
@@ -370,23 +404,31 @@ function PlaysView({
                       item.id === drive?.id ? 'nfl-plays__drive--active' : '',
                     ].filter(Boolean).join(' ')}
                   >
-                    <TeamLogo
-                      teamName={team.name}
-                      sport="nfl"
-                      className="nfl-plays__drive-logo"
-                      placeholderClassName="nfl-plays__drive-logo"
-                    />
-                    <div className="nfl-plays__drive-info">
-                      <p className="nfl-plays__drive-name">{getDriveTitle(item, team.nickname)}</p>
-                      <p className="nfl-plays__drive-stats">{getDriveStatsLabel(item)}</p>
-                    </div>
+                    {/* A LINHA INTEIRA é o gatilho, e não só o ícone de play: ele é um alvo
+                        de 44px numa linha de 72, e o resto do card parecia tocável sem ser.
+                        O ícone fica como sinal do que o toque faz. */}
                     <button
                       type="button"
-                      className="nfl-plays__drive-button"
-                      aria-label="Reproduzir campanha"
-                      onClick={() => selectPlay(item.id, 0, true)}
+                      className="nfl-plays__drive-row"
+                      aria-label={`Reproduzir campanha ${getDriveTitle(item, team.nickname)}`}
+                      onClick={() => {
+                        selectPlay(item.id, 0, true)
+                        scrollToField()
+                      }}
                     >
-                      <img src={iconPlayPeq} alt="" />
+                      <TeamLogo
+                        teamName={team.name}
+                        sport="nfl"
+                        className="nfl-plays__drive-logo"
+                        placeholderClassName="nfl-plays__drive-logo"
+                      />
+                      <div className="nfl-plays__drive-info">
+                        <p className="nfl-plays__drive-name">{getDriveTitle(item, team.nickname)}</p>
+                        <p className="nfl-plays__drive-stats">{getDriveStatsLabel(item)}</p>
+                      </div>
+                      <span className="nfl-plays__drive-play" aria-hidden="true">
+                        <img src={iconPlayPeq} alt="" />
+                      </span>
                     </button>
                   </li>
                 )

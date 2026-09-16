@@ -47,6 +47,20 @@ export const PORTRAIT_CENTER_Y = 52
 export const STEM_TOP_Y = PORTRAIT_CENTER_Y + PORTRAIT_RADIUS
 export const NAME_BASELINE_Y = 24
 
+/**
+ * Quanto do voo o retrato de quem lançou continua montado depois de o foco trocar.
+ *
+ * É FRAÇÃO do voo, e não milissegundos, porque aqui não se sabe quanto o voo dura — isso
+ * mora em `usePlayReplay`. Precisa cobrir com folga a troca inteira (`focusSwapDelay` mais
+ * `focusSwap`) no voo mais curto (`airMin`): desmontar antes do fim da animação devolveria o
+ * retrato à opacidade cheia num quadro, bem à vista. Depois dela o retrato já está
+ * invisível — o `fill-mode: both` segura o estado final —, então sobrar janela não custa
+ * nada.
+ *
+ * `check:nfl` confere a folga, que depende de constantes de outro arquivo.
+ */
+const FOCUS_SWAP_SPAN = 0.7
+
 /** Quantidade e alcance do rastro: trecho curto atrás da bola, não a rota inteira. */
 const TRAIL_SAMPLES = 7
 const TRAIL_SPAN = 0.17
@@ -139,6 +153,14 @@ export interface PlayScene {
   origin: Point
   /** Onde a bola chega: recepção, queda, ou o meio da abertura num chute ao gol. */
   landing: Point
+  /**
+   * Repouso da bola sobre o retrato: o selo na diagonal de baixo à direita. Num passe
+   * recebido é onde o VOO termina — a bola deixa a trajetória no fim e entra aqui.
+   *
+   * Não confundir com `landing`, que é a recepção EM CAMPO: é de lá que saem a marca de
+   * chegada, o pulso, a haste e o início do trecho rasteiro, e é lá que o tracejado termina.
+   */
+  hand: Point
   /** Onde o lance termina, depois do trecho rasteiro. */
   endX: number
   /** Onde fica a marca de chegada — na corrida é o fim, não a "recepção". */
@@ -162,6 +184,13 @@ export interface PlayScene {
    * que não tem recepção para levar a bola ao retrato).
    */
   keepsBall: boolean
+  /**
+   * O voo vai DIRETO para a mão: a bola chega ao selo sobre o retrato sem encostar no
+   * gramado. Só em passe recebido. Num chute com retorno ela continua caindo no campo e
+   * subindo depois — quem retorna pega a bola do chão, e é isso que o lance tem para
+   * contar; num passe que cai não há mão nenhuma para mirar.
+   */
+  catchesInHand: boolean
   /** Há avanço rasteiro depois da chegada. */
   hasGroundLeg: boolean
   /** Passe que cai: a bola some ao chegar e o X fica no lugar dela. */
@@ -288,6 +317,26 @@ export function buildPlayScene(play: NflPlay): PlayScene {
     && outcome !== 'touchback'
     && (kick ? !!play.returner : (flies || runs))
 
+  /**
+   * Passe recebido: a bola vai DIRETO para a mão. Antes o voo terminava no gramado e ela
+   * subia depois, num segundo movimento — dois gestos para uma coisa só, e no meio deles a
+   * bola encostava no chão num lance em que ela nunca encostou.
+   *
+   * Vale só para passe, e é por isso que o tipo entra na conta: no chute com retorno a bola
+   * cai mesmo no campo e é de lá que o retornador sai com ela; na corrida não há voo; num
+   * passe que cai não existe mão para mirar.
+   */
+  const catchesInHand = flies && kind === 'pass' && carriesBall
+  /* O retrato já está sobre a chegada durante o voo (ver `focusX` em `frameAt`), então a mão
+     é o selo em torno DELE: o mesmo deslocamento do repouso, para o voo terminar exatamente
+     onde a bola vai ficar. */
+  const hand: Point = {
+    x: landing.x + CARRY_OFFSET_X * PORTRAIT_RADIUS,
+    y: PORTRAIT_CENTER_Y + CARRY_OFFSET_Y * PORTRAIT_RADIUS,
+  }
+  /** Onde a bola está quando a fase de recepção começa. */
+  const ballEnd = catchesInHand ? hand : landing
+
   return {
     outcome,
     animatable,
@@ -298,6 +347,7 @@ export function buildPlayScene(play: NflPlay): PlayScene {
     depthY,
     origin,
     landing,
+    hand,
     endX,
     arrivalX,
     scrimmage: fieldLine(startYard, direction),
@@ -311,6 +361,7 @@ export function buildPlayScene(play: NflPlay): PlayScene {
     arrivalMark: ARRIVAL_MARK[outcome],
     carriesBall,
     keepsBall: atGoal || (play.touchdown && !carriesBall),
+    catchesInHand,
     hasGroundLeg,
     fallsIncomplete,
     staysAtOrigin,
@@ -327,10 +378,13 @@ export function buildPlayScene(play: NflPlay): PlayScene {
       x: CARRY_OFFSET_X * PORTRAIT_RADIUS,
       y: CARRY_OFFSET_Y * PORTRAIT_RADIUS,
       // No instante da recepção o retrato está em cima da chegada, então a bola precisa
-      // partir de onde ela de fato caiu: o deslocamento é o caminho de volta ao ponto de
-      // repouso, e é fixo porque a chegada não muda durante o lance.
-      fromX: -CARRY_OFFSET_X * PORTRAIT_RADIUS,
-      fromY: landing.y - PORTRAIT_CENTER_Y - CARRY_OFFSET_Y * PORTRAIT_RADIUS,
+      // partir de onde o VOO a deixou: o deslocamento é o caminho de volta ao ponto de
+      // repouso, e é fixo porque nem a chegada nem o retrato mudam durante o lance.
+      //
+      // Num passe recebido o voo já termina na mão, e a conta dá zero: a bola não anda mais
+      // nada, só encolhe para o tamanho do selo enquanto o aro aparece em volta dela.
+      fromX: ballEnd.x - hand.x,
+      fromY: ballEnd.y - hand.y,
     },
   }
 }
@@ -350,11 +404,42 @@ export interface PlayFrame {
   ballEnding: 'none' | 'carried' | 'settled'
   focusName: string | null
   focusX: number
+  /**
+   * Retrato que está SAINDO de cena, enquanto o de quem recebe entra. Só existe na troca de
+   * foco do lançamento, e é o que permite desenhar os dois ao mesmo tempo: sem ele, um
+   * sumiria e o outro apareceria no mesmo quadro, que era o corte seco de antes.
+   *
+   * Vem com o próprio x porque quem sai fica onde estava — na linha de scrimmage —, e não
+   * acompanha o marcador novo. Enquanto ele existe, quem está em foco é quem ENTRA.
+   */
+  leavingFocus: { name: string; x: number } | null
   showsPath: boolean
   showsRunFlow: boolean
   showsArrival: boolean
   pulse: { radius: number; opacity: number } | null
   flipsToGain: boolean
+}
+
+/**
+ * Onde a bola está em `t` durante o voo. Bola e rastro saem daqui — os dois, sempre, para não
+ * existirem duas contas do mesmo movimento que podem divergir por descuido.
+ *
+ * Num passe recebido a bola tem CURVA PRÓPRIA, e ela é diferente do tracejado de propósito.
+ * O destino dela é a mão, e o teto de altura do arco (ver `flightHeight`) faz a subida ser
+ * contínua até lá: a bola sai da linha de scrimmage e chega ao selo no ponto mais alto do
+ * voo, sem descer em momento nenhum. Uma bola que cai e depois sobe conta que ela encostou
+ * em algo no meio do caminho, e num passe recebido ela não encosta.
+ *
+ * O tracejado é outra coisa e mira o gramado: é a trajetória do passe SOBRE O CAMPO, com a
+ * corcova inteira, e é o que emenda no trecho rasteiro e mantém o desenho legível depois que
+ * o lance termina. Levá-lo junto com a bola larga um degrau entre o fim do arco, lá em cima,
+ * e a linha da corrida, no chão — comparado quadro a quadro e descartado.
+ *
+ * As duas curvas partem do mesmo ponto e se afastam no fim; o rastro acompanha a bola, então
+ * o caminho dela até a mão fica desenhado enquanto ela anda.
+ */
+export function flightPoint(scene: PlayScene, t: number): Point {
+  return arcPoint(scene.origin, scene.catchesInHand ? scene.hand : scene.landing, t, scene.kind)
 }
 
 /** Rastro curto atrás da bola, amostrado da MESMA função que a move. */
@@ -368,14 +453,14 @@ const trailFrom = (at: (t: number) => Point, progress: number): TrailDot[] => (
 )
 
 export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number): PlayFrame {
-  const { origin, landing, endX, depthY, kind, animatable } = scene
+  const { origin, landing, endX, depthY, animatable } = scene
 
   // Posição no GRAMADO por fase: é onde a bola está enquanto ela é a bola, e continua sendo
   // onde quem corre está depois que ele a pega. O rastro e a sombra amostram esta mesma
   // função, então caminho, rastro e sombra não podem divergir.
   let ground: Point
   if (!animatable || phase === 'idle' || phase === 'preparing') ground = origin
-  else if (phase === 'air') ground = arcPoint(origin, landing, progress, kind)
+  else if (phase === 'air') ground = flightPoint(scene, progress)
   else if (phase === 'catch') ground = landing
   else if (phase === 'run') ground = groundPoint(landing.x, endX, progress, depthY)
   else ground = { x: endX, y: scene.atGoal ? landing.y : depthY }
@@ -407,12 +492,27 @@ export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number):
     ? origin.x
     : (phase === 'run' || phase === 'result' ? ground.x : landing.x)
 
+  /**
+   * A troca de foco acontece no instante do lançamento: até ali o lance é de quem tem a
+   * bola, e dali em diante é de quem vai recebê-la — o retrato precisa estar no destino bem
+   * antes de a bola chegar, porque é nele que o voo termina.
+   *
+   * Não vale quando o foco não troca de pessoa: passe que cai e chute sem retornador ficam
+   * no passador (`staysAtOrigin`), e na corrida quem sai e quem chega são o mesmo jogador.
+   */
+  const swappingFocus = animatable
+    && phase === 'air'
+    && progress < FOCUS_SWAP_SPAN
+    && !scene.staysAtOrigin
+    && !!scene.originName
+    && scene.originName !== scene.targetName
+
   const inFlight = phase === 'air' || phase === 'catch' || phase === 'run'
   const arrived = phase !== 'idle' && phase !== 'preparing'
   // No trecho rasteiro o rastro seria uma fileira de pontos no chão enquanto a bola já está
   // na mão do jogador, lá em cima: duas histórias diferentes sobre o mesmo lance.
   const trail = phase === 'air'
-    ? trailFrom((t) => arcPoint(origin, landing, t, kind), progress)
+    ? trailFrom((t) => flightPoint(scene, t), progress)
     : (phase === 'run' && !carried ? trailFrom((t) => groundPoint(landing.x, endX, t, depthY), progress) : [])
 
   return {
@@ -430,6 +530,7 @@ export function frameAt(scene: PlayScene, phase: ReplayPhase, progress: number):
     ballEnding,
     focusName: focusOnPasser ? scene.originName : scene.targetName,
     focusX,
+    leavingFocus: swappingFocus ? { name: scene.originName as string, x: origin.x } : null,
     showsPath: animatable && (inFlight || phase === 'result'),
     // O fluxo do trecho rasteiro só entra quando a bola chega lá.
     showsRunFlow: phase === 'run' || phase === 'result',
