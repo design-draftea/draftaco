@@ -1938,11 +1938,13 @@ export interface CompetitionEvent {
   }
   // Situação de campo do futebol americano ao vivo: descida, jardas para a próxima
   // descida, onde a bola está e quem tem a posse. Não existe nos outros esportes.
+  // Depois de um lance de pontuação não existe descida, e `scoringPlay` descreve o lance.
   footballSituation?: {
     down: number
     distance: number
     ballOn: string
     possession: 'home' | 'away'
+    scoringPlay?: { result: string; scorer: string }
   }
 }
 
@@ -3254,10 +3256,15 @@ export const championships: Championship[] = [
         totalPointsOdds: { line: 41.5, under: '1.90x', over: '1.90x' },
         handicapOdds: { line: 3.5, home: '1.88x', away: '1.92x' },
         footballSituation: {
+          // O 1ª & 10 é o recomeço depois de um chute de pontuação, quando o fixture não
+          // tem descida: a bola volta para a 25 e ninguém fez nada ainda.
           down: nflLiveGame.live.down ?? 1,
           distance: nflLiveGame.live.distance ?? 10,
           ballOn: nflLiveGame.live.ballOn ?? '',
           possession: nflLiveGame.live.possession as 'home' | 'away',
+          ...(nflLiveGame.live.result
+            ? { scoringPlay: { result: nflLiveGame.live.result, scorer: nflLiveGame.live.scorer ?? '' } }
+            : {}),
         },
       },
       {

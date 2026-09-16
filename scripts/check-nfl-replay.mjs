@@ -144,22 +144,42 @@ conferir('anulada: nenhuma credita jardas', anuladaComJardas.length === 0,
 // `fixed_drive_result` já traz o desfecho FINAL da campanha, inclusive da que ainda está
 // correndo. Mostrar isso entregaria o que ainda não aconteceu no jogo.
 const emAndamento = jogo.drives.filter((drive) => drive.inProgress)
-// No máximo uma, e pode ser NENHUMA: quando o recorte para num chute de pontuação, a
-// campanha acabou e a seguinte ainda não começou — é o intervalo entre o ponto extra e o
-// kickoff. Fora desse caso, uma campanha tem de estar correndo, senão o jogo não está ao
-// vivo e a faixa de situação não tem o que mostrar.
+// No máximo uma, e pode ser NENHUMA: quando o recorte para num lance de PONTUAÇÃO, a
+// campanha acabou e a seguinte ainda não começou. Fora desse caso, uma campanha tem de
+// estar correndo, senão o jogo não está ao vivo e a faixa de situação não tem o que
+// mostrar.
 const ULTIMA = jogo.plays[jogo.plays.length - 1]
-const ENTRE_POSSES = ULTIMA.type === 'extra_point' || ULTIMA.type === 'field_goal'
-conferir('campanha em andamento: uma só, ou nenhuma entre posses',
-  emAndamento.length === 1 || (emAndamento.length === 0 && ENTRE_POSSES),
-  `encontradas ${emAndamento.length}, último lance ${ULTIMA.type}`)
-// Entre posses a faixa de situação descreve o recomeço, não o lance que acabou: quem sofreu
-// o ponto assume a bola. Sem isto ela diria que quem marcou está com a bola no campo de
-// defesa do adversário.
-if (ENTRE_POSSES) {
+const CHUTE_DE_PONTO = ULTIMA.type === 'extra_point' || ULTIMA.type === 'field_goal'
+const TOUCHDOWN = ULTIMA.touchdown === true
+const PONTUOU = CHUTE_DE_PONTO || TOUCHDOWN
+conferir('campanha em andamento: uma só, ou nenhuma depois de pontuar',
+  emAndamento.length === 1 || (emAndamento.length === 0 && PONTUOU),
+  `encontradas ${emAndamento.length}, último lance ${ULTIMA.type}, touchdown ${ULTIMA.touchdown}`)
+// Depois de um chute de pontuação a faixa descreve o RECOMEÇO, não o lance que acabou: quem
+// sofreu o ponto assume a bola. Sem isto ela diria que quem marcou está com a bola no campo
+// de defesa do adversário.
+if (CHUTE_DE_PONTO) {
   conferir('situação ao vivo: a posse passou para quem recebe o chute',
     jogo.live.possession !== ULTIMA.side && jogo.live.down === null,
     `posse ${jogo.live.possession}, último lance do lado ${ULTIMA.side}, descida ${jogo.live.down}`)
+}
+// No touchdown é o contrário: o ponto extra é de quem marcou, então a posse FICA com ele e
+// não há recomeço para descrever. A faixa passa a mostrar o lance, e é por `result` e
+// `scorer` que o app sabe trocar a descida pelo `Touchdown · T.Hill`.
+if (TOUCHDOWN) {
+  conferir('situação ao vivo: touchdown mantém a posse e descreve o lance',
+    jogo.live.possession === ULTIMA.side
+    && jogo.live.down === null
+    && jogo.live.result === 'Touchdown'
+    && !!jogo.live.scorer,
+    `posse ${jogo.live.possession}, lado ${ULTIMA.side}, descida ${jogo.live.down}, `
+    + `result ${jogo.live.result}, scorer ${jogo.live.scorer}`)
+  // O placar do topo é o do INSTANTE do touchdown, com o ponto extra ainda por chutar. Se
+  // alguém devolver o ponto extra ao recorte, o sheet volta a abrir num chute.
+  conferir('recorte: o ponto extra não entra no replay',
+    jogo.plays.every((jogada) => jogada.type !== 'extra_point')
+    || jogo.plays.findIndex((jogada) => jogada.type === 'extra_point') < jogo.plays.length - 1,
+    'o último lance do recorte é um ponto extra')
 }
 conferir('campanha em andamento: não vaza o futuro',
   emAndamento.every((drive) => drive.result === null && drive.scorer === null),

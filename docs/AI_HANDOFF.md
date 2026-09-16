@@ -2,87 +2,88 @@
 
 ## Estado atual
 
-- Atualizado em: 2026-09-15.
-- Checkout: pasta principal `draftaco`, na branch `fix/campo-nfl-altura-safari`. O nome
-  ficou pequeno para o que a branch virou: começou na correção do campo no Safari e cresceu
-  para oito entregas no replay da NFL, todas pedidas na mesma sessão e listadas abaixo.
-  Implementadas, conferidas no WebKit e entregues numa Pull Request única, com autorização
-  explícita da pessoa responsável pelo protótipo para commit, PR e merge.
-- Objetivo 1: no Safari do iPhone, os elementos desenhados sobre o campo do replay da NFL
-  (retrato, nome, rastro, bola e as linhas de scrimmage e de primeira descida) saíam de
-  registro com a arte. Causa: `.nfl-plays__field` tirava a altura de `aspect-ratio` sem
-  largura declarada, e o Safari transfere a proporção a partir da largura do CONTÊINER,
-  ignorando a sangria de `margin: 0 -16px`. O frame ficava ~16px mais baixo, e o palco —
-  SVG com viewBox 375x185 e `meet` — encolhia para caber na altura e se centralizava na
-  horizontal. Correção: `width: calc(100% + 32px)` em
-  `src/components/BottomSheet/NflPlaysStatsBottomSheet.css`.
-- Validações executadas: WebKit 18.2 headless (Playwright) em 320, 375, 393 e 430 de
-  largura — a altura do frame passa a bater com a proporção e a escala do palco volta a ser
-  largura/375, sem deslocamento horizontal; medição no Chromium inalterada; `npm run build`,
-  `npm run check:nfl` e `npm run check:brands` passando.
-- Objetivo 2 (pedido na mesma sessão): no passe recebido, a bola caía no gramado e só depois
-  subia para o selo sobre o retrato. Agora ela tem curva própria, com destino na mão, e sobe
-  da linha de scrimmage até o selo sem descer em momento nenhum — decisão explícita da pessoa
-  responsável pelo protótipo: a bola não pode cair e subir, e divergir do tracejado não é
-  problema. O tracejado continua mirando o gramado, com a corcova inteira, e emenda no trecho
-  rasteiro; levá-lo junto com a bola larga um degrau entre o fim do arco e a linha da corrida.
-  As duas alternativas (tracejado até a mão, e o mesmo com um fio no ponto da recepção) foram
-  implementadas, comparadas quadro a quadro e descartadas — não estão no código. Só passe
-  recebido mudou: chute com retorno, corrida, passe incompleto e chute ao gol seguem
-  idênticos, conferidos nas 47 jogadas do fixture.
-- Objetivo 3 (pedido na mesma sessão): o lance terminado fica mais tempo na tela antes da
-  troca, e tocar no play de uma campanha do quarter rola o corpo do sheet até o topo, onde
-  está o campo. O tempo de leitura é o `stageExitDelay` (620 -> 1020ms; com a placa girando,
-  1280 -> 1680ms), não o respiro entre lances — este só acompanha para preservar os ~100ms de
-  campo limpo (1100 -> 1500 e 1750 -> 2150). `npm run check:nfl` cobre a ordem dessas cinco
-  constantes nos dois arquivos.
-- Objetivo 4 (pedido na mesma sessão): a troca de foco no lançamento era um corte seco — o
-  retrato de quem lançou sumia e o de quem recebe aparecia no mesmo quadro. Agora os dois se
-  cruzam em dois tempos, cada um com a própria haste e o próprio nome: quem sai apaga em
-  380ms (`REPLAY_TIMING.focusSwap`) e quem entra espera 130ms (`focusSwapDelay`) antes de
-  aparecer, para não disputar o olho com a bola saindo. A primeira versão fazia os dois
-  juntos em 220ms e passava despercebida.
-  A cena expõe `leavingFocus`; o retrato que sai fica montado por uma fração do voo
-  (`FOCUS_SWAP_SPAN`), e `check:nfl` confere que essa janela cobre a animação no voo mais
-  curto. Vale para passe recebido e chute com retorno; não vale quando o foco não troca de
-  pessoa.
-- Objetivo 5 (pedido na mesma sessão): o sheet abre no lance mais recente que tem replay
-  (`isAnimatable`), e não no mais recente com voo de bola. Corrida tem replay e não tem voo,
-  então uma campanha terminada em corrida abria numa jogada anterior e parava ali. Simulando
-  os 56 estados pelos quais as campanhas do fixture passam ao vivo, 17 abriam antes da última
-  jogada; agora 1 — um lance anulado antes do snap, que não tem o que desenhar. Fica
-  registrado que abrir na PRIMEIRA jogada da campanha foi discutido e descartado: 15 a 48
-  segundos por campanha, e a porta de entrada é uma faixa ao vivo; quem quer a campanha
-  inteira tem o botão "Repetir campanha", os marcadores da timeline e o play de cada campanha
-  na lista.
-- Objetivo 6 (pedido na mesma sessão): o fixture ganhou uma campanha FABRICADA para
-  demonstração — MIA, 5 jogadas, 71 jardas, terminando em touchdown de 47 jardas e ponto
-  extra, virando o jogo em 14 x 13. Ela mora em `scripts/build-nfl-live-fixture.mjs`, em
-  formato de play-by-play, e não editada no JSON gerado: assim passa pelas mesmas contas de
-  placar, estatística e campanhas. `--demo=0` gera o recorte real puro. O corte real subiu de
-  1520 para 1543 para a campanha do KC fechar no field goal. Antes de fabricar, o jogo real
-  foi conferido campanha a campanha: só três terminam em touchdown e nenhuma junta variedade
-  com tamanho curto.
-- Objetivo 7 (pedido na mesma sessão): a palavra ANULADA sobre o campo saiu. Ela caía na
-  mesma coluna do nome e do retrato quando o lance acontecia no meio do campo. No lugar dela,
-  o selo da bola na mão mostra um X — a marca foi para a posse, que é o que a anulada desfaz.
-  Três variantes (X por cima com contorno, por cima sem contorno, e no lugar da bola) foram
-  implementadas e comparadas em tamanho real; venceu a do X no lugar da bola, porque num selo
-  de 16px cabe a bola ou o X, não os dois.
-- Objetivo 8 (pedido na mesma sessão): na lista de campanhas, a linha inteira virou o
-  gatilho, e não só o ícone de play — um alvo de 44px numa linha de 72, com o resto do card
-  parecendo tocável sem ser. É um `button` em volta do conteúdo, para o alvo ser focável e
-  anunciado como botão, e o ícone virou `span` decorativo.
-- Próximo passo: conferir a rota publicada depois do deploy do GitHub Actions e registrar a
-  entrega aqui. A raiz responder não prova que `/pitaco/apostas` carrega.
-- `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
-  para a mão do jogador, entrou pela Pull Request #2 (merge `496685f`) e o deploy do GitHub
-  Actions concluiu. Os bundles em produção batem byte a byte com o build local, e
-  `/pitaco/apostas` e `/draftea/apuestas` carregam o app.
+- Atualizado em: 2026-09-16.
+- Checkout: pasta principal `draftaco`, na branch `feature/draftea-nomenclatura-mercados`.
+  O nome ficou pequeno para o que a branch virou: começou na nomenclatura da Draftea e
+  cresceu para duas frentes, pedidas na mesma sessão. As duas foram implementadas,
+  conferidas no navegador e entregues numa Pull Request única, com autorização explícita da
+  pessoa responsável pelo protótipo para commit, PR e merge.
+
+### Frente 1 — nomenclatura e navegação da Draftea (só Draftea)
+
+- A Pitaco não muda em nada. Conferido item a item nas duas marcas depois da mudança.
+- Mercados e rótulos no catálogo `src/brands/draftea/legacyCopy.ts`: `Resultado final` ->
+  `Money Line`, `RF` -> `ML`, `Handicap` -> `Spread`, `Vencer` -> `Moneyline`,
+  `Ao vivo`/`AO VIVO` -> `Live`/`LIVE`, tag `IMPERDÍVEL` -> `PROMO`, `Carregar mais` ->
+  `Ver todos`. Exato e regex, para pegar também as frases compostas.
+- Navbar: `Bets · Mis entradas · Gaming · Rewards`. Os rótulos NÃO passam pelo catálogo
+  legado — são nomes próprios da Draftea, não tradução do texto da Pitaco. Cada marca
+  declara os seus em `messages.navbarItems` (`src/shared/brand/types.ts` e os dois
+  `config.ts`), e a `Navbar` lê de lá pelo id do item. Traduzir `Apostas` -> `Bets` no
+  catálogo renomearia o produto inteiro, não só a navbar.
+- Trilho de esportes e competições: o último item (`Mais`, que abre o bottom sheet) sai na
+  Draftea. O respiro de fim de trilho vinha da seção `--tail`, que era justamente a dele,
+  então a classe passa para a última seção restante — sem isso o `CS` encostava na borda ao
+  rolar até o fim.
+- Carrossel de promoções da home: `Aumentada` e `Super Aumentada` saem na Draftea. A página
+  `/draftea/promocoes` ainda tem os cards de missão dessas duas mecânicas; a pessoa
+  responsável pelo protótipo foi avisada e o pedido era o carrossel.
+- Ficou de fora de propósito: `Transmissão ao vivo` continua `Transmisión en vivo`, porque
+  ali é transmissão de vídeo e não o estado do jogo.
+- Defeito PREEXISTENTE registrado, fora do escopo desta branch: na página de competição da
+  Draftea os chips de filtro ainda aparecem em pt-BR (`GOLS`, `DUPLA CHANCE`,
+  `FINALIZAÇÕES AO GOL`, `ASSISTÊNCIAS`) — faltam as variantes em caixa alta no catálogo.
+
+### Frente 2 — placar da NFL como gatilho e corte no touchdown (as duas marcas)
+
+- O placar INTEIRO abre o sheet de jogadas, e não só a faixa de situação: o alvo de 26px da
+  faixa era pequeno demais para o que a área toda já parecia oferecer. É um `button` POR
+  DENTRO da `section` (`.live-event-inline__score-trigger`), envolvendo placar e faixa. Ele
+  não pode envolver a `section`, senão o bottom sheet ficaria dentro do próprio alvo
+  clicável; e dois botões irmãos dariam dois alvos anunciados para a mesma ação. A faixa
+  deixou de ser `button` e virou `span`.
+- O ponto extra SAIU do recorte do jogo (`demoPlays` em `scripts/build-nfl-live-fixture.mjs`
+  e o fixture regerado). Ele era o lance de corte, então o sheet abria num chute entre os
+  postes em vez de abrir no touchdown de 47 jardas.
+- O custo foi decidido explicitamente pela pessoa responsável pelo protótipo: o placar passa
+  de 13 x 14 para **13 x 13**, que é o placar CERTO nesse instante, com o PAT ainda por
+  chutar; o relógio vai de Q2 05:50 para 05:58. A alternativa (manter 13 x 14 e esconder o
+  ponto extra só do replay) foi apresentada e descartada.
+- `buildDrives` passou a encerrar a campanha que PONTUOU, e não só a que terminou em chute
+  de pontuação. Sem isso a campanha do touchdown apareceria "em andamento": sem a palavra
+  Touchdown na lista, com o ganho de campo parando no último snap em vez da end zone e com a
+  contagem parcial de lances no lugar da oficial.
+- `liveSituation` ganhou o caso do touchdown, que NÃO é o caso do chute de pontuação: no
+  chute a posse já passou para quem recebe e a faixa descreve o recomeço na 25; no touchdown
+  a posse FICA com quem marcou, porque o ponto extra é dele, e a faixa descreve o LANCE. O
+  fixture passou a trazer `live.result` e `live.scorer`.
+- A faixa mostra `Touchdown · MIA · Hill`, numa string só. A primeira versão usava os dois
+  slots que a faixa já tinha, e `Touchdown` e `Hill` separados por 12px liam como dois
+  rótulos sem relação — a pessoa responsável pelo protótipo pediu separador e o time. O
+  sobrenome sai de `shortName`, o MESMO helper da lista de campanhas do sheet: a faixa
+  anuncia justamente o lance em que o sheet abre. Fica registrado que o nome renderiza
+  `Hill`, e não `T.Hill`, porque é assim que o app escreve jogador em toda parte.
+- `check:nfl` subiu de 28 para 30 conferências: a campanha em andamento pode faltar depois
+  de qualquer pontuação (não só de chute), o touchdown mantém a posse e descreve o lance, e
+  o ponto extra não pode voltar a ser o último lance do recorte.
+- Validações executadas: `npm ci`, `npm run build`, `check:brands`, `check:nfl` e
+  `check:player-props` passando; `npm run lint` com os MESMOS 45 problemas da `main`
+  (38 erros, 7 avisos) — nenhum introduzido aqui. No navegador, em 375x812, nas duas marcas:
+  home, competição, evento de futebol ao vivo, evento de basquete ao vivo, evento de NFL ao
+  vivo e evento pré-jogo. O gatilho foi conferido com clique real sobre o nome do time, longe
+  do "Ver mais", e o sheet abre em `Passe de 47 jardas · Tagovailoa → Hill · 3ª para 4`.
+  Sem erros de console.
+- Próximo passo: conferir as rotas publicadas depois do deploy do GitHub Actions. A raiz
+  responder não prova que `/pitaco/apostas` e `/draftea/apuestas` carregam.
 - O checkout `draftaco-v0` não faz parte deste trabalho e deve permanecer intacto.
 
 ## Histórico das entregas
 
+- [2026-09-15 — Campo da NFL no Safari e oito ajustes no replay](handoffs/2026-09-15-campo-nfl-safari-e-replay.md):
+  a largura declarada que devolve o registro do palco no WebKit, a bola que sobe para a mão
+  sem cair, os tempos de leitura entre lances, a troca de foco em dois tempos, a abertura em
+  `isAnimatable`, a campanha fabricada de demonstração, o X no selo da bola no lugar do
+  carimbo ANULADA e a linha inteira da campanha como gatilho.
 - [2026-09-15 — Revisão técnica do replay da NFL e a bola na mão do jogador](handoffs/2026-09-15-replay-nfl-divida-tecnica.md):
   desfecho explícito no lugar do booleano `complete`, extração de `playScene.ts`, renomeação
   de `lateral` para `playSide`, `npm run check:nfl`, correção de um token inexistente,
@@ -106,5 +107,5 @@
 
 Leia [AI_CONTEXT.md](AI_CONTEXT.md) para produto, arquitetura, rotas e comandos, e
 [COLLABORATION.md](COLLABORATION.md) quando a tarefa envolver arquitetura entre marcas,
-Git, validação completa ou publicação. Mexer no replay da NFL pede também o histórico de
+Git, validação completa ou publicação. Mexer no replay da NFL pede também os históricos de
 2026-09-15 acima: o que está documentado ali são decisões tomadas, não sugestões.

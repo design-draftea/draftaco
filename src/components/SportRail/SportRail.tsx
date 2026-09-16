@@ -760,7 +760,10 @@ export function SportRail({
   onOpenCompetition,
 }: SportRailProps = {}) {
   const [isMoreSportsOpen, setIsMoreSportsOpen] = useState(false)
-  const { isFeatureEnabled } = useFeatureFlags()
+  const { brandMode, isFeatureEnabled } = useFeatureFlags()
+  // Na Draftea o trilho termina na última competição: o item "Mais", que abre o bottom
+  // sheet de esportes e competições, não faz parte da navegação da marca.
+  const hasMoreRailItem = brandMode !== 'draftea'
   const {
     favorites: favoriteCompetitions,
     moveFavorite,
@@ -914,9 +917,28 @@ export function SportRail({
       ...sectionsWithoutFavoriteDuplicates.slice(1),
     ]
   }, [favoriteCompetitionItems, isUnifiedSportsBottomSheetEnabled, visibleCustomCompetitionItems])
+  const visibleRailSections = useMemo(() => {
+    if (hasMoreRailItem) return railSections
+
+    const sections = railSections
+      .map((section) => (
+        section.items.some((item) => item.type === 'more')
+          ? { ...section, items: section.items.filter((item) => item.type !== 'more') }
+          : section
+      ))
+      .filter((section) => section.items.length > 0)
+
+    // O respiro no fim do trilho vem da seção `--tail`, que era justamente a do "Mais".
+    // Sem ele o último item encostaria na borda ao rolar até o fim.
+    return sections.map((section, index) => (
+      index === sections.length - 1 && !section.className?.includes('sport-rail__section--tail')
+        ? { ...section, className: [section.className, 'sport-rail__section--tail'].filter(Boolean).join(' ') }
+        : section
+    ))
+  }, [hasMoreRailItem, railSections])
   const flatRailItems = useMemo(
-    () => railSections.flatMap((section) => section.items),
-    [railSections]
+    () => visibleRailSections.flatMap((section) => section.items),
+    [visibleRailSections]
   )
   const activeRailItemId = flatRailItems.some((item) => item.id === requestedActiveItemId)
     ? requestedActiveItemId
@@ -945,7 +967,7 @@ export function SportRail({
 
   return (
     <ProductRail
-      sections={railSections}
+      sections={visibleRailSections}
       activeItemId={activeRailItemId}
       isSportPage={isSportPage}
       disableInteractions={disableInteractions}
@@ -958,7 +980,7 @@ export function SportRail({
       hasLiveIndicator={hasSportRailLiveIndicator}
       hasFavoriteIndicator={(item) => item.type === 'competition' && item.isFavorite === true}
       onSelectItem={handleSelectItem}
-      renderAfter={(
+      renderAfter={!hasMoreRailItem ? null : (
         isUnifiedSportsBottomSheetEnabled ? (
           <MoreSportsBottomSheetV2
             isOpen={isMoreSportsOpen}

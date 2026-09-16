@@ -47,6 +47,7 @@ import { createBetslipSelection, getBetslipEventId, getBetslipMarketGroupId, get
 import { useSportsDbTeamLogo } from '../../../shared/hooks/useSportsDbTeamLogo'
 import { getTeamAbbreviation } from '../../../shared/utils/teamAbbreviations'
 import { getDownAndDistanceLabel, getNflMarketColumns, nflEventMarketChips } from '../../../shared/utils/nflMarkets'
+import { shortName } from '../NflPlayReplay/playNarrative'
 import { TEAM_LOGO_FALLBACK, isTeamLogoFallback } from '../../../shared/utils/teamLogoFallback'
 
 export interface LiveEventMatch {
@@ -71,7 +72,15 @@ export interface LiveEventMatch {
   q3TotalOdds?: { line: number; under: string; over: string }
   q4TotalOdds?: { line: number; under: string; over: string }
   // Só no futebol americano: descida, jardas para a próxima, posição da bola e posse.
-  footballSituation?: { down: number; distance: number; ballOn: string; possession: 'home' | 'away' }
+  // Depois de um lance de pontuação não existe descida: `scoringPlay` vem no lugar e a
+  // faixa passa a descrever o lance (`Touchdown · T.Hill`), não o próximo snap.
+  footballSituation?: {
+    down: number
+    distance: number
+    ballOn: string
+    possession: 'home' | 'away'
+    scoringPlay?: { result: string; scorer: string }
+  }
   extraBets?: number
 }
 
@@ -3359,7 +3368,44 @@ function LiveEventInlineScoreHeader({
   // No futebol americano a faixa inferior mostra a situação de campo, não as
   // estatísticas do time: descida, jardas para a próxima e onde a bola está.
   const situation = isLiveMatch ? match.footballSituation : undefined
+  // Quem pontuou continua com a posse até o ponto extra, então a posse identifica o time.
+  const scoringTeamName = situation?.possession === 'home' ? match.homeTeam.name : match.awayTeam.name
   const [isStatsOpen, setIsStatsOpen] = useState(false)
+  const scoreMain = (
+    <div className="live-event-inline__score-main">
+      <LiveEventInlineScoreTeam
+        team={match.homeTeam}
+        sport={contentSport}
+        side="home"
+        hasPossession={situation?.possession === 'home'}
+      />
+      <div className="live-event-inline__score-center">
+        {isLiveMatch ? (
+          <>
+            <span className="live-event-inline__score-row">
+              <strong>{match.homeTeam.score}</strong>
+              <span>:</span>
+              <strong>{match.awayTeam.score}</strong>
+            </span>
+            <span className="live-event-inline__score-time">
+              <span className="live-event-inline__score-live-dot-wrap" aria-hidden="true">
+                <span className="live-event-inline__score-live-dot" />
+              </span>
+              <span>{getInlineMatchHeaderClockLabel(currentTime, !!situation)}</span>
+            </span>
+          </>
+        ) : (
+          <span className="live-event-inline__score-matchup">vs</span>
+        )}
+      </div>
+      <LiveEventInlineScoreTeam
+        team={match.awayTeam}
+        sport={contentSport}
+        side="away"
+        hasPossession={situation?.possession === 'away'}
+      />
+    </div>
+  )
 
   return (
     <section
@@ -3369,61 +3415,53 @@ function LiveEventInlineScoreHeader({
       ].filter(Boolean).join(' ')}
       aria-label={`${match.homeTeam.name} contra ${match.awayTeam.name}`}
     >
-      <div className="live-event-inline__score-main">
-        <LiveEventInlineScoreTeam
-          team={match.homeTeam}
-          sport={contentSport}
-          side="home"
-          hasPossession={situation?.possession === 'home'}
-        />
-        <div className="live-event-inline__score-center">
-          {isLiveMatch ? (
-            <>
-              <span className="live-event-inline__score-row">
-                <strong>{match.homeTeam.score}</strong>
-                <span>:</span>
-                <strong>{match.awayTeam.score}</strong>
-              </span>
-              <span className="live-event-inline__score-time">
-                <span className="live-event-inline__score-live-dot-wrap" aria-hidden="true">
-                  <span className="live-event-inline__score-live-dot" />
-                </span>
-                <span>{getInlineMatchHeaderClockLabel(currentTime, !!situation)}</span>
-              </span>
-            </>
-          ) : (
-            <span className="live-event-inline__score-matchup">vs</span>
-          )}
-        </div>
-        <LiveEventInlineScoreTeam
-          team={match.awayTeam}
-          sport={contentSport}
-          side="away"
-          hasPossession={situation?.possession === 'away'}
-        />
-      </div>
       {situation ? (
-        // A faixa inteira é o acesso às jogadas e estatísticas: o conteúdo dela já é o
-        // estado da jogada atual, então abrir o detalhe é a extensão natural do toque.
+        // O placar INTEIRO é o acesso às jogadas e estatísticas, e não só a faixa de
+        // situação: quem olha o placar de um jogo ao vivo está pedindo o lance, e o alvo
+        // de 26px da faixa era pequeno demais para o que a área toda já parecia oferecer.
+        // O gatilho é um `button` em volta das duas partes — envolver a `section` deixaria
+        // o bottom sheet dentro do próprio botão, e manter dois botões irmãos daria dois
+        // alvos anunciados para a mesma ação.
         <button
           type="button"
-          className="live-event-inline__summary-stats-row live-event-inline__situation-row"
+          className="live-event-inline__score-trigger"
           onClick={() => setIsStatsOpen(true)}
         >
-          <span className="live-event-inline__situation-item">
-            {getDownAndDistanceLabel(situation.down, situation.distance)}
-          </span>
-          <span className="live-event-inline__situation-item">{situation.ballOn}</span>
-          <span className="live-event-inline__situation-more">
-            Ver mais
-            <img
-              src={chevronRight}
-              alt=""
-              className="home-competition__chevron home-competition__chevron--secondary"
-            />
+          {scoreMain}
+          <span className="live-event-inline__summary-stats-row live-event-inline__situation-row">
+            {situation.scoringPlay ? (
+              // Uma frase só, com separador: dois itens soltos no gap de 12px liam como
+              // dois rótulos sem relação ("Touchdown" de um lado, "Hill" do outro), e não
+              // como o lance e quem o fez. O sobrenome sai do MESMO helper da lista de
+              // campanhas do sheet — a faixa anuncia justamente o lance em que o sheet
+              // abre, e dois nomes diferentes para ele seriam um defeito silencioso.
+              <span className="live-event-inline__situation-item">
+                {[
+                  situation.scoringPlay.result,
+                  getTeamAbbreviation(scoringTeamName),
+                  shortName(situation.scoringPlay.scorer),
+                ].filter(Boolean).join(' · ')}
+              </span>
+            ) : (
+              <>
+                <span className="live-event-inline__situation-item">
+                  {getDownAndDistanceLabel(situation.down, situation.distance)}
+                </span>
+                <span className="live-event-inline__situation-item">{situation.ballOn}</span>
+              </>
+            )}
+            <span className="live-event-inline__situation-more">
+              Ver mais
+              <img
+                src={chevronRight}
+                alt=""
+                className="home-competition__chevron home-competition__chevron--secondary"
+              />
+            </span>
           </span>
         </button>
-      ) : isLiveMatch && (
+      ) : scoreMain}
+      {!situation && isLiveMatch && (
         <div className="live-event-inline__summary-stats-row">
           <LiveEventInlineTeamStats
             team={match.homeTeam}

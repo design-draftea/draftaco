@@ -27,13 +27,15 @@
   },
   "live": {
     "quarter": 2,
-    "clock": "05:50",
+    "clock": "05:58",
     "homeScore": 13,
-    "awayScore": 14,
+    "awayScore": 13,
     "down": null,
     "distance": null,
-    "ballOn": "KC 25",
-    "possession": "home"
+    "result": "Touchdown",
+    "scorer": "T.Hill",
+    "ballOn": null,
+    "possession": "away"
   },
   "quarterScores": {
     "home": [
@@ -44,12 +46,12 @@
     ],
     "away": [
       0,
-      14,
+      13,
       0,
       0
     ],
     "homeTotal": 13,
-    "awayTotal": 14
+    "awayTotal": 13
   },
   "players": {
     "KC": {
@@ -310,8 +312,8 @@
           "name": "J.Sanders",
           "fgMade": 0,
           "fgAtt": 0,
-          "xpMade": 2,
-          "xpAtt": 2
+          "xpMade": 1,
+          "xpAtt": 1
         }
       ],
       "defense": [
@@ -2592,38 +2594,6 @@
       "returnYards": 0,
       "touchback": false,
       "kicker": null,
-      "returner": null,
-      "fieldGoalResult": null,
-      "kickOutcome": null
-    },
-    {
-      "id": "9007",
-      "driveId": "8",
-      "quarter": 2,
-      "clock": "05:50",
-      "side": "away",
-      "type": "extra_point",
-      "down": null,
-      "distance": null,
-      "startYard": 85,
-      "playSide": "middle",
-      "yards": 0,
-      "airYards": null,
-      "yardsAfterCatch": null,
-      "complete": false,
-      "touchdown": false,
-      "firstDown": false,
-      "noPlay": false,
-      "penalty": false,
-      "penaltyType": null,
-      "nullified": null,
-      "passer": null,
-      "receiver": null,
-      "rusher": null,
-      "kickDistance": 33,
-      "returnYards": 0,
-      "touchback": false,
-      "kicker": "J.Sanders",
       "returner": null,
       "fieldGoalResult": null,
       "kickOutcome": null

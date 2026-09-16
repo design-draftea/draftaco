@@ -6,5 +6,15 @@ export const pitaco: BrandConfig = {
   id: 'pitaco', name: 'Rei do Pitaco', locale: 'pt-BR',
   assets: { logo, logoLight },
   features: { casino: false, signup: true, freeBetsAvailable: false, unifiedSportsBottomSheetV2: true },
-  messages: { createAccount: 'Criar conta', login: 'Entrar' },
+  messages: {
+    createAccount: 'Criar conta',
+    login: 'Entrar',
+    navbarItems: {
+      home: 'Apostas',
+      entradas: 'Entradas',
+      'ao-vivo': 'Cassino',
+      promocoes: 'Pitaco Club',
+      buscar: 'Buscar',
+    },
+  },
 }
