@@ -3,10 +3,11 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-15.
-- Checkout: pasta principal `draftaco`, na branch `fix/campo-nfl-altura-safari`
-  (commits `b34f368`, `cf0c65e` e `20c5074`, a partir de `main`). **Tarefa em andamento**:
-  as duas mudanças estão implementadas e conferidas localmente, aguardando validação da
-  pessoa responsável pelo protótipo no iPhone. Sem Pull Request aberta.
+- Checkout: pasta principal `draftaco`, na branch `fix/campo-nfl-altura-safari`. O nome
+  ficou pequeno para o que a branch virou: começou na correção do campo no Safari e cresceu
+  para oito entregas no replay da NFL, todas pedidas na mesma sessão e listadas abaixo.
+  Implementadas, conferidas no WebKit e entregues numa Pull Request única, com autorização
+  explícita da pessoa responsável pelo protótipo para commit, PR e merge.
 - Objetivo 1: no Safari do iPhone, os elementos desenhados sobre o campo do replay da NFL
   (retrato, nome, rastro, bola e as linhas de scrimmage e de primeira descida) saíam de
   registro com a arte. Causa: `.nfl-plays__field` tirava a altura de `aspect-ratio` sem
@@ -68,8 +69,12 @@
   Três variantes (X por cima com contorno, por cima sem contorno, e no lugar da bola) foram
   implementadas e comparadas em tamanho real; venceu a do X no lugar da bola, porque num selo
   de 16px cabe a bola ou o X, não os dois.
-- Próximo passo: validar no iPhone e, com aprovação explícita, abrir a Pull Request para
-  `main`. O merge dispara a publicação pelo GitHub Actions e pede autorização à parte.
+- Objetivo 8 (pedido na mesma sessão): na lista de campanhas, a linha inteira virou o
+  gatilho, e não só o ícone de play — um alvo de 44px numa linha de 72, com o resto do card
+  parecendo tocável sem ser. É um `button` em volta do conteúdo, para o alvo ser focável e
+  anunciado como botão, e o ícone virou `span` decorativo.
+- Próximo passo: conferir a rota publicada depois do deploy do GitHub Actions e registrar a
+  entrega aqui. A raiz responder não prova que `/pitaco/apostas` carrega.
 - `main` está publicada e conferida: a revisão técnica do replay da NFL, com a bola indo
   para a mão do jogador, entrou pela Pull Request #2 (merge `496685f`) e o deploy do GitHub
   Actions concluiu. Os bundles em produção batem byte a byte com o build local, e
