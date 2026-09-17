@@ -5,7 +5,9 @@
 - Atualizado em: 2026-09-16.
 - Checkout: worktree `.worktrees/qa-copy-typesafe`, branch `chore/qa-copy-typesafe`, criada a
   partir de `origin/main` em `6200465`.
-- **Implementado e validado localmente. Não há Pull Request, merge nem deploy.**
+- **Entregue e publicado.** Pull Request
+  [#11](https://github.com/design-draftea/draftaco/pull/11), merge em `main` no commit `312aac0`
+  e deploy concluído pelo GitHub Actions.
 - Duas frentes: a página de handoff de produto saiu do app, e o catálogo de textos da Draftea
   ganhou conferência automática.
 
@@ -80,13 +82,22 @@ apontamento; `git diff --check`. No navegador, depois da remoção: `/pitaco/han
 `/draftea/handoff` normalizam para `/marca/apostas`, a Home renderiza e uma aba limpa não
 registra erro de console.
 
+### Verificação depois do deploy
+
+`index.html` de produção é byte a byte idêntico ao `dist/index.html` do build local. Em
+`https://design-draftea.github.io/draftaco/`, as rotas `pitaco/handoff` e `draftea/handoff`
+normalizam para `<marca>/apostas` e a Home renderiza nas duas marcas, igual ao local.
+
+Uma armadilha para a próxima consulta: a API do GitHub responde `build_type: legacy` e
+`source.branch: gh-pages` para este repositório, mas a branch `gh-pages` está parada desde
+2026-07-08. Quem serve é o artefato do Actions. Não confie nesse campo da API para julgar o
+que está no ar; compare o `index.html` publicado com o build local.
+
+Rotas profundas devolvem HTTP 404 com o conteúdo do `404.html`. É o fallback de SPA criado pelo
+próprio workflow de deploy, não uma falha: o app roteia no cliente.
+
 ### Pendências e próximo passo concreto
 
-- Aguardando aprovação da versão local em `http://localhost:5186/pitaco/apostas`. Sem ela, não
-  abrir Pull Request.
-- O servidor local usa uma configuração `draftaco-qa-copy` acrescentada a `.claude/launch.json`
-  do checkout principal, apontando para este worktree. O arquivo é ignorado pelo Git; remover a
-  entrada quando o worktree sair.
 - Os dois textos em inglês do catálogo pedem uma tarefa própria.
 - O auditor é ferramenta de revisão manual. Não transformar em bloqueio de CI antes de calibrar
   em mais rodadas, como já vale para `qa:nfl:typesafe`.
