@@ -1,9 +1,11 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-17.
-- Checkout: pasta principal `draftaco`, branch `chore/limpeza-imagens-nao-usadas`, criada a
-  partir de `main` em `8051b3b`.
-- **Implementado e validado localmente. Não há Pull Request, merge nem deploy.**
+- Checkout: pasta principal `draftaco`, branch `main` em `d46ad6a`.
+- **Entregue e publicado.** Pull Request
+  [#13](https://github.com/design-draftea/draftaco/pull/13), merge em `main` no commit `d46ad6a`
+  e deploy concluído pelo GitHub Actions
+  ([run](https://github.com/design-draftea/draftaco/actions/runs/35227035718)).
 - Objetivo: remover do repositório as imagens que nenhum código referencia.
 
 ### O que foi removido
@@ -35,18 +37,42 @@ arquivo não aparece no código:
 
 ### Validações executadas
 
-- `npm run build` (`tsc -b && vite build`) concluído. É a verificação mais forte aqui: o Vite
-  falha na compilação se um `import` de asset não resolver, e ele percorre todas as rotas.
+- `npm ci` e `npm run build` (`tsc -b && vite build`) concluídos. É a verificação mais forte
+  aqui: o Vite falha na compilação se um `import` de asset não resolver, e ele percorre todas as
+  rotas.
 - `npm run check:brands` — contratos OK em `/` e `/draftaco`.
-- Protótipo em execução no navegador, Home das duas marcas: nenhum 404 de asset entre as
-  requisições e nenhum erro de console.
+- CI da Pull Request (`Validate pull request`): Build aprovado em 34s.
+- Protótipo local no navegador: nenhum 404 de asset e nenhum erro de console.
+
+### Verificação depois do deploy
+
+Produção conferida contra o build local do mesmo commit, e são iguais:
+
+- `index.html` byte a byte idêntico ao `dist/index.html` local (sha256
+  `eebcd032…db1f7c`).
+- Os três bundles do `index.html` (`index-DqpkP4Gy.js`, `react-vendor-RG1Rg7KD.js`,
+  `index-DWTgFKxC.css`) e o `favicon-draftaco.png` também byte a byte idênticos.
+- `/vite.svg` e `/favicon.png` respondem 404, como esperado depois da remoção.
+- Home das duas marcas renderiza sem erro de console; 77 imagens em `pitaco/apostas` e 70 em
+  `draftea/apostas`, nenhuma quebrada.
+- Amostra dos assets de Crash (resolvidos por `import.meta.glob`) responde 200 em produção.
+
+Uma armadilha para a próxima conferência: um deep link como `/draftaco/draftea/apostas` responde
+**404 no status HTTP** e ainda assim renderiza. É o fallback de SPA do GitHub Pages — o workflow
+copia `dist/index.html` para `404.html`, e o app roteia no cliente. Comportamento preexistente,
+não é regressão.
 
 ### Pendências e próximo passo concreto
 
-- Aguardando validação da pessoa responsável pelo protótipo para abrir a Pull Request.
-- Sugestão fora do escopo desta tarefa: `src/assets/iconSports/` e `src/assets/iconPaises/`
-  ainda concentram ícones de esportes e bandeiras que só existem para o bottom sheet "Mais
-  esportes"; vale decidir em tarefa própria se esse catálogo continua inteiro.
+- Nenhuma pendência desta tarefa. Branch local e remota removidas depois do merge.
+- Sugestão fora do escopo: `src/assets/iconSports/` e `src/assets/iconPaises/` ainda concentram
+  ícones de esportes e bandeiras que só existem para o bottom sheet "Mais esportes"; vale decidir
+  em tarefa própria se esse catálogo continua inteiro.
+- Limpeza que não é desta tarefa e segue pendente, para quem tiver o contexto: branches locais
+  cujo remoto já sumiu (`docs/ai-context-handoff`, `fix/deposito-aprovacao-imediata`,
+  `fix/qr-gradient-border`, `docs/unifica-regras-agentes`); o worktree registrado em
+  `draftaco-v0/.worktrees/docs-unifica-agentes`, que está fora desta pasta; e a branch remota
+  `gh-pages`, que o `AGENTS.md` proíbe usar e que o deploy atual não usa.
 
 ## Histórico anterior — remoção da página de handoff e auditor de textos
 
