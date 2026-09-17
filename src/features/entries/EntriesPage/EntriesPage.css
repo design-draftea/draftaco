@@ -39,14 +39,21 @@
   background: var(--color-background-app);
 }
 
-/* O brilho do topo não pode terminar na barra do header: no desenho ele
-   atravessa os chips e entra no primeiro card antes de sumir. Então a mesma
-   imagem é pintada duas vezes, com escala e origem idênticas — o header mostra
-   os primeiros 104px dela e a camada da página continua o resto. Como as duas
-   usam `center top` e a mesma altura, elas se encontram sem emenda, e não
-   existe corte para mascarar. */
+/* O brilho do topo é UMA imagem só, no modelo do Pulse (.pulse-app__background):
+   uma camada fixa colada no topo da viewport, que atravessa os chips e entra no
+   primeiro card antes de sumir. Como aqui o header é `position: fixed`, ele
+   precisa de fundo opaco próprio — senão o conteúdo aparece por baixo ao rolar —
+   então a mesma imagem é repintada nele com A MESMA escala e A MESMA origem.
+   `lightHeader.png` é 100% opaca (alpha 255 em todos os pixels), então repintar o
+   mesmo recorte não soma intensidade: as duas camadas coincidem pixel a pixel e
+   não existe emenda, qualquer que seja a altura real do header. É o mesmo registro
+   exato que o Pulse usa em `.open-entries__tabs--pinned`.
+
+   220px é a escala do brilho em todo o app — HeaderV2.css, Home.css, LoginPage.css
+   e ContentFilterChips.css usam esse valor. Esticar a imagem engorda o núcleo claro
+   e arrasta o pico de luminosidade para baixo. */
 .entries-page {
-  --entries-glow-height: 320px;
+  --entries-glow-height: 220px;
 }
 
 .entries-page::before {
@@ -102,6 +109,24 @@
    então não precisa da rolagem horizontal. */
 .entries-page__chips .content-filter-chips__list {
   overflow-x: visible;
+}
+
+/* Os chips vivem dentro do header, e o ::before do header já pinta o brilho atrás
+   deles. O fundo padrão de `.content-filter-chips` é opaco (preto chapado até
+   `100% - 16px`) e existe para esconder conteúdo rolando sob a faixa sticky da
+   home. Aqui ele não tem o que esconder — o header já é opaco — e só abre um
+   buraco preto no meio do degradê, criando o degrau na borda inferior dos chips.
+   O seletor é composto de propósito: `.entries-page__chips` sozinho empataria em
+   especificidade com `.content-filter-chips` e dependeria da ordem de injeção do
+   CSS pelo Vite. */
+.entries-page__chips.content-filter-chips {
+  background: transparent;
+}
+
+/* Paridade com a home, que usa `content-filter-chips--sport-markets`, cuja única
+   contribuição visual é esta. */
+.entries-page__chips .content-filter-chips__item {
+  text-transform: uppercase;
 }
 
 .open-entries__list--transition-out {

@@ -116,6 +116,36 @@ Feito, porque não depende do Figma:
   `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
   320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
   os chips e entra no primeiro card, como no desenho.
+### Correção do efeito do chip e do degradê
+
+Duas coisas estavam erradas, e o diagnóstico inicial de uma delas foi **falso** — fica registrado
+para não se repetir.
+
+- **Chip — a animação de troca.** Medir o chip em repouso não bastava: ele era idêntico ao da home
+  parado, e errado em movimento. `index.css` liga `sliding-chip-liquid-toggle-squish` e
+  `sliding-chip-liquid-toggle-bubble` no `::before` do indicador durante os 520ms da troca, para
+  qualquer grade de chips. A home desliga as duas (`animation: none`), a `.entries-page` não estava
+  nesses grupos. Como os keyframes do `bubble` declaram `box-shadow` em todos os estágios, e animação
+  vence declaração normal na cascata, o `box-shadow: none` do chip era anulado durante a troca.
+  Medido ao vivo antes da correção: a partir de ~140ms entravam as duas animações, com sombras
+  injetadas e escala oscilando entre `1.1/0.94` e `0.965/1.045`. `.entries-page` entrou nos dois
+  grupos de `animation: none` e no grupo que dá `translateZ(0)` ao rótulo.
+- **Degradê — a ilha preta dos chips.** A hipótese de "pintura dupla" que eu havia levantado é
+  **falsa**: decodifiquei o `lightHeader.png` e o canal alpha tem um único valor, `255` — a imagem é
+  totalmente opaca, e repintar o mesmo recorte no mesmo registro é neutro em pixel. A causa real é
+  que `.content-filter-chips` pinta um fundo próprio **opaco**
+  (`linear-gradient(#000 0%, #000 calc(100% - 16px), transparent 100%)`), feito para esconder
+  conteúdo rolando sob a faixa sticky da home. Dentro deste header, que já é opaco, ele não tem o que
+  esconder e só abre um buraco preto de y=56 a y=88 no meio do degradê, devolvendo o brilho de golpe
+  numa rampa de 16px — o degrau na borda inferior dos chips. Resolvido com
+  `.entries-page__chips.content-filter-chips { background: transparent }`.
+- **Escala do brilho.** Estava em `100% 320px`, 1,45× a constante do app. `100% 220px` é o valor em
+  todas as outras ocorrências de `lightHeader.png` no repositório. Esticar engorda o núcleo claro e
+  arrasta o pico para baixo — era o "forte demais". Voltou para `220px`.
+- A arquitetura de duas camadas em registro exato foi **mantida**, porque é o que o Pulse faz em
+  `.open-entries__tabs--pinned` e, com asset opaco, é autocorretiva: as camadas coincidem qualquer
+  que seja a altura real do header, sem emenda possível.
+
 - Os chips receberam o tratamento `--v2` do design system, que é o da home: `.entries-page` foi
   incluída nos três grupos de `src/styles/index.css` que definem o indicador (`.home--v2`,
   `.promotions-page--v2`, e a variante de tema claro). O visual resultante foi conferido por

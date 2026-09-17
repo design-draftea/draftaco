@@ -723,7 +723,8 @@ img {
 }
 
 .home--v2 .sliding-chip > *,
-.promotions-page--v2 .sliding-chip > * {
+.promotions-page--v2 .sliding-chip > *,
+.entries-page .sliding-chip > * {
   z-index: 2;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -806,12 +807,14 @@ img {
 }
 
 .home--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before,
-.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before {
+.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before,
+.entries-page .sliding-chip-group--indicator-switching .sliding-chip-indicator::before {
   animation: none;
 }
 
 .home--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after,
-.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after {
+.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after,
+.entries-page .sliding-chip-group--indicator-switching .sliding-chip-indicator::after {
   animation: none;
 }
 
