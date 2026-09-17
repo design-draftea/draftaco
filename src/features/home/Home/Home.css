@@ -269,6 +269,40 @@
   pointer-events: none;
 }
 
+/* Destaques: aqui o brilho continua ABAIXO do header, em vez de dissolver nele.
+   A camada da página usa a mesma imagem, a mesma escala e a mesma origem do
+   ::before do header, então as duas se encontram sem emenda — o header é opaco e
+   cobre a faixa de cima, e o que aparece é só a continuação. Por isso a máscara
+   sai neste estado: não há mais corte para esconder. */
+.home--novo-trilho:not(.home--sport-active):not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)
+  .header--v2::before {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.home--novo-trilho:not(.home--sport-active):not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 220px;
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: var(--header-v2-background-size, 100% 220px);
+  pointer-events: none;
+}
+
+/* A faixa de promo encosta no header e é preta opaca, o que decepava o brilho
+   logo abaixo dele. A cor dela é a mesma do fundo do app, então deixá-la
+   transparente não muda nada além de liberar o degradê por trás. */
+.home--novo-trilho:not(.home--sport-active):not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)
+  > .promo-draftaco {
+  background: transparent;
+}
+
 .home--event-inline-active .header .sport-rail-shell {
   max-height: 112px;
   overflow: hidden;
