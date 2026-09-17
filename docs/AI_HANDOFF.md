@@ -116,7 +116,7 @@ Feito, porque não depende do Figma:
   `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
   320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
   os chips e entra no primeiro card, como no desenho.
-### Degradê descendo no Destaques
+### Degradê descendo no Destaques e nas telas de esporte
 
 Depois da máscara, Destaques e futebol ficaram com CSS de header idêntica — medido: 134px de pilha,
 mesmo `::before`, mesma escala `100% 220px`, nenhuma camada extra e nenhum overlay dentro do header.
@@ -125,7 +125,10 @@ A diferença que se via era do **conteúdo logo abaixo**: no Destaques o primeir
 futebol vem um carrossel transparente cujo card usa `bgSuperCombinada.png`, azul escuro, o que faz o
 brilho parecer continuar.
 
-Correção no estado Destaques: o brilho passa a continuar abaixo do header, numa camada de página
+A correção vale para o Destaques e para as telas de esporte (futebol, basquete, etc.): o seletor é
+`.home--novo-trilho` excluindo `casino-active`, `competition-active` e `event-inline-active`, que
+têm tratamento próprio — conferido que competição segue com a máscara pré-existente e sem a camada
+nova. O brilho passa a continuar abaixo do header, numa camada de página
 fixa de 220px com a mesma imagem, escala e origem do `::before` do header — as duas se encontram sem
 emenda, e a máscara sai porque não há mais corte para esconder. A faixa `.promo-draftaco` ficou
 transparente; a cor dela era a mesma do fundo do app, então isso não muda nada além de liberar o
