@@ -12,6 +12,7 @@ import {
   type DepositAccountId,
 } from './components/DepositPanel'
 import { FeatureFlagsPanel } from './components/FeatureFlagsPanel'
+import { NflPlaysStatsBottomSheet } from './components/BottomSheet'
 import { ProfileBottomSheet } from './components/ProfileBottomSheet'
 import { LocationPermissionGate } from './components/LocationPermissionGate'
 import { BetslipProvider } from './shared/hooks/BetslipProvider'
@@ -38,7 +39,6 @@ const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').
 const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
 const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
 const EntriesPage = lazy(() => import('./features/entries/EntriesPage').then((m) => ({ default: m.EntriesPage })))
-const NflPlaysStatsPage = lazy(() => import('./features/sports/NflPlaysStatsPage').then((m) => ({ default: m.NflPlaysStatsPage })))
 
 const RouteFallback = () => (
   <div
@@ -306,14 +306,13 @@ function AppContent() {
   const isEmbaixadinhaPage = useMemo(() => isEmbaixadinhaPath(pathname), [pathname])
   const isMemoriaPage = useMemo(() => isMemoriaPath(pathname), [pathname])
   const isPongPage = useMemo(() => isPongPath(pathname), [pathname])
-  const isNflPlaysPage = useMemo(() => isNflPlaysPath(pathname), [pathname])
+  const isCurrentNflPlaysPage = useMemo(() => isNflPlaysPath(pathname), [pathname])
   const isCurrentCamisaPremiadaPage = useMemo(() => isCamisaPremiadaPath(pathname), [pathname])
   const isCurrentPenaltiPremiadoPage = useMemo(() => isPenaltiPremiadoPath(pathname), [pathname])
   const isCamisaPremiadaStaticPreview = isCurrentCamisaPremiadaPage && hasCamisaPremiadaStaticParam(search)
   const isStandalonePage = isEmbaixadinhaPage
     || isMemoriaPage
     || isPongPage
-    || isNflPlaysPage
     || isCamisaPremiadaStaticPreview
   const isLoginPage = useMemo(() => isLoginPath(pathname), [pathname])
   const isSignupPage = useMemo(() => isSignupPath(pathname), [pathname])
@@ -325,6 +324,7 @@ function AppContent() {
   const isSportsV2Page = useMemo(() => isSportsV2Path(renderedPathname), [renderedPathname])
   const isPromotionsPage = useMemo(() => isPromotionsPath(renderedPathname), [renderedPathname])
   const isEntriesPage = useMemo(() => isEntriesPath(renderedPathname), [renderedPathname])
+  const isNflPlaysPage = useMemo(() => isNflPlaysPath(renderedPathname), [renderedPathname])
   const isCamisaPremiadaMode = useMemo(() => isCamisaPremiadaPath(renderedPathname), [renderedPathname])
   const isPenaltiPremiadoMode = useMemo(() => isPenaltiPremiadoPath(renderedPathname), [renderedPathname])
   const isPremiadaMode = isCamisaPremiadaMode || isPenaltiPremiadoMode
@@ -387,6 +387,7 @@ function AppContent() {
     if (isCurrentSportsV2Page) return
     if (isCurrentPromotionsPage) return
     if (isCurrentEntriesPage) return
+    if (isCurrentNflPlaysPage) return
     if (isStandalonePage) return
     if (isAuthPage) return
     if (isCurrentCamisaPremiadaPage) return
@@ -400,7 +401,7 @@ function AppContent() {
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentEntriesPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
+  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentEntriesPage, isCurrentNflPlaysPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
 
   useEffect(() => {
     if (!isCurrentPromotionsPage) return
@@ -1048,8 +1049,7 @@ function AppContent() {
           <MemoriaPage />
         ) : isPongPage ? (
           <PongPage />
-        ) : isNflPlaysPage ? (
-          <NflPlaysStatsPage onClose={handleNflPlaysClose} />
+
         ) : isEntriesPage ? (
           <EntriesPage
             activeProduct={activeProduct}
@@ -1230,6 +1230,11 @@ function AppContent() {
             onAddAccount: handleWithdrawalAccountAdd,
           }}
         />
+      ) : null}
+      {!isStandalonePage && isNflPlaysPage ? (
+        <Suspense fallback={null}>
+          <NflPlaysStatsBottomSheet isOpen={true} onClose={handleNflPlaysClose} />
+        </Suspense>
       ) : null}
       {!isStandalonePage && !isAuthPage ? (
         <FeatureFlagsPanel isOpen={isFeatureFlagsPanelOpen} onClose={handleFeatureFlagsPanelClose} />

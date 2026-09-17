@@ -5,10 +5,15 @@
 - O item **Entradas** da navbar continua visível e não faz mais nada ao ser clicado, como já
   acontece com o de cassino. A rota `/<marca>/entradas` **continua valendo por URL direta** —
   conferido que a tela monta. O `buildEntriesPath` saiu, porque só existia para o clique.
-- Nova rota **`/<marca>/nfl`**: abre direto o bottom sheet de Jogadas e Estatísticas, com o campo
-  3D e o feed. No app ele só existe dentro do evento ao vivo, atrás de vários cliques. A página é
-  standalone (`src/features/sports/NflPlaysStatsPage/`), entra em `isStandalonePage` e por isso não
-  traz navbar nem as demais camadas; fechar o sheet volta para apostas.
+- Nova rota **`/<marca>/nfl`**: abre o bottom sheet de Jogadas e Estatísticas, com o campo e o
+  feed, **por cima do app** — home, header e navbar ficam atrás, como quando ele é aberto pelo
+  placar dentro do evento ao vivo. Não é uma página standalone: o sheet entra como mais uma camada
+  no `App.tsx`, junto do painel de depósito e do perfil, e a rota ganhou uma guarda na normalização
+  para não ser reescrita para `/apostas`. Fechar volta para apostas.
+- Montar a tela do evento ao vivo na rota foi descartado: o sheet depende de `footballSituation`,
+  que só existe depois de `withNflLiveMatches` casar o id do jogo pelo `hasNflLiveClock` dentro do
+  `LiveEventPage`, e o estado `isStatsOpen` vive em `LiveEventInlineScoreHeader`. Reproduzir isso
+  exigiria enfiar dados e uma prop por toda essa cadeia.
 
 
 ### Card de Entradas com o conteúdo da aposta (nó Figma 1993:6822)

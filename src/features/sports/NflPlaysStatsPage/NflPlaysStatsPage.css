@@ -1,7 +1,0 @@
-/* O sheet traz o próprio fundo e a própria altura; a página só garante a tela
-   cheia e a cor do app por trás dele. */
-.nfl-plays-stats-page {
-  position: fixed;
-  inset: 0;
-  background: var(--ds-background-app, var(--tokens-background-background, #000));
-}
