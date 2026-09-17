@@ -5,8 +5,17 @@
 - O item **Entradas** da navbar continua visível e não faz mais nada ao ser clicado, como já
   acontece com o de cassino. A rota `/<marca>/entradas` **continua valendo por URL direta** —
   conferido que a tela monta. O `buildEntriesPath` saiu, porque só existia para o clique.
-- Nova rota **`/<marca>/nfl`**: abre o bottom sheet de Jogadas e Estatísticas, com o campo e o
-  feed, **por cima do app** — home, header e navbar ficam atrás, como quando ele é aberto pelo
+- Nova rota **`/<marca>/nfl`**: abre a **tela do jogo** da NFL (Chiefs x Dolphins) com a pessoa
+  **logada**, e o bottom sheet de Jogadas e Estatísticas por cima. Fechar o sheet deixa na tela do
+  jogo, não na home. A rota monta o evento pelo mesmo caminho de um clique real: acha a liga `nfl`
+  em `championships`, pede o payload a `getCompetitionLiveEventOpenPayload` com
+  `NFL_LIVE_EVENT_ID` e alimenta o estado de evento ao vivo do `App.tsx`.
+- Dois detalhes de empilhamento que custaram a aparecer: a tela do evento é `z-index: 3000` e o
+  container do bottom sheet é 2000, então o sheet nascia atrás. E o `BottomSheet` vai por **portal**
+  para o `body`, então nenhum wrapper no React o alcança — a elevação é uma classe no `body`
+  (`nfl-route-sheet-open`), aplicada só enquanto a rota está aberta, para não mexer no empilhamento
+  de onde o sheet é aberto de dentro do jogo.
+- ~~abre o bottom sheet por cima do app~~ — home, header e navbar ficam atrás, como quando ele é aberto pelo
   placar dentro do evento ao vivo. Não é uma página standalone: o sheet entra como mais uma camada
   no `App.tsx`, junto do painel de depósito e do perfil, e a rota ganhou uma guarda na normalização
   para não ser reescrita para `/apostas`. Fechar volta para apostas.

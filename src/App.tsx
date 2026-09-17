@@ -13,6 +13,8 @@ import {
 } from './components/DepositPanel'
 import { FeatureFlagsPanel } from './components/FeatureFlagsPanel'
 import { NflPlaysStatsBottomSheet } from './components/BottomSheet'
+import { championships, getCompetitionLiveEventOpenPayload } from './components/CalendarSection'
+import { NFL_LIVE_EVENT_ID } from './features/sports/NflLiveFeed'
 import { ProfileBottomSheet } from './components/ProfileBottomSheet'
 import { LocationPermissionGate } from './components/LocationPermissionGate'
 import { BetslipProvider } from './shared/hooks/BetslipProvider'
@@ -343,6 +345,7 @@ function AppContent() {
   const [signupPendingDepositAmountCents, setSignupPendingDepositAmountCents] = useState<number | null>(null)
   const [signupPendingRequirement, setSignupPendingRequirement] = useState<SignupPendingRequirement | null>(null)
   const [isFeatureFlagsPanelOpen, setIsFeatureFlagsPanelOpen] = useState(false)
+  const [isNflSheetOpen, setIsNflSheetOpen] = useState(false)
   const [liveEventUi, setLiveEventUi] = useState({
     isOpen: false,
     isEventBetslipVisible: false,
@@ -701,10 +704,44 @@ function AppContent() {
   }, [activeProduct, handleProductChange, search, syncBrowserLocation])
 
   const handleNflPlaysClose = useCallback(() => {
+    // Só o sheet fecha: o evento ao vivo continua montado atrás. A URL volta para
+    // a rota do produto para um recarregamento não reabrir o sheet.
+    setIsNflSheetOpen(false)
     const nextPath = withSearch(buildProductPath(defaultProduct), getGarantidaBannerSearch(search))
-    window.history.pushState({}, '', nextPath)
-    syncBrowserLocation()
-  }, [search, syncBrowserLocation])
+    window.history.replaceState({}, '', nextPath)
+  }, [search])
+
+  // A rota /nfl entra pelo mesmo caminho de um clique de verdade: abre o evento
+  // ao vivo da NFL e mostra o sheet de jogadas por cima. Fechar o sheet deixa a
+  // pessoa na tela do jogo, e não na home.
+  useEffect(() => {
+    if (!isNflPlaysPage) return
+
+    const nflLeague = championships.find((league) => (
+      league.events.some((event) => event.id === NFL_LIVE_EVENT_ID)
+    ))
+    if (!nflLeague) return
+
+    const payload = getCompetitionLiveEventOpenPayload({
+      league: nflLeague,
+      selectedEventId: NFL_LIVE_EVENT_ID,
+    })
+    if (!payload) return
+
+    setAuthVariant('logged-in')
+    setBetslipOriginLiveEvent({ isOpen: true, payload })
+    setIsNflSheetOpen(true)
+  }, [isNflPlaysPage])
+
+  // O bottom sheet é renderizado por portal no `body`, então nenhum wrapper no
+  // React consegue empilhá-lo acima da tela do jogo (`z-index: 3000`). A marca
+  // vai no próprio `body`, e o CSS eleva só enquanto esta rota está aberta.
+  useEffect(() => {
+    const { body } = document
+    body.classList.toggle('nfl-route-sheet-open', isNflSheetOpen)
+
+    return () => body.classList.remove('nfl-route-sheet-open')
+  }, [isNflSheetOpen])
 
   const handleBetslipClose = useCallback(() => {
     setIsFullBetslipOpen(false)
@@ -1231,7 +1268,7 @@ function AppContent() {
           }}
         />
       ) : null}
-      {!isStandalonePage && isNflPlaysPage ? (
+      {!isStandalonePage && isNflSheetOpen ? (
         <Suspense fallback={null}>
           <NflPlaysStatsBottomSheet isOpen={true} onClose={handleNflPlaysClose} />
         </Suspense>

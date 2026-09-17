@@ -1,5 +1,6 @@
 export {
   CalendarSection,
+  championships,
   getCalendarMarketChipsForSport,
   getCalendarDisplayedEvents,
   getCalendarDisplayedEventGroups,
