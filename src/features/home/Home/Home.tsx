@@ -723,6 +723,8 @@ interface HomeProps {
   initialActiveSport?: string | null
   initialCompetition?: { id: string; name: string } | null
   initialEventId?: string
+  /** Abre o sheet de jogadas junto do evento inline, para a rota `/<marca>/nfl`. */
+  initialStatsOpen?: boolean
   isLiveEventSuppressed?: boolean
   onProductChange?: (product: ProductMode) => void
   onLogoDoubleClick?: () => void
@@ -805,6 +807,7 @@ export function Home({
   initialActiveSport = null,
   initialCompetition = null,
   initialEventId,
+  initialStatsOpen = false,
   onProductChange,
   onLogoDoubleClick,
   onLoginClick,
@@ -1855,6 +1858,7 @@ export function Home({
               leagueFlag={loadedEventContext.payload.leagueFlag}
               sport={loadedEventContext.payload.sport}
               isCompact={isInlineEventCompact}
+              initialStatsOpen={initialStatsOpen}
               onSelectedIndexChange={handleInlineMatchSelect}
               onLayoutReady={syncCurrentHeaderContentPaddingTop}
               onClose={handleCloseInlineEvent}

@@ -985,12 +985,3 @@ svg.offer-card__viewall-icon {
   width: 12px;
   height: 12px;
 }
-
-/* A tela do evento ao vivo é `z-index: 3000` e o container do bottom sheet é
-   2000, então o sheet de jogadas nasceria atrás dela quando aberto pela rota
-   `/<marca>/nfl`. O sheet vai por portal para o `body`, então nenhum wrapper no
-   React o alcança — a elevação é feita aqui, e só enquanto a rota está aberta,
-   para não mudar o empilhamento de onde ele é aberto de dentro do jogo. */
-body.nfl-route-sheet-open .bottom-sheet__container {
-  z-index: 3100;
-}

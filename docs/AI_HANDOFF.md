@@ -5,24 +5,19 @@
 - O item **Entradas** da navbar continua visível e não faz mais nada ao ser clicado, como já
   acontece com o de cassino. A rota `/<marca>/entradas` **continua valendo por URL direta** —
   conferido que a tela monta. O `buildEntriesPath` saiu, porque só existia para o clique.
-- Nova rota **`/<marca>/nfl`**: abre a **tela do jogo** da NFL (Chiefs x Dolphins) com a pessoa
-  **logada**, e o bottom sheet de Jogadas e Estatísticas por cima. Fechar o sheet deixa na tela do
-  jogo, não na home. A rota monta o evento pelo mesmo caminho de um clique real: acha a liga `nfl`
-  em `championships`, pede o payload a `getCompetitionLiveEventOpenPayload` com
-  `NFL_LIVE_EVENT_ID` e alimenta o estado de evento ao vivo do `App.tsx`.
-- Dois detalhes de empilhamento que custaram a aparecer: a tela do evento é `z-index: 3000` e o
-  container do bottom sheet é 2000, então o sheet nascia atrás. E o `BottomSheet` vai por **portal**
-  para o `body`, então nenhum wrapper no React o alcança — a elevação é uma classe no `body`
-  (`nfl-route-sheet-open`), aplicada só enquanto a rota está aberta, para não mexer no empilhamento
-  de onde o sheet é aberto de dentro do jogo.
-- ~~abre o bottom sheet por cima do app~~ — home, header e navbar ficam atrás, como quando ele é aberto pelo
-  placar dentro do evento ao vivo. Não é uma página standalone: o sheet entra como mais uma camada
-  no `App.tsx`, junto do painel de depósito e do perfil, e a rota ganhou uma guarda na normalização
-  para não ser reescrita para `/apostas`. Fechar volta para apostas.
-- Montar a tela do evento ao vivo na rota foi descartado: o sheet depende de `footballSituation`,
-  que só existe depois de `withNflLiveMatches` casar o id do jogo pelo `hasNflLiveClock` dentro do
-  `LiveEventPage`, e o estado `isStatsOpen` vive em `LiveEventInlineScoreHeader`. Reproduzir isso
-  exigiria enfiar dados e uma prop por toda essa cadeia.
+- Nova rota **`/<marca>/nfl`**: cai na **tela do jogo da NFL dentro da home** (modo evento inline,
+  que é de onde o sheet é aberto de verdade), com a pessoa **logada** e o bottom sheet de Jogadas e
+  Estatísticas já aberto por cima. Fechar o sheet deixa exatamente na tela do jogo.
+- O caminho é o do próprio app: a `Home` já aceitava `initialActiveSport`, `initialCompetition` e
+  `initialEventId`, e monta o evento inline por `getInitialLoadedEventContext`. O `App` passa
+  `'nfl'`, `{ id: 'nfl', name: 'NFL' }` e `NFL_LIVE_EVENT_ID`, mais `authVariant: 'logged-in'`.
+- Para o sheet nascer aberto, uma prop `initialStatsOpen` foi encadeada por
+  `Home` → `LiveEventInlineHeader` → `LiveEventInlineScoreHeader`, que é quem tem o `isStatsOpen`.
+  Nada mais mudou de comportamento: a prop é opcional e vale `false` em todos os usos existentes.
+- **Duas tentativas anteriores foram descartadas** e ficam registradas para não se repetirem: uma
+  página standalone só com o sheet (não tinha o app atrás), e montar o `LiveEventPage` cheio pelo
+  estado de evento ao vivo do `App` (é outra variante — a página cheia não tem o sheet de jogadas, e
+  fechar caía na home). O sheet de jogadas só existe na variante **inline**.
 
 
 ### Card de Entradas com o conteúdo da aposta (nó Figma 1993:6822)
