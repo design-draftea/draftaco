@@ -116,6 +116,26 @@ Feito, porque não depende do Figma:
   `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
   320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
   os chips e entra no primeiro card, como no desenho.
+### Degradê cortado no header da home (Destaques e esporte)
+
+Comportamento **pré-existente** do app, não introduzido nesta branch. `.header--v2` tem
+`overflow: hidden` e renderiza `lightHeader.png` a `100% 220px`; nos estados Destaques e esporte a
+pilha do header mede 134px, então a imagem é cortada numa linha onde ela ainda vale
+`rgb(10, 4, 22)` — visível contra o preto. Ela só chega ao preto por volta de 180px (valores
+amostrados decodificando o PNG).
+
+O `Home.css` já trazia o remédio para isso — o bloco cujo comentário chama de "barra seca" — mas
+aplicado só a `home--event-inline-active` e ao stack de competição. A correção estende o mesmo
+tratamento aos estados que faltavam, com uma diferença importante: nos blocos existentes o fundo
+opaco vai junto para o `::before`, que é mascarado, o que deixa os últimos 16px da barra
+translúcidos. Aqui o fundo opaco **fica no próprio header** e só a imagem vai para o `::before`
+mascarado. Assim o degradê dissolve, mas a barra continua opaca e nada de conteúdo passa por baixo
+ao rolar. O `z-index: -1` põe o brilho acima do fundo do header e abaixo do logo, do rail e dos
+chips, que não são afetados pela máscara.
+
+Conferido nos três estados: Destaques (134px, regra nova), esporte simples (134px, regra nova) e
+competição (222px, regra pré-existente).
+
 ### Respiro entre a faixa de chips e o primeiro mercado
 
 Duas telas, medidas separadamente:

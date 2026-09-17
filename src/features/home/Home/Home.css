@@ -221,6 +221,54 @@
   pointer-events: none;
 }
 
+/* Mesma "barra seca" do bloco acima, mas nos estados que não tinham remédio:
+   Destaques e esporte selecionado. A pilha do header mede 134px e a imagem é
+   renderizada a 220px, então o `overflow: hidden` a corta numa linha onde ela
+   ainda vale rgb(10, 4, 22) — visível contra o preto. Ela só chega ao preto por
+   volta de 180px.
+
+   Aqui a imagem sai da pilha de backgrounds do header e vai para um ::before
+   mascarado, que dissolve os últimos 16px acompanhando a altura real da pilha. O
+   fundo opaco continua no próprio header, e não no ::before, então a barra não
+   fica translúcida e nada de conteúdo passa por baixo ao rolar. O `z-index: -1`
+   deixa o brilho acima do fundo do header e abaixo do logo, do rail e dos chips,
+   que não são afetados pela máscara. */
+.home--novo-trilho:not(.home--event-inline-active):not(.home--competition-header-active)
+  .header--v2 {
+  background-image: linear-gradient(
+    180deg,
+    rgb(var(--header-v2-background-rgb) / 1) 0%,
+    rgb(var(--header-v2-background-rgb) / 1) calc(100% - var(--header-v2-background-fade-height)),
+    rgb(var(--header-v2-background-rgb) / 0) 100%
+  );
+  background-size: 100% 100%;
+}
+
+.home--novo-trilho:not(.home--event-inline-active):not(.home--competition-header-active)
+  .header--v2::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: var(--header-v2-background-size, 100% 220px);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
 .home--event-inline-active .header .sport-rail-shell {
   max-height: 112px;
   overflow: hidden;
