@@ -3259,7 +3259,11 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 12px var(--live-event-inline-markets-bottom-padding);
+
+  /* O respiro abaixo dos chips é daqui, como diz a regra da faixa. Eram 6px até o
+     título do primeiro mercado, apertado demais; 16px levam a folga para 22px, a
+     mesma da faixa de mercados da home. */
+  padding: 16px 12px var(--live-event-inline-markets-bottom-padding);
   scroll-padding-bottom: var(--live-event-inline-markets-bottom-padding);
 }
 

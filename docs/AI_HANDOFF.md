@@ -118,6 +118,14 @@ Feito, porque não depende do Figma:
   os chips e entra no primeiro card, como no desenho.
 ### Respiro entre a faixa de chips e o primeiro mercado
 
+Duas telas, medidas separadamente:
+
+- **Evento ao vivo** (`LiveEventPage`): a folga entre a base do chip e o título do primeiro mercado
+  era de **6px**. `.live-event-inline__market-chips` tem `padding: 0` por decisão registrada no
+  próprio CSS — "o respiro abaixo dos chips é de quem vem depois" —, então o ajuste foi no
+  `padding-top` de `.live-event-inline__markets`, de `0` para `16px`, levando a folga a 22px.
+- **Home com esporte selecionado**: era de 14px, detalhado abaixo.
+
 Na home com esporte selecionado, o conteúdo começava exatamente onde a faixa de chips terminava
 (folga de 0px entre os dois elementos; 14px entre a base do chip e o texto do primeiro mercado).
 O `padding-bottom` da faixa nesse estado passou de `8px` para `16px`, levando a folga até o texto
