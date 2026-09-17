@@ -38,6 +38,7 @@ const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').
 const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
 const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
 const EntriesPage = lazy(() => import('./features/entries/EntriesPage').then((m) => ({ default: m.EntriesPage })))
+const NflPlaysStatsPage = lazy(() => import('./features/sports/NflPlaysStatsPage').then((m) => ({ default: m.NflPlaysStatsPage })))
 
 const RouteFallback = () => (
   <div
@@ -51,6 +52,7 @@ const productRoutes: ProductMode[] = ['apostas', 'cassino']
 const sportsV2RouteSegment = 'apostas2'
 const promotionsRouteSegment = 'promocoes'
 const entriesRouteSegment = 'entradas'
+const nflPlaysRouteSegment = 'nfl'
 const embaixadinhaRouteSegment = 'embaixadinha'
 const memoriaRouteSegment = 'memoria'
 const pongRouteSegment = 'pong'
@@ -76,6 +78,12 @@ const isPromotionsPath = (pathname: string) => {
     routeSegments[0] === promotionsRouteSegment &&
     routeSegments.length <= 2
   )
+}
+
+const isNflPlaysPath = (pathname: string) => {
+  const routeSegments = getRouteSegments(pathname)
+
+  return routeSegments.length === 1 && routeSegments[0] === nflPlaysRouteSegment
 }
 
 const isEntriesPath = (pathname: string) => {
@@ -165,11 +173,6 @@ const buildSportsV2Path = () => {
 const buildPromotionsPath = () => {
   const basePath = getBasePath()
   return `${basePath}/${promotionsRouteSegment}`
-}
-
-const buildEntriesPath = () => {
-  const basePath = getBasePath()
-  return `${basePath}/${entriesRouteSegment}`
 }
 
 const buildLoginPath = () => {
@@ -303,12 +306,14 @@ function AppContent() {
   const isEmbaixadinhaPage = useMemo(() => isEmbaixadinhaPath(pathname), [pathname])
   const isMemoriaPage = useMemo(() => isMemoriaPath(pathname), [pathname])
   const isPongPage = useMemo(() => isPongPath(pathname), [pathname])
+  const isNflPlaysPage = useMemo(() => isNflPlaysPath(pathname), [pathname])
   const isCurrentCamisaPremiadaPage = useMemo(() => isCamisaPremiadaPath(pathname), [pathname])
   const isCurrentPenaltiPremiadoPage = useMemo(() => isPenaltiPremiadoPath(pathname), [pathname])
   const isCamisaPremiadaStaticPreview = isCurrentCamisaPremiadaPage && hasCamisaPremiadaStaticParam(search)
   const isStandalonePage = isEmbaixadinhaPage
     || isMemoriaPage
     || isPongPage
+    || isNflPlaysPage
     || isCamisaPremiadaStaticPreview
   const isLoginPage = useMemo(() => isLoginPath(pathname), [pathname])
   const isSignupPage = useMemo(() => isSignupPath(pathname), [pathname])
@@ -676,16 +681,9 @@ function AppContent() {
       handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
       return
     }
-    if (itemId === entriesRouteSegment) {
-      const nextPath = withSearch(buildEntriesPath(), getGarantidaBannerSearch(search))
-
-      if (getCurrentPathWithSearch() !== nextPath) {
-        window.history.pushState({}, '', nextPath)
-      }
-
-      syncBrowserLocation()
-      return
-    }
+    // Entradas continua visível na navbar e sem ação, como o item de cassino: a
+    // tela ainda está em construção e só é alcançada pela URL direta.
+    if (itemId === entriesRouteSegment) return
     if (itemId === promotionsRouteSegment) {
       if (!ENABLE_APP_PROMOTIONS_NAV_LINK) return
 
@@ -700,6 +698,12 @@ function AppContent() {
       return
     }
   }, [activeProduct, handleProductChange, search, syncBrowserLocation])
+
+  const handleNflPlaysClose = useCallback(() => {
+    const nextPath = withSearch(buildProductPath(defaultProduct), getGarantidaBannerSearch(search))
+    window.history.pushState({}, '', nextPath)
+    syncBrowserLocation()
+  }, [search, syncBrowserLocation])
 
   const handleBetslipClose = useCallback(() => {
     setIsFullBetslipOpen(false)
@@ -1044,6 +1048,8 @@ function AppContent() {
           <MemoriaPage />
         ) : isPongPage ? (
           <PongPage />
+        ) : isNflPlaysPage ? (
+          <NflPlaysStatsPage onClose={handleNflPlaysClose} />
         ) : isEntriesPage ? (
           <EntriesPage
             activeProduct={activeProduct}

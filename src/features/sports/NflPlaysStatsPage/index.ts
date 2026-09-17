@@ -1,0 +1,1 @@
+export { NflPlaysStatsPage } from './NflPlaysStatsPage'

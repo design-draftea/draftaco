@@ -1,5 +1,16 @@
 ## Estado atual
 
+### Item Entradas inerte e atalho para o sheet da NFL
+
+- O item **Entradas** da navbar continua visível e não faz mais nada ao ser clicado, como já
+  acontece com o de cassino. A rota `/<marca>/entradas` **continua valendo por URL direta** —
+  conferido que a tela monta. O `buildEntriesPath` saiu, porque só existia para o clique.
+- Nova rota **`/<marca>/nfl`**: abre direto o bottom sheet de Jogadas e Estatísticas, com o campo
+  3D e o feed. No app ele só existe dentro do evento ao vivo, atrás de vários cliques. A página é
+  standalone (`src/features/sports/NflPlaysStatsPage/`), entra em `isStandalonePage` e por isso não
+  traz navbar nem as demais camadas; fechar o sheet volta para apostas.
+
+
 ### Card de Entradas com o conteúdo da aposta (nó Figma 1993:6822)
 
 O card do Pulse saiu; no lugar entra o do desenho. O miolo são as linhas do recibo da tela de
