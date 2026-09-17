@@ -1,6 +1,105 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-17.
+- Agente que entrega: Claude.
+- Checkout: worktree `.worktrees/feature-entradas-layout`, branch `feature/entradas-layout`,
+  criada de `origin/main` em `a4066a1`.
+- Objetivo: trazer para o Draftaco o layout dos cards de Entradas desenhado no protótipo Pulse,
+  nos três estados — abertas, ganhas e passadas. **Somente o layout**; a lógica será feita depois.
+- Status: implementado e validado localmente. **Sem Pull Request e sem merge** — nenhuma
+  autorização foi pedida ou concedida.
+
+### Qual dos dois layouts veio
+
+O Pulse tem duas gerações de card. A que veio é a **anterior** ao redesenho, que o Pulse
+preservou em `src/components/OpenEntries/legacy/LegacyEntryCards.tsx` — seletores
+`.open-entry-card` e `.won-entry-card`. A geração mais nova (`.entry-card-v2`, nós Figma
+`856:7277`, `856:6341` e `856:7618`) **não** foi portada.
+
+### Arquivos criados
+
+- `src/features/entries/EntriesPage/` — `EntriesPage.tsx` (abas ABIERTAS/GANADAS/PASADAS e
+  lista), `EntryCards.tsx` (card aberto e card liquidado), `EntriesPage.css`, `index.ts`.
+- `src/components/LiveIndicator/` — ponto pulsante que o card aberto usa no rótulo `LIVE`.
+- `src/data/entries.ts` — tipos e dados mockados, reproduzindo os previews do Pulse.
+- `src/assets/` — sete SVGs vindos do Pulse: `arrowDownRed`, `badgeGanhador`, `entryCardLight`,
+  `entryPriceUp`, `entrySeparator`, `iconDoubleChevronsDown`, `iconDoubleChevronsUp`.
+
+### Arquivos alterados
+
+- `src/App.tsx` — rota `/<marca>/entradas`: segmento, matcher, builder, memos de página, guarda
+  na normalização de rota, ramo de render e ligação do item `entradas` da navbar, que já existia
+  nas duas marcas e não tinha ação.
+
+### Decisões
+
+- **Conteúdo igual ao Pulse.** Os cards mantêm o vocabulário de mercado de previsão (`COMPRA EN
+  UP/DOWN`, `Precio objetivo`, `participaciones`), em espanhol, com dados mockados. Decisão
+  confirmada pela pessoa usuária: adaptar o conteúdo ao universo de apostas esportivas exigiria
+  decisões de produto que ainda não existem, e virá junto com a lógica.
+- **Tokens escopados, não globais.** Os 17 tokens de cor do Pulse (`--color-fill-*`,
+  `--color-background-*`, `--color-action-*`) vivem na raiz `.entries-page`, não na camada global
+  de tokens do Draftaco. O visual chega idêntico ao original e nenhuma outra tela muda de cor.
+  Quando a lógica entrar, é nesse bloco que o mapeamento para os `--tokens-*` do Draftaco deve
+  acontecer.
+- **Header fixo muda duas coisas.** No Pulse o header rola embora; no Draftaco ele é `position:
+  fixed` com 56px e `z-index: 200`. Então o conteúdo ganhou `padding-top` de 56px e as abas
+  grudam em `top: 56px`, não em `0`. Como elas passam a ficar sempre na mesma altura, o estado
+  `--pinned` do Pulse não teria o que observar: o listener de scroll e o estado foram removidos e
+  o fundo opaco das abas virou constante no CSS.
+- **Rolagem pela raiz da tela.** Em `≤499px` o Draftaco trava `html`, `body` e `#root` com
+  `overflow: hidden`, e cada tela é o próprio container de rolagem. `.entries-page` recebeu o
+  mesmo bloco que `.home` e `.promotions-page` já usam, com `--navbar-page-bottom-padding` no
+  lugar da folga inferior que o Pulse calculava sozinho. Sem isso o conteúdo era cortado no
+  viewport, sem rolagem.
+- **Sem `prefers-reduced-motion`.** Os blocos que o Pulse usa para desligar animação sob essa
+  preferência foram deixados de fora, e o `matchMedia` que pulava a transição de aba também,
+  porque o AGENTS.md deste repositório proíbe reduzir animação por essa preferência.
+- **Botões sem ação.** `Ver mercado` e `Vender` são apenas visuais. A animação de saída do card
+  após uma venda não veio, porque depende da lógica.
+
+### O que ficou deliberadamente de fora
+
+- Carregamento incremental da lista liquidada (`useIncrementalList` e o spinner
+  `.open-entries__more`): com dados mockados nunca dispararia, e é comportamento de lógica.
+- Qualquer ligação com carteira, betslip, saldo ou estado real.
+
+### Validações executadas
+
+- `npm ci`, `npm run build` (`tsc -b && vite build`) e `npm run check:brands` — contratos OK em
+  `/` e `/draftaco`. `git diff --check` limpo.
+- `npm run lint`: 26 problemas (18 erros, 8 avisos), **todos preexistentes**. Nenhuma ocorrência
+  em `src/features/entries`, `src/components/LiveIndicator`, `src/data/entries.ts` ou
+  `src/App.tsx`.
+- No navegador em execução, a `375×812`, nas duas marcas:
+  - `/pitaco/entradas` e `/draftea/entradas` montam a tela; o item da navbar aparece ativo como
+    `Entradas` na Pitaco e `Mis entradas` na Draftea.
+  - Navegação pelo item da navbar: `/draftea/apostas` → `/draftea/entradas`, com a tela montada.
+  - A rota sobrevive à normalização: `/pitaco/entradas` não é reescrita para `/pitaco/apostas`.
+  - As três abas trocam: ABIERTAS mostra 2 cards abertos; GANADAS mostra 2 com o selo `¡GANADOR!`;
+    PASADAS mostra os 4 estados liquidados — `¡GANADOR!`, `NO GANADOR`, `VENTA` e `CANCELADO`.
+  - O card de venda não mostra preço final nem chevron de resultado, e a divisória vertical do
+    preço objetivo some, como manda `.won-entry-card--sold`.
+  - Rolagem conferida em PASADAS: `.entries-page` rola, as abas ficam em `top: 56px` coladas ao
+    header, com fundo opaco, e o card passa por trás sem transparecer. O último card termina
+    acima da navbar flutuante.
+  - Console sem erro em nenhuma das duas marcas.
+- Não conferido: comportamento com dedo/trackpad reais e a transição de aba em tempo real — a
+  troca foi exercitada por clique programático e por clique no painel, e a posição de rolagem por
+  atribuição direta.
+
+### Pendências e próximo passo concreto
+
+- Nenhuma pendência dentro do escopo implementado.
+- Próximo passo: apresentar a versão local para validação. Pull Request e merge dependem de
+  autorização explícita, que ainda não foi pedida.
+- Depois do aceite do layout, a lógica: origem real dos dados, ação dos botões, animação de saída
+  na venda, carregamento incremental e a decisão de conteúdo (manter o vocabulário do Pulse ou
+  adaptar a apostas esportivas), além do mapeamento dos tokens escopados para os `--tokens-*`.
+
+## Histórico anterior — limpeza de imagens não utilizadas
+
+- Atualizado em: 2026-09-17.
 - Checkout: pasta principal `draftaco`, branch `main` em `d46ad6a`.
 - **Entregue e publicado.** Pull Request
   [#13](https://github.com/design-draftea/draftaco/pull/13), merge em `main` no commit `d46ad6a`

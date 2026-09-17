@@ -37,6 +37,7 @@ const LiveEventPage = lazy(() => import('./features/sports/LiveEventPage').then(
 const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
 const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
 const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
+const EntriesPage = lazy(() => import('./features/entries/EntriesPage').then((m) => ({ default: m.EntriesPage })))
 
 const RouteFallback = () => (
   <div
@@ -49,6 +50,7 @@ const defaultProduct: ProductMode = 'apostas'
 const productRoutes: ProductMode[] = ['apostas', 'cassino']
 const sportsV2RouteSegment = 'apostas2'
 const promotionsRouteSegment = 'promocoes'
+const entriesRouteSegment = 'entradas'
 const embaixadinhaRouteSegment = 'embaixadinha'
 const memoriaRouteSegment = 'memoria'
 const pongRouteSegment = 'pong'
@@ -74,6 +76,12 @@ const isPromotionsPath = (pathname: string) => {
     routeSegments[0] === promotionsRouteSegment &&
     routeSegments.length <= 2
   )
+}
+
+const isEntriesPath = (pathname: string) => {
+  const routeSegments = getRouteSegments(pathname)
+
+  return routeSegments.length === 1 && routeSegments[0] === entriesRouteSegment
 }
 
 const isSportsV2Path = (pathname: string) => {
@@ -157,6 +165,11 @@ const buildSportsV2Path = () => {
 const buildPromotionsPath = () => {
   const basePath = getBasePath()
   return `${basePath}/${promotionsRouteSegment}`
+}
+
+const buildEntriesPath = () => {
+  const basePath = getBasePath()
+  return `${basePath}/${entriesRouteSegment}`
 }
 
 const buildLoginPath = () => {
@@ -286,6 +299,7 @@ function AppContent() {
   const actualProductRoute = useMemo(() => resolveProductFromPath(pathname), [pathname])
   const isCurrentSportsV2Page = useMemo(() => isSportsV2Path(pathname), [pathname])
   const isCurrentPromotionsPage = useMemo(() => isPromotionsPath(pathname), [pathname])
+  const isCurrentEntriesPage = useMemo(() => isEntriesPath(pathname), [pathname])
   const isEmbaixadinhaPage = useMemo(() => isEmbaixadinhaPath(pathname), [pathname])
   const isMemoriaPage = useMemo(() => isMemoriaPath(pathname), [pathname])
   const isPongPage = useMemo(() => isPongPath(pathname), [pathname])
@@ -305,6 +319,7 @@ function AppContent() {
   const productRoute = useMemo(() => resolveProductFromPath(renderedPathname), [renderedPathname])
   const isSportsV2Page = useMemo(() => isSportsV2Path(renderedPathname), [renderedPathname])
   const isPromotionsPage = useMemo(() => isPromotionsPath(renderedPathname), [renderedPathname])
+  const isEntriesPage = useMemo(() => isEntriesPath(renderedPathname), [renderedPathname])
   const isCamisaPremiadaMode = useMemo(() => isCamisaPremiadaPath(renderedPathname), [renderedPathname])
   const isPenaltiPremiadoMode = useMemo(() => isPenaltiPremiadoPath(renderedPathname), [renderedPathname])
   const isPremiadaMode = isCamisaPremiadaMode || isPenaltiPremiadoMode
@@ -366,6 +381,7 @@ function AppContent() {
   useEffect(() => {
     if (isCurrentSportsV2Page) return
     if (isCurrentPromotionsPage) return
+    if (isCurrentEntriesPage) return
     if (isStandalonePage) return
     if (isAuthPage) return
     if (isCurrentCamisaPremiadaPage) return
@@ -379,7 +395,7 @@ function AppContent() {
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
+  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentEntriesPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
 
   useEffect(() => {
     if (!isCurrentPromotionsPage) return
@@ -658,6 +674,16 @@ function AppContent() {
   const handleNavbarItemSelect = useCallback((itemId: string) => {
     if (itemId === 'home' || itemId === 'ao-vivo') {
       handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
+      return
+    }
+    if (itemId === entriesRouteSegment) {
+      const nextPath = withSearch(buildEntriesPath(), getGarantidaBannerSearch(search))
+
+      if (getCurrentPathWithSearch() !== nextPath) {
+        window.history.pushState({}, '', nextPath)
+      }
+
+      syncBrowserLocation()
       return
     }
     if (itemId === promotionsRouteSegment) {
@@ -1018,6 +1044,22 @@ function AppContent() {
           <MemoriaPage />
         ) : isPongPage ? (
           <PongPage />
+        ) : isEntriesPage ? (
+          <EntriesPage
+            activeProduct={activeProduct}
+            authVariant={authVariant}
+            balanceCents={playableBalanceCents}
+            depositStatus={headerDepositStatus}
+            HeaderComponent={HeaderV2}
+            isProfileOpen={isProfileOpen}
+            onLoginClick={handleLoginOpen}
+            onCreateAccountClick={handleCreateAccountClick}
+            onDepositOpen={handleDepositPanelOpen}
+            onIdentityOpen={handleSignupIdentityOpen}
+            onLimitsOpen={handleSignupLimitsOpen}
+            onProfileOpen={handleProfileOpen}
+            onProductChange={handleProductChange}
+          />
         ) : isPromotionsPage ? (
           <PromotionsPage
             activeProduct={activeProduct}
@@ -1212,7 +1254,9 @@ function AppContent() {
       {!isStandalonePage ? (
         <Navbar
           activeProduct={activeProduct}
-          activeItemId={isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
+          activeItemId={isEntriesPage
+            ? entriesRouteSegment
+            : isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
           onItemSelect={handleNavbarItemSelect}
         />
       ) : null}

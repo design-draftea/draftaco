@@ -1,0 +1,38 @@
+.live-indicator {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: var(--live-indicator-size, 6px);
+  height: var(--live-indicator-size, 6px);
+  flex: 0 0 var(--live-indicator-size, 6px);
+  border-radius: 50%;
+  background: var(--live-indicator-color, var(--color-fill-error, #f87171));
+}
+
+.live-indicator::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--live-indicator-size, 6px) / -2);
+  border: 1px solid var(--live-indicator-color, var(--color-fill-error, #f87171));
+  border-radius: inherit;
+  animation: live-indicator-pulse 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-indicator::before {
+    animation: none;
+  }
+}
+
+@keyframes live-indicator-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.45);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
