@@ -55,13 +55,13 @@ type TabTransitionPhase = 'idle' | 'out' | 'in'
 
 const entriesTabs: readonly { id: EntriesTab; label: string }[] = [
   { id: 'open', label: 'PRÓXIMAS' },
-  { id: 'won', label: 'GANHAS' },
-  { id: 'past', label: 'PASSADAS' },
+  { id: 'won', label: 'VENCEDORAS' },
+  { id: 'past', label: 'ANTERIORES' },
 ]
 const emptyLabelByTab: Record<EntriesTab, string> = {
   open: 'Você ainda não tem entradas próximas',
-  won: 'Você ainda não tem entradas ganhas',
-  past: 'Você ainda não tem entradas passadas',
+  won: 'Você ainda não tem entradas vencedoras',
+  past: 'Você ainda não tem entradas anteriores',
 }
 
 const TAB_FADE_OUT_MS = 110

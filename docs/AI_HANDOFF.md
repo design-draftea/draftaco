@@ -111,10 +111,19 @@ Feito, porque não depende do Figma:
 - Os chips foram para **dentro** do `HeaderComponent`, como fazem a home e a `PromotionsPage`.
   Era isso que faltava para o header não cortar seco: a pilha do header passou de 56px para
   104px e o brilho passa por trás dos chips.
-- O corte do brilho foi resolvido com a mesma técnica que a home usa contra o que o CSS dela
-  chama de "barra seca": `lightHeader.png` tem 220px e é recortada quando a pilha é mais curta,
-  então o fundo do header vai para um `::before` com `mask-image`, e o degradê passa a seguir a
-  altura real do header sem desbotar a barra nem os chips.
+- O brilho do topo não termina mais na barra. A mesma imagem (`lightHeader.png`) é pintada duas
+  vezes, com escala e origem idênticas (`center top`, `100% var(--entries-glow-height)`): o
+  `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
+  320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
+  os chips e entra no primeiro card, como no desenho.
+- Os chips receberam o tratamento `--v2` do design system, que é o da home: `.entries-page` foi
+  incluída nos três grupos de `src/styles/index.css` que definem o indicador (`.home--v2`,
+  `.promotions-page--v2`, e a variante de tema claro). O visual resultante foi conferido por
+  medição contra o chip da tela de futebol da home e é idêntico: fundo do elemento é a borda em
+  degradê, `::before` com `inset: 1px` e preenchimento de 24%, sem `::after`. Antes disso a tela
+  caía no indicador padrão, de preenchimento sólido — que era a diferença visível.
+- Rótulos vindos do Figma: `PRÓXIMAS`, `VENCEDORAS` e `ANTERIORES` (es-MX: `GANADORAS`,
+  `ANTERIORES`).
 
 Bloqueado no Figma:
 
