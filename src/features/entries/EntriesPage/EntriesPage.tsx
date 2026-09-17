@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 
 import { HeaderV2 } from '../../../components/HeaderV2'
-import { LiveIndicator } from '../../../components/LiveIndicator'
+import { useSlidingActiveIndicator } from '../../../shared/hooks/useSlidingActiveIndicator'
 import {
   openEntries,
   openRoundWindow,
@@ -53,6 +53,17 @@ interface EntriesPageProps {
 type EntriesTab = 'open' | 'won' | 'past'
 type TabTransitionPhase = 'idle' | 'out' | 'in'
 
+const entriesTabs: { id: EntriesTab; label: string }[] = [
+  { id: 'open', label: 'PRÓXIMAS' },
+  { id: 'won', label: 'GANHAS' },
+  { id: 'past', label: 'PASSADAS' },
+]
+const emptyLabelByTab: Record<EntriesTab, string> = {
+  open: 'Você ainda não tem entradas próximas',
+  won: 'Você ainda não tem entradas ganhas',
+  past: 'Você ainda não tem entradas passadas',
+}
+
 const TAB_FADE_OUT_MS = 110
 const TAB_FADE_IN_MS = 180
 
@@ -74,6 +85,8 @@ export function EntriesPage({
 }: EntriesPageProps) {
   const [activeTab, setActiveTab] = useState<EntriesTab>('open')
   const [tabTransitionPhase, setTabTransitionPhase] = useState<TabTransitionPhase>('idle')
+  const tabListRef = useRef<HTMLDivElement>(null)
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const tabSwapTimerRef = useRef<number | null>(null)
   const tabSettleTimerRef = useRef<number | null>(null)
 
@@ -81,6 +94,15 @@ export function EntriesPage({
     ? openEntries.length
     : activeTab === 'won' ? wonEntries.length : pastEntries.length
   const settledEntriesForTab = activeTab === 'won' ? wonEntries : pastEntries
+  const activeTabIndex = Math.max(0, entriesTabs.findIndex((tab) => tab.id === activeTab))
+
+  // O indicador mede a aba ativa em vez de usar as posições em pixel que o Pulse
+  // tinha fixas: os rótulos mudaram de idioma e de largura, e a Draftea traduz.
+  useSlidingActiveIndicator({
+    activeKey: activeTab,
+    containerRef: tabListRef,
+    getActiveElement: () => tabRefs.current[activeTabIndex],
+  })
 
   useEffect(() => () => {
     if (tabSwapTimerRef.current !== null) {
@@ -128,51 +150,32 @@ export function EntriesPage({
 
       <main className="open-entries" data-node-id="383:6851">
         <div
-          className={`open-entries__tabs open-entries__tabs--${activeTab}`}
+          className="open-entries__tabs sliding-chip-group"
+          ref={tabListRef}
           role="tablist"
           aria-label="Estados de entradas"
         >
-          <button
-            className={`open-entries__tab open-entries__tab--with-live${activeTab === 'open' ? ' open-entries__tab--active' : ''}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'open'}
-            onClick={() => selectTab('open')}
-          >
-            <span className="open-entries__live-indicator-slot">
-              <LiveIndicator />
-            </span>
-            ABIERTAS
-          </button>
-          <button
-            className={`open-entries__tab${activeTab === 'won' ? ' open-entries__tab--active' : ''}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'won'}
-            onClick={() => selectTab('won')}
-          >
-            GANADAS
-          </button>
-          <button
-            className={`open-entries__tab${activeTab === 'past' ? ' open-entries__tab--active' : ''}`}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'past'}
-            onClick={() => selectTab('past')}
-          >
-            PASADAS
-          </button>
+          <span className="sliding-chip-indicator" aria-hidden="true" />
+          {entriesTabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              ref={(node) => {
+                tabRefs.current[index] = node
+              }}
+              className={`open-entries__tab${activeTab === tab.id ? ' open-entries__tab--active' : ''}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => selectTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className={`open-entries__list open-entries__list--transition-${tabTransitionPhase}${visibleEntriesCount === 0 ? ' open-entries__list--empty' : ''}`}>
-          {activeTab === 'open' && openEntries.length === 0 && (
-            <p className="open-entries__empty">Aún no tienes entradas abiertas</p>
-          )}
-          {activeTab === 'won' && wonEntries.length === 0 && (
-            <p className="open-entries__empty">Aún no tienes entradas ganadas</p>
-          )}
-          {activeTab === 'past' && pastEntries.length === 0 && (
-            <p className="open-entries__empty">Aún no tienes entradas pasadas</p>
+          {visibleEntriesCount === 0 && (
+            <p className="open-entries__empty">{emptyLabelByTab[activeTab]}</p>
           )}
           {activeTab === 'open' && openEntries.map((entry) => (
             <OpenEntryCard

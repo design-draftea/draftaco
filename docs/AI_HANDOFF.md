@@ -88,11 +88,47 @@ preservou em `src/components/OpenEntries/legacy/LegacyEntryCards.tsx` — seleto
   troca foi exercitada por clique programático e por clique no painel, e a posição de rolagem por
   atribuição direta.
 
+### Segunda rodada — ajustes pedidos sobre o layout
+
+Pedido com um link de Figma (nó `1993-6794` do arquivo `ENRUbTcNKoXvmuKprUu5CS`,
+"Estudos-Fluxos-Draftea<>Pitaco"). **O Figma não pôde ser aberto**: o MCP do Figma respondeu
+`Looks like you don't have edit access to this file` tanto em `get_design_context` quanto em
+`get_screenshot`. O `whoami` mostra a conta `tiago.cramon@gmail.com` com assento **View** no time
+`Pitaco`; as ferramentas de Dev Mode exigem acesso de edição. Nada do desenho foi interpretado por
+suposição, como o AGENTS.md exige.
+
+Feito, porque não depende do Figma:
+
+- Aba `ABIERTAS` virou `PRÓXIMAS` e perdeu o ponto de ao vivo. O `LiveIndicator` continua no card
+  aberto, no rótulo `LIVE` — só saiu da aba.
+- As três abas e os estados vazios passaram a pt-BR (`PRÓXIMAS`, `GANHAS`, `PASSADAS`), com as
+  traduções es-MX em `src/brands/draftea/legacyCopy.ts`, que é o mecanismo do projeto. `PRÓXIMAS`
+  é igual nos dois idiomas e não precisa de entrada.
+- O indicador da aba ativa deixou de usar as posições em pixel fixas do Pulse — que quebravam ao
+  trocar os rótulos de idioma — e passou a usar `useSlidingActiveIndicator`, o hook que
+  `ContentFilterChips`, `PromotionsPage` e as demais grades de chips já usam. Com ele veio o
+  visual nativo de chip do Draftaco; o pill próprio do Pulse não foi reproduzido.
+- A faixa de abas trocou o fundo chapado por um degradê que se dissolve no conteúdo, no mesmo
+  padrão do `.header--v2` e do `ContentFilterChips`
+  (`linear-gradient(180deg, opaco 0%, opaco calc(100% - fade), transparente 100%)`), acabando com
+  o corte seco.
+
+Bloqueado no Figma:
+
+- O conteúdo do card. O pedido é reaproveitar a base do recibo de aposta finalizada
+  (`src/features/betslip/BetSuccessPage/`, tipo `BetSuccessReceipt`: seleções, valor apostado,
+  odd total, retorno potencial). A montagem exata depende do desenho.
+- Por consequência, a tradução do conteúdo do card: ele ainda está com o vocabulário de mercado de
+  previsão em espanhol, herdado do Pulse. Traduzir agora seria trabalho jogado fora, já que esse
+  conteúdo vai ser substituído.
+
 ### Pendências e próximo passo concreto
 
-- Nenhuma pendência dentro do escopo implementado.
-- Próximo passo: apresentar a versão local para validação. Pull Request e merge dependem de
-  autorização explícita, que ainda não foi pedida.
+- **Bloqueio ativo:** acesso de edição/Dev Mode ao arquivo do Figma para a conta
+  `tiago.cramon@gmail.com`, ou uma referência visual exportada do nó `1993-6794`.
+- Próximo passo: destravar o Figma e então refazer o conteúdo do card sobre a base do
+  `BetSuccessPage`. Pull Request e merge dependem de autorização explícita, que ainda não foi
+  pedida.
 - Depois do aceite do layout, a lógica: origem real dos dados, ação dos botões, animação de saída
   na venda, carregamento incremental e a decisão de conteúdo (manter o vocabulário do Pulse ou
   adaptar a apostas esportivas), além do mapeamento dos tokens escopados para os `--tokens-*`.

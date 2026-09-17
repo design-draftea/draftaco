@@ -30,6 +30,11 @@
   --color-background-app: var(--ds-background-app, #131313);
 
   --entries-header-height: 56px;
+  --entries-tabs-fade-height: var(--content-filter-chips-fade-height, 16px);
+  --entries-background-rgb: var(
+    --ds-background-app-rgb,
+    var(--tokens-background-background-rgb, 19 19 19)
+  );
 
   display: flex;
   min-height: 100svh;
@@ -53,56 +58,25 @@
   width: 100%;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 8px 16px calc(8px + var(--entries-tabs-fade-height));
 
-  /* O header do Draftaco é fixo, então as abas ficam sempre coladas nele e o
-     fundo opaco é constante: sem ele, os cards passariam por trás. */
-  background: var(--color-background-app);
+  /* O header é fixo, então as abas ficam sempre coladas nele e precisam de fundo
+     próprio: sem ele os cards passariam por trás. O fundo termina em degradê,
+     como o do header e o dos chips de filtro, para não cortar seco no conteúdo. */
+  background-image: linear-gradient(
+    180deg,
+    rgb(var(--entries-background-rgb) / 1) 0%,
+    rgb(var(--entries-background-rgb) / 1) calc(100% - var(--entries-tabs-fade-height)),
+    rgb(var(--entries-background-rgb) / 0) 100%
+  );
 }
 
 
 
-.open-entries__tabs::before {
-  box-sizing: border-box;
-  position: absolute;
-  z-index: 0;
-  top: 8px;
-  left: 16px;
-  width: 104px;
-  height: 32px;
-  border: 1px solid transparent;
-  border-radius: 56px;
-  background:
-    linear-gradient(
-      90deg,
-      rgb(75 32 255 / 24%) 0%,
-      rgb(151 48 255 / 24%) 100%
-    ) padding-box,
-    linear-gradient(var(--color-background-app), var(--color-background-app)) padding-box,
-    linear-gradient(
-      90deg,
-      var(--color-action-primary-default-start) 0%,
-      var(--color-action-primary-default-end) 100%
-    ) border-box;
-  box-shadow: 0 6px 16px rgb(75 32 255 / 16%);
-  content: '';
-  pointer-events: none;
-  transform: translateX(0);
-  transition:
-    width 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 240ms ease;
-}
-
-.open-entries__tabs--won::before {
-  width: 86px;
-  transform: translateX(112px);
-}
-
-.open-entries__tabs--past::before {
-  width: 82px;
-  transform: translateX(206px);
-}
+/* O pill ativo é o do design system do Draftaco (.sliding-chip-indicator), o
+   mesmo dos demais grupos de chips do app. O visual próprio que o Pulse tinha
+   não foi reproduzido aqui: o Figma desta tela ainda não pôde ser aberto, e
+   inventar um terceiro estilo seria pior que usar o que o projeto já tem. */
 
 .open-entries__tab {
   appearance: none;
@@ -128,18 +102,6 @@
     transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.open-entries__tab:nth-child(1) {
-  width: 104px;
-}
-
-.open-entries__tab:nth-child(2) {
-  width: 86px;
-}
-
-.open-entries__tab:nth-child(3) {
-  width: 82px;
-}
-
 .open-entries__tab--active {
   border-color: transparent;
   background: transparent;
@@ -150,22 +112,9 @@
   transform: scale(0.96);
 }
 
-.open-entries__tab--with-live {
-  gap: 4px;
-}
-
 .open-entries__tab:focus-visible {
   outline: 2px solid var(--color-fill-primary);
   outline-offset: 2px;
-}
-
-.open-entries__live-indicator-slot {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
-  flex: 0 0 16px;
-  align-items: center;
-  justify-content: center;
 }
 
 .open-entries__list {
@@ -174,7 +123,7 @@
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  padding: 8px 12px 12px;
+  padding: 0 12px 12px;
 }
 
 .open-entries__list--transition-out {
