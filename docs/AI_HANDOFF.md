@@ -1,6 +1,54 @@
-# Handoff entre Codex e Claude
-
 ## Estado atual
+
+- Atualizado em: 2026-09-17.
+- Checkout: pasta principal `draftaco`, branch `chore/limpeza-imagens-nao-usadas`, criada a
+  partir de `main` em `8051b3b`.
+- **Implementado e validado localmente. Não há Pull Request, merge nem deploy.**
+- Objetivo: remover do repositório as imagens que nenhum código referencia.
+
+### O que foi removido
+
+170 arquivos, cerca de 1,7 MB, todos rastreados pelo Git — a remoção é reversível pelo
+histórico. A maior parte é ícone legado duplicado: `src/assets/flag*.png` e `src/assets/icon*.png`
+soltos na raiz de `assets`, substituídos pelos conjuntos em `iconPaises/` e `iconSports/`; os
+`src/assets/nav*.svg`, substituídos pelos `nav*Iniciante.png` de cada marca; e os resíduos do
+template Vite (`public/vite.svg`, `public/favicon.png`, que é cópia byte a byte de
+`favicon-draftaco.png`, este sim referenciado no `index.html`).
+
+### Como os candidatos foram apurados
+
+Cruzamento do nome de cada arquivo de imagem contra todo o texto de `src`, `scripts`, `docs`,
+`index.html`, `vite.config.ts` e `.github` — sem distinção de maiúsculas e sem depender do
+caminho, porque tanto `import` do Vite quanto `url()` de CSS carregam a extensão.
+
+Ficaram de fora da remoção as duas pastas resolvidas por `import.meta.glob`, onde o nome do
+arquivo não aparece no código:
+
+- `src/assets/jogadores/**/*.png` — conferidos contra `src/assets/jogadores/manifest.json`: 416
+  entradas e 416 arquivos, sem órfão dos dois lados.
+- `src/assets/jogosCassino/categoriaCrash/**` — a grade de Crash é montada a partir do próprio
+  glob, então todo arquivo ali está em uso por construção.
+
+### Arquivos alterados
+
+- Commit `5cd7e2f`, 170 remoções, nenhuma alteração de código.
+
+### Validações executadas
+
+- `npm run build` (`tsc -b && vite build`) concluído. É a verificação mais forte aqui: o Vite
+  falha na compilação se um `import` de asset não resolver, e ele percorre todas as rotas.
+- `npm run check:brands` — contratos OK em `/` e `/draftaco`.
+- Protótipo em execução no navegador, Home das duas marcas: nenhum 404 de asset entre as
+  requisições e nenhum erro de console.
+
+### Pendências e próximo passo concreto
+
+- Aguardando validação da pessoa responsável pelo protótipo para abrir a Pull Request.
+- Sugestão fora do escopo desta tarefa: `src/assets/iconSports/` e `src/assets/iconPaises/`
+  ainda concentram ícones de esportes e bandeiras que só existem para o bottom sheet "Mais
+  esportes"; vale decidir em tarefa própria se esse catálogo continua inteiro.
+
+## Histórico anterior — remoção da página de handoff e auditor de textos
 
 - Atualizado em: 2026-09-16.
 - Checkout: worktree `.worktrees/qa-copy-typesafe`, branch `chore/qa-copy-typesafe`, criada a
