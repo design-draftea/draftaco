@@ -1,202 +1,80 @@
-// Cards da tela Entradas, portados do protótipo Pulse.
-// Esta é a implementação ANTERIOR ao redesenho — o layout que o Pulse guardou
-// em src/components/OpenEntries/legacy/LegacyEntryCards.tsx. Só o layout veio:
-// os botões não têm ação e nada aqui está ligado a dados reais.
-import arrowDownRed from '../../../assets/arrowDownRed.svg'
-import badgeGanhador from '../../../assets/badgeGanhador.svg'
-import entryCardLight from '../../../assets/entryCardLight.svg'
-import entryPriceUp from '../../../assets/entryPriceUp.svg'
-import entrySeparator from '../../../assets/entrySeparator.svg'
-import iconDoubleChevronsDown from '../../../assets/iconDoubleChevronsDown.svg'
-import iconDoubleChevronsUp from '../../../assets/iconDoubleChevronsUp.svg'
-import { LiveIndicator } from '../../../components/LiveIndicator'
-import type {
-  EntrySide,
-  OpenEntrySummary,
-  SettledEntrySummary,
-} from '../../../data/entries'
+// Card da tela Entradas, do nó Figma 1993:6822.
+// O miolo — as linhas de seleção — é o mesmo do recibo da tela de sucesso, via
+// `betSuccessSelections`. O que é próprio deste card é a moldura: o cabeçalho com
+// recolher e compartilhar, o botão de encerrar e o rodapé com data e código.
+import { useState } from 'react'
 
-const payoutFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
-})
-const amountFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2,
-})
-const priceFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
-})
-const deltaFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0,
-})
-const participationFormatter = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 0, maximumFractionDigits: 2,
-})
-const dateFormatter = new Intl.DateTimeFormat('es-MX', {
-  day: '2-digit', month: '2-digit', year: 'numeric',
-})
-const timeFormatter = new Intl.DateTimeFormat('es-MX', {
-  hour: '2-digit', minute: '2-digit', hour12: false,
-})
-const formatPrice = (value: number | null) => (
-  value === null ? '—' : priceFormatter.format(value)
-)
+import chevronUp from '../../../assets/iconsDraftaco/chevronUp.svg'
+import iconEntryShare from '../../../assets/iconsDraftaco/iconEntryShare.svg'
+import { BetSuccessSelectionGroupRow } from '../../betslip/BetSuccessPage/betSuccessSelections'
+import { groupSelectionsByEvent } from '../../betslip/BetslipPageV2/betslipDisplayUtils'
+import type { EntrySummary } from '../../../data/entries'
 
-export interface OpenEntryCardProps {
-  entry: OpenEntrySummary
-  startTime: string
-  endTime: string
-  minutes: string
-  seconds: string
-  targetPrice: number | null
-  currentPrice: number | null
+// O desenho usa dois pesos no valor: o símbolo em Bold 16 e o número em Black 18.
+const separarMoeda = (valor: string) => {
+  const casado = valor.match(/^(\D+)\s*(.+)$/)
+
+  return casado ? { simbolo: casado[1].trim(), numero: casado[2] } : { simbolo: '', numero: valor }
 }
 
-export function OpenEntryCard({
-  entry,
-  startTime,
-  endTime,
-  minutes,
-  seconds,
-  targetPrice,
-  currentPrice,
-}: OpenEntryCardProps) {
-  const priceDelta = targetPrice === null || currentPrice === null
-    ? null
-    : currentPrice - targetPrice
-  const hasPriceDirection = priceDelta !== null && priceDelta !== 0
-  const isPriceUp = priceDelta !== null && priceDelta > 0
-
-  return (
-    <article className="open-entry-card" data-entry-side={entry.side}>
-      <img className="open-entry-card__light" src={entryCardLight} alt="" aria-hidden="true" />
-      <header className="open-entry-card__summary">
-        <div className="open-entry-card__potential">
-          <strong>{payoutFormatter.format(entry.potentialPayoutCents / 100)}</strong>
-          <span>Ganancia potencial</span>
-        </div>
-        <div className="open-entry-card__summary-details">
-          <span>Monto: {amountFormatter.format(entry.amountCents / 100)}</span>
-          <span>Precio promedio {Math.round(entry.averagePriceCents)}¢</span>
-        </div>
-      </header>
-      <div className="open-entry-card__body">
-        <div className="open-entry-card__meta">
-          <span className="open-entry-card__live"><LiveIndicator />LIVE</span>
-          <img className="open-entry-card__separator" src={entrySeparator} alt="" aria-hidden="true" />
-          <span>{startTime} - {endTime}</span>
-          <img className="open-entry-card__separator" src={entrySeparator} alt="" aria-hidden="true" />
-          <span className="open-entry-card__countdown">Termina en: {minutes}:{seconds}</span>
-        </div>
-        <div className="open-entry-card__position">
-          <strong>
-            COMPRA EN{' '}
-            <span className={`open-entry-card__side open-entry-card__side--${entry.side}`}>
-              {entry.side.toUpperCase()}
-            </span>
-          </strong>
-          <span>{participationFormatter.format(entry.participations)} participaciones</span>
-        </div>
-        <div className="open-entry-card__prices">
-          <div className="open-entry-card__target-price">
-            <span>Precio objetivo</span><strong>{formatPrice(targetPrice)}</strong>
-          </div>
-          <div className="open-entry-card__current-price">
-            <div className="open-entry-card__current-title">
-              <span>Precio actual</span>
-              {hasPriceDirection && (
-                <span className={`open-entry-card__delta open-entry-card__delta--${isPriceUp ? 'up' : 'down'}`}>
-                  <img src={isPriceUp ? entryPriceUp : arrowDownRed} alt="" aria-hidden="true" />
-                  {deltaFormatter.format(Math.abs(priceDelta ?? 0))}
-                </span>
-              )}
-            </div>
-            <strong>{formatPrice(currentPrice)}</strong>
-          </div>
-        </div>
-      </div>
-      <footer className="open-entry-card__actions">
-        <button className="open-entry-card__button open-entry-card__button--secondary" type="button">
-          Ver mercado
-        </button>
-        <button className="open-entry-card__button open-entry-card__button--primary" type="button">
-          Vender
-        </button>
-      </footer>
-    </article>
-  )
-}
-
-export function SettledEntryCard({ entry }: { entry: SettledEntrySummary }) {
-  const headlineValue = entry.outcome === 'sold'
-    ? entry.payoutCents / 100
-    : entry.participations
-  const potentialPayout = payoutFormatter.format(headlineValue).replace('$', '')
-  const averagePriceCents = entry.participations > 0
-    ? entry.amountCents / entry.participations
-    : 0
-  const resultSide: EntrySide = entry.targetPrice !== null && entry.finalPrice !== null
-    ? entry.finalPrice > entry.targetPrice ? 'up' : 'down'
-    : entry.outcome === 'lost'
-      ? entry.side === 'up' ? 'down' : 'up'
-      : entry.side
-  const isSold = entry.outcome === 'sold'
-  const salePriceCents = isSold && entry.participations > 0
-    ? entry.payoutCents / entry.participations
-    : 0
-  const statusLabel = entry.outcome === 'lost'
-    ? 'NO GANADOR'
-    : isSold ? 'VENTA' : 'CANCELADO'
+export function EntryCard({ entry }: { entry: EntrySummary }) {
+  const [estaRecolhido, setEstaRecolhido] = useState(false)
+  const { simbolo, numero } = separarMoeda(entry.potentialWinLabel)
+  const grupos = groupSelectionsByEvent(entry.selections)
 
   return (
     <article
-      className={`won-entry-card won-entry-card--${entry.outcome}`}
-      data-entry-side={entry.side}
-      data-result-side={resultSide}
+      className={`entry-card${estaRecolhido ? ' entry-card--collapsed' : ''}`}
+      data-node-id="1993:6822"
     >
-      <img className="won-entry-card__light" src={entryCardLight} alt="" aria-hidden="true" />
-      <header className="won-entry-card__summary">
-        <div className="won-entry-card__payout-row">
-          <span className="won-entry-card__payout"><span>$</span><strong>{potentialPayout}</strong></span>
-          {entry.outcome === 'won' ? (
-            <span className="won-entry-card__badge" aria-label="¡GANADOR!">
-              <img src={badgeGanhador} alt="" aria-hidden="true" /><strong>¡GANADOR!</strong>
+      <header className="entry-card__header">
+        <button
+          className="entry-card__collapse"
+          type="button"
+          aria-expanded={!estaRecolhido}
+          aria-label={estaRecolhido ? 'Expandir aposta' : 'Recolher aposta'}
+          onClick={() => setEstaRecolhido((anterior) => !anterior)}
+        >
+          <img src={chevronUp} alt="" aria-hidden="true" />
+        </button>
+
+        <div className="entry-card__header-body">
+          <div className="entry-card__title">
+            <span className="entry-card__payout">
+              <span>{simbolo}</span>
+              <strong>{numero}</strong>
             </span>
-          ) : <span className="won-entry-card__status-badge">{statusLabel}</span>}
-        </div>
-        <div className="won-entry-card__summary-details">
-          <span>Monto: <strong>{amountFormatter.format(entry.amountCents / 100)}</strong></span>
-          <span>{isSold ? `Precio de venta ${Math.round(salePriceCents)}¢` : `Precio promedio ${Math.round(averagePriceCents)}¢`}</span>
+            <span className="entry-card__payout-label">Ganho potencial</span>
+            <button className="entry-card__share" type="button" aria-label="Compartilhar aposta">
+              <img src={iconEntryShare} alt="" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="entry-card__meta">
+            <span>Entrada: <strong>{entry.stakeLabel}</strong></span>
+            <span>Odds: <strong>{entry.totalOddsLabel}</strong></span>
+          </div>
         </div>
       </header>
-      <div className="won-entry-card__body">
-        <div className="won-entry-card__meta">
-          <span>{dateFormatter.format(entry.roundStart)}</span>
-          <img src={entrySeparator} alt="" aria-hidden="true" />
-          <span>{timeFormatter.format(entry.roundStart)} - {timeFormatter.format(entry.roundEnd)}</span>
-        </div>
-        <div className="won-entry-card__position">
-          <strong>
-            {isSold ? 'VENTA EN' : 'COMPRA EN'}{' '}
-            <span className={`open-entry-card__side--${entry.side}`}>{entry.side.toUpperCase()}</span>
-          </strong>
-          <span>{participationFormatter.format(entry.participations)} participaciones</span>
-        </div>
-        <div className="won-entry-card__prices">
-          <div className="won-entry-card__target-price">
-            <span>Precio objetivo</span><strong>{formatPrice(entry.targetPrice)}</strong>
-          </div>
-          {!isSold && (
-            <div className="won-entry-card__final-price">
-              <span>Precio final</span><strong>{formatPrice(entry.finalPrice)}</strong>
-            </div>
-          )}
-          {!isSold && (
-            <span className={`won-entry-card__result won-entry-card__result--${resultSide}`}>
-              <img src={resultSide === 'up' ? iconDoubleChevronsUp : iconDoubleChevronsDown} alt={resultSide === 'up' ? 'Resultado arriba' : 'Resultado abajo'} />
-            </span>
-          )}
-        </div>
+
+      <div className="entry-card__selections">
+        {grupos.map((grupo) => (
+          <BetSuccessSelectionGroupRow group={grupo} key={grupo.eventId} />
+        ))}
       </div>
+
+      {entry.cashOutLabel ? (
+        <div className="entry-card__actions">
+          <button className="entry-card__cash-out" type="button">
+            {entry.cashOutLabel}
+          </button>
+        </div>
+      ) : null}
+
+      <footer className="entry-card__footer">
+        <span>{entry.createdAtLabel}</span>
+        <span className="entry-card__code">{entry.code}</span>
+      </footer>
     </article>
   )
 }

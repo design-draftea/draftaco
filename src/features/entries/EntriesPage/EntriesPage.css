@@ -173,573 +173,200 @@
   text-align: center;
 }
 
-/* Cards do layout anterior ao redesenho, como o Pulse os preservou em
-   legacy/LegacyEntryCards.tsx. */
-.open-entry-card {
-  position: relative;
+/* Card da tela Entradas — nó Figma 1993:6822.
+   As linhas de seleção lá dentro são as do recibo da tela de sucesso e trazem o
+   próprio CSS (`bet-success__*`); o que está aqui é só a moldura do card. */
+.entry-card {
   display: flex;
   width: 100%;
-  height: 248px;
-  flex: 0 0 248px;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--color-fill-opacity-tertiary);
+  border: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
   border-radius: 16px;
-  background: rgb(0 0 0 / 24%);
+  background: var(--ds-background-app, #000);
+  color: var(--ds-fill-primary, #fbfbfb);
 }
 
-.open-entry-card__light {
-  position: absolute;
-  z-index: 0;
-  top: -96px;
-  left: 50%;
-  display: block;
-  width: 449px;
-  height: 164px;
-  max-width: none;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.open-entry-card__summary,
-.open-entry-card__body,
-.open-entry-card__actions {
-  position: relative;
-  z-index: 1;
-}
-
-.open-entry-card__summary {
+.entry-card__header {
   display: flex;
   width: 100%;
-  height: 64px;
-  flex: 0 0 64px;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--color-fill-opacity-quaternary);
+  border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
 }
 
-.open-entry-card__potential {
+.entry-card__collapse,
+.entry-card__share {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.entry-card__collapse {
+  align-self: stretch;
+  padding: 8px 8px 8px 0;
+}
+
+.entry-card__collapse img,
+.entry-card__share img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Recolhido, a seta aponta para baixo. */
+.entry-card--collapsed .entry-card__collapse img {
+  transform: rotate(180deg);
+}
+
+.entry-card__header-body {
   display: flex;
   min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  padding-left: 8px;
+}
+
+.entry-card__title {
+  display: flex;
+  width: 100%;
   align-items: center;
   gap: 4px;
+}
+
+.entry-card__payout {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  color: var(--ds-fill-primary, #fbfbfb);
   white-space: nowrap;
 }
 
-.open-entry-card__potential strong {
-  color: var(--color-fill-primary);
+.entry-card__payout span {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.entry-card__payout strong {
   font-size: 18px;
+  font-variant-numeric: lining-nums tabular-nums;
   font-weight: 900;
   line-height: 27px;
 }
 
-.open-entry-card__potential span,
-.open-entry-card__summary-details {
-  color: var(--color-fill-tertiary);
+.entry-card__payout-label {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
   font-size: 14px;
   font-weight: 400;
   line-height: 21px;
-}
-
-.open-entry-card__summary-details {
-  display: flex;
-  gap: 12px;
-  white-space: nowrap;
-}
-
-.open-entry-card__body {
-  display: flex;
-  width: 100%;
-  height: 132px;
-  flex: 0 0 132px;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
-.open-entry-card__meta {
-  display: flex;
-  min-width: 0;
-  height: 20px;
-  flex: 0 0 20px;
-  align-items: center;
-  gap: 8px;
-  overflow: visible;
-  color: var(--color-fill-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  white-space: nowrap;
-}
-
-.open-entry-card__live {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  line-height: 15px;
-}
-
-.open-entry-card__separator {
-  display: block;
-  width: 4px;
-  height: 4px;
-  flex: 0 0 4px;
-}
-
-.open-entry-card__countdown {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.open-entry-card__position {
+.entry-card__meta {
   display: flex;
-  min-width: 0;
-  height: 42px;
-  flex: 0 0 42px;
-  flex-direction: column;
-  overflow: hidden;
-  color: var(--color-fill-primary);
+  align-items: center;
+  gap: 12px;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
   font-size: 14px;
+  font-weight: 400;
   line-height: 21px;
   white-space: nowrap;
 }
 
-.open-entry-card__position strong {
-  overflow: hidden;
-  font-weight: 700;
-  text-overflow: ellipsis;
+.entry-card__meta strong {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 400;
 }
 
-.open-entry-card__position > span {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-}
-
-.open-entry-card__side--up {
-  color: var(--color-fill-success);
-}
-
-.open-entry-card__side--down {
-  color: var(--color-fill-error);
-}
-
-.open-entry-card__prices {
+.entry-card__selections {
   display: flex;
   width: 100%;
-  height: 42px;
-  flex: 0 0 42px;
-  align-items: center;
-  gap: 20px;
-}
-
-.open-entry-card__target-price,
-.open-entry-card__current-price {
-  display: flex;
-  min-width: 0;
-  height: 42px;
   flex-direction: column;
-  align-items: flex-start;
 }
 
-.open-entry-card__target-price {
-  width: 120px;
-  flex: 0 0 120px;
-  border-right: 1px solid var(--color-fill-opacity-quaternary);
-  color: var(--color-fill-secondary);
+/* As linhas do recibo nascem para a tela de sucesso, que não as separa; aqui o
+   desenho pede um divisor entre seleções. */
+.entry-card__selections > * {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
 }
 
-.open-entry-card__current-price {
-  flex: 1 1 0;
-  color: var(--color-fill-primary);
+.entry-card__selections > *:last-child {
+  border-bottom: 0;
 }
 
-.open-entry-card__target-price > span,
-.open-entry-card__current-title {
-  height: 18px;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  white-space: nowrap;
+.entry-card--collapsed .entry-card__selections,
+.entry-card--collapsed .entry-card__actions {
+  display: none;
 }
 
-.open-entry-card__target-price > strong,
-.open-entry-card__current-price > strong {
-  overflow: hidden;
-  max-width: 100%;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.open-entry-card__current-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.open-entry-card__delta {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.open-entry-card__delta img {
-  display: block;
-  width: 12px;
-  height: 12px;
-}
-
-.open-entry-card__delta--up {
-  color: var(--color-fill-success);
-}
-
-.open-entry-card__delta--down {
-  color: var(--color-fill-error);
-}
-
-.open-entry-card__actions {
+.entry-card__actions {
   display: flex;
   width: 100%;
-  height: 52px;
-  flex: 0 0 52px;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: column;
   padding: 4px 12px 12px;
 }
 
-.open-entry-card__button {
+.entry-card__cash-out {
   appearance: none;
   height: 36px;
-  min-width: 0;
-  flex: 1 1 0;
+  width: 100%;
   padding: 7px 12px;
   border: 0;
   border-radius: 10px;
-  color: var(--color-fill-primary);
+  background: linear-gradient(
+    75.115deg,
+    var(--ds-action-primary-default-start, #4b20ff) 0%,
+    var(--ds-action-primary-default-end, #9730ff) 100%
+  );
+  color: var(--ds-fill-primary, #fbfbfb);
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
   cursor: pointer;
 }
 
-.open-entry-card__button--secondary {
-  background: var(--color-action-secondary-default);
-}
-
-.open-entry-card__button--primary {
-  background: linear-gradient(
-    75.115deg,
-    var(--color-action-primary-default-start) 0%,
-    var(--color-action-primary-default-end) 100%
-  );
-}
-
-.open-entry-card__button:focus-visible {
-  outline: 2px solid var(--color-fill-primary);
+.entry-card__cash-out:focus-visible {
+  outline: 2px solid var(--ds-fill-primary, #fbfbfb);
   outline-offset: 2px;
 }
 
-.won-entry-card {
-  position: relative;
+.entry-card__footer {
   display: flex;
   width: 100%;
-  height: 196px;
-  flex: 0 0 196px;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--color-fill-opacity-tertiary);
-  border-radius: 16px;
-  background: rgb(0 0 0 / 24%);
-}
-
-.won-entry-card__light {
-  position: absolute;
-  z-index: 0;
-  top: -96px;
-  left: 50%;
-  display: block;
-  width: 449px;
-  height: 164px;
-  max-width: none;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.won-entry-card__summary,
-.won-entry-card__body {
-  position: relative;
-  z-index: 1;
-}
-
-.won-entry-card__summary {
-  display: flex;
-  height: 64px;
-  flex: 0 0 64px;
-  flex-direction: column;
-  justify-content: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--color-fill-opacity-quaternary);
-}
-
-.won-entry-card__payout-row,
-.won-entry-card__payout,
-.won-entry-card__summary-details,
-.won-entry-card__meta,
-.won-entry-card__prices {
-  display: flex;
+  height: 34px;
   align-items: center;
-}
-
-.won-entry-card__payout-row {
-  height: 27px;
-  gap: 6px;
-}
-
-.won-entry-card__payout {
-  gap: 1px;
-  color: var(--color-fill-primary);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
-}
-
-.won-entry-card__payout strong {
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 27px;
-}
-
-.won-entry-card__badge {
-  position: relative;
-  display: block;
-  width: 72px;
-  height: 25px;
-  flex: 0 0 72px;
-}
-
-.won-entry-card__badge img {
-  display: block;
-  width: 72px;
-  height: 25px;
-}
-
-.won-entry-card__badge strong {
-  position: absolute;
-  inset: 3.5px 3px 1.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-fill-dark, #000);
-  font-size: 10px;
-  font-weight: 900;
-  line-height: 12px;
-}
-
-.won-entry-card__status-badge {
-  display: inline-flex;
-  min-width: 20px;
-  height: 20px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 4px;
-  border-radius: 6px;
-  background: var(--color-background-opacity-secondary);
-  color: var(--color-fill-tertiary);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 15px;
-  white-space: nowrap;
-}
-
-.won-entry-card--lost .won-entry-card__payout,
-.won-entry-card--canceled .won-entry-card__payout {
-  color: var(--color-fill-disabled);
-}
-
-.won-entry-card__summary-details {
-  gap: 12px;
-  color: var(--color-fill-tertiary);
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 21px;
-  white-space: nowrap;
-}
-
-.won-entry-card__summary-details strong {
-  color: inherit;
-  font-weight: 400;
-}
-
-.won-entry-card--canceled .won-entry-card__summary-details > span:first-child strong {
-  color: var(--color-fill-primary);
-}
-
-.won-entry-card__body {
-  display: flex;
-  height: 132px;
-  flex: 0 0 132px;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
-.won-entry-card__meta {
-  height: 20px;
-  flex: 0 0 20px;
-  gap: 8px;
-  color: var(--color-fill-secondary);
+  gap: 16px;
+  padding: 2px 16px;
+  background: var(--ds-background-opacity-tertiary, rgb(251 251 251 / 0.08));
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
   white-space: nowrap;
 }
 
-.won-entry-card__meta img {
-  width: 4px;
-  height: 4px;
-}
-
-.won-entry-card__position {
-  display: flex;
-  height: 42px;
-  flex: 0 0 42px;
-  flex-direction: column;
-  color: var(--color-fill-primary);
-  font-size: 14px;
-  line-height: 21px;
-}
-
-.won-entry-card__position strong {
-  font-weight: 700;
-}
-
-.won-entry-card__position > span {
-  font-weight: 500;
-}
-
-.won-entry-card__prices {
-  height: 42px;
-  flex: 0 0 42px;
-  gap: 20px;
-}
-
-.won-entry-card__target-price,
-.won-entry-card__final-price {
-  display: flex;
+.entry-card__footer > span {
+  overflow: hidden;
   min-width: 0;
-  height: 42px;
-  flex-direction: column;
-}
-
-.won-entry-card__target-price {
-  width: 120px;
-  flex: 0 0 120px;
-  border-right: 1px solid var(--color-fill-opacity-quaternary);
-  color: var(--color-fill-secondary);
-}
-
-.won-entry-card__final-price {
   flex: 1 1 0;
-  color: var(--color-fill-primary);
-}
-
-.won-entry-card__target-price span,
-.won-entry-card__final-price span {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-}
-
-.won-entry-card__target-price strong,
-.won-entry-card__final-price strong {
-  overflow: hidden;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 24px;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.won-entry-card[data-result-side='up'] .won-entry-card__final-price strong {
-  color: var(--color-fill-success);
-}
-
-.won-entry-card[data-result-side='down'] .won-entry-card__final-price strong {
-  color: var(--color-fill-error);
-}
-
-.won-entry-card__result {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.won-entry-card__result--up {
-  background: var(--color-fill-success);
-}
-
-.won-entry-card__result--down {
-  background: var(--color-fill-error);
-}
-
-.won-entry-card__result img {
-  display: block;
-  width: 24px;
-  height: 24px;
-}
-
-/* A entrada vendida não tem preço final nem resultado, então a divisória
-   vertical do preço objetivo ficaria pendurada sem coluna ao lado. */
-.won-entry-card--sold .won-entry-card__target-price {
-  border-right: 0;
-}
-
-@media (max-width: 340px) {
-  .open-entry-card__summary-details {
-    gap: 8px;
-    font-size: 13px;
-  }
-
-  .won-entry-card__summary-details {
-    gap: 8px;
-    font-size: 13px;
-  }
-
-  .open-entry-card__meta {
-    gap: 6px;
-    font-size: 11px;
-  }
-
-  .open-entry-card__prices {
-    gap: 12px;
-  }
-
-  .open-entry-card__target-price {
-    width: 112px;
-    flex-basis: 112px;
-  }
-
-  .won-entry-card__prices {
-    gap: 12px;
-  }
-
-  .won-entry-card__target-price {
-    width: 112px;
-    flex-basis: 112px;
-  }
+.entry-card__code {
+  text-align: right;
 }
 
 @media (max-width: 499px) {

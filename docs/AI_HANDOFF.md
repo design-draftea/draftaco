@@ -1,5 +1,28 @@
 ## Estado atual
 
+### Card de Entradas com o conteúdo da aposta (nó Figma 1993:6822)
+
+O card do Pulse saiu; no lugar entra o do desenho. O miolo são as linhas do recibo da tela de
+sucesso, via `BetSuccessSelectionGroupRow` do módulo compartilhado. O que é próprio deste card é a
+moldura: cabeçalho com recolher e compartilhar, `Ganho potencial` com o símbolo em Bold 16 e o
+número em Black 18, a linha `Entrada: … Odds: …`, o botão `Encerrar aposta` e o rodapé com data e
+código do bilhete.
+
+- `src/data/entries.ts` foi refeito: os mocks agora são `BetslipSelection[]` agrupados em
+  `EntrySummary`, com valores em reais. O botão de encerrar só existe nas entradas em aberto.
+- Assets: só o ícone de compartilhar veio do Figma (`iconEntryShare.svg`). O chevron exportado era
+  o mesmo glifo do `chevronUp.svg` que o projeto já tinha — diferiam só no arredondamento da última
+  casa decimal —, então reusei o existente em vez de duplicar.
+
+**Como o Figma foi acessado:** o MCP configurado nesta sessão é o **remoto** do Figma, e ele recusa
+o arquivo porque a conta tem assento View. O **desktop** (`127.0.0.1:3845`, "Figma Dev Mode MCP
+Server") responde sem restrição. Enquanto o desktop não estiver registrado como servidor MCP da
+sessão, o acesso é por HTTP direto nesse endereço.
+
+**Conferido:** recolher leva o card de 467px para 101px e esconde as seleções; VENCEDORAS e
+ANTERIORES renderizam sem o botão de encerrar. `build`, `check:brands` e lint limpos.
+
+
 ### Peças de seleção extraídas para uso compartilhado
 
 `src/features/betslip/BetSuccessPage/betSuccessSelections.tsx` recebeu as peças puras de exibição

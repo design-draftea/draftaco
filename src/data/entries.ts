@@ -1,119 +1,147 @@
-// Dados mockados da tela Entradas, portados do protótipo Pulse.
-// Só o layout foi trazido: nada aqui está ligado à carteira, ao betslip ou a
-// qualquer estado real do Draftaco. Os valores reproduzem os previews que o
-// Pulse usa para conferir os cards no Figma (856:7277, 856:6341 e 856:7618).
+// Dados mockados da tela Entradas.
+// O conteúdo do card é o mesmo do recibo da tela de sucesso, como o desenho pede
+// (nó Figma 1993:6822), então as seleções usam o tipo `BetslipSelection` do
+// betslip. Nada aqui está ligado à carteira ou ao betslip reais: é só layout.
+import type { BetslipSelection } from '../shared/hooks/betslipUtils'
 
-export type EntrySide = 'up' | 'down'
+export type EntryTabId = 'open' | 'won' | 'past'
 
-export type SettledEntryOutcome = 'won' | 'lost' | 'sold' | 'canceled'
-
-export interface OpenEntrySummary {
-  side: EntrySide
-  participations: number
-  amountCents: number
-  averagePriceCents: number
-  potentialPayoutCents: number
-}
-
-export interface SettledEntrySummary {
+export interface EntrySummary {
   id: string
-  roundStart: number
-  roundEnd: number
-  side: EntrySide
-  outcome: SettledEntryOutcome
-  amountCents: number
-  participations: number
-  payoutCents: number
-  targetPrice: number | null
-  finalPrice: number | null
+  /** Código do bilhete, mostrado no rodapé do card. */
+  code: string
+  createdAtLabel: string
+  stakeLabel: string
+  totalOddsLabel: string
+  potentialWinLabel: string
+  /** Só as entradas em aberto trazem o botão de encerrar. */
+  cashOutLabel?: string
+  selections: BetslipSelection[]
 }
 
-/** Janela da rodada aberta, no formato que o card mostra no header. */
-export const openRoundWindow = {
-  startTime: '10:00',
-  endTime: '10:15',
-  minutes: '07',
-  seconds: '42',
-  targetPrice: 80_194.33,
-  currentPrice: 80_196.12,
+const base = {
+  createdAtMs: new Date(2026, 8, 1, 10, 0).getTime(),
+  eventStatus: 'prematch' as const,
+  selectionType: 'team' as const,
+  marketId: 'resultado-final',
+  marketLabel: 'Resultado Final',
+  marketTags: ['90’', 'PA'],
+  leagueName: 'Brasil - Série A',
+  sport: 'futebol',
 }
 
-export const openEntries: OpenEntrySummary[] = [
+const criarSelecaoDeTime = (
+  id: string,
+  homeTeam: string,
+  awayTeam: string,
+  escolha: string,
+  oddLabel: string,
+  eventTimeLabel: string,
+): BetslipSelection => ({
+  ...base,
+  id,
+  eventId: `${homeTeam}-${awayTeam}`,
+  outcomeId: `${id}-outcome`,
+  label: escolha,
+  selectionLabel: escolha,
+  selectionTeamName: escolha,
+  oddLabel,
+  oddValue: Number(oddLabel.replace('x', '')),
+  homeTeam,
+  awayTeam,
+  eventName: `${homeTeam} x ${awayTeam}`,
+  eventTimeLabel,
+})
+
+const criarSelecaoDeJogador = (
+  id: string,
+  playerName: string,
+  homeTeam: string,
+  awayTeam: string,
+  oddLabel: string,
+  eventTimeLabel: string,
+): BetslipSelection => ({
+  ...base,
+  id,
+  eventId: `${homeTeam}-${awayTeam}-jogador`,
+  outcomeId: `${id}-outcome`,
+  selectionType: 'player',
+  marketId: 'finalizacoes-ao-gol',
+  marketLabel: 'Finalizações ao Gol',
+  marketTags: ['B+'],
+  label: `${playerName} 2.5+`,
+  selectionLabel: '2.5+',
+  playerName,
+  selectionTeamName: homeTeam,
+  oddLabel,
+  oddValue: Number(oddLabel.replace('x', '')),
+  homeTeam,
+  awayTeam,
+  eventName: `${homeTeam} x ${awayTeam}`,
+  eventTimeLabel,
+})
+
+export const openEntries: EntrySummary[] = [
   {
-    side: 'down',
-    participations: 588.24,
-    amountCents: 20_000,
-    averagePriceCents: 34,
-    potentialPayoutCents: 58_824,
+    id: 'entry-open-1',
+    code: 'DRFT248NMSJB54N',
+    createdAtLabel: 'Criado: 01/09 (10:00)',
+    stakeLabel: 'R$ 200,00',
+    totalOddsLabel: '3.50x',
+    potentialWinLabel: 'R$ 700,00',
+    cashOutLabel: 'Encerrar aposta: R$ 200,00',
+    selections: [
+      criarSelecaoDeTime('open-1-a', 'Flamengo', 'Cruzeiro', 'Flamengo', '1.25x', 'Amanhã (21:30)'),
+      criarSelecaoDeTime('open-1-b', 'Internacional', 'Bragantino', 'Empate', '3.40x', 'Amanhã (19:00)'),
+      criarSelecaoDeJogador('open-1-c', 'Pedro', 'Flamengo', 'Cruzeiro', '1.78x', 'Amanhã (21:30)'),
+    ],
   },
   {
-    side: 'up',
-    participations: 588.24,
-    amountCents: 20_000,
-    averagePriceCents: 34,
-    potentialPayoutCents: 58_824,
+    id: 'entry-open-2',
+    code: 'DRFT91КZQ4XP07T'.replace('К', 'K'),
+    createdAtLabel: 'Criado: 01/09 (09:12)',
+    stakeLabel: 'R$ 50,00',
+    totalOddsLabel: '2.10x',
+    potentialWinLabel: 'R$ 105,00',
+    cashOutLabel: 'Encerrar aposta: R$ 50,00',
+    selections: [
+      criarSelecaoDeTime('open-2-a', 'Mirassol', 'São Paulo', 'São Paulo', '1.70x', 'Hoje (16:00)'),
+    ],
   },
 ]
 
-const wonEntry: SettledEntrySummary = {
-  id: 'entry-won',
-  roundStart: new Date(2026, 8, 1, 10, 0).getTime(),
-  roundEnd: new Date(2026, 8, 1, 10, 15).getTime(),
-  side: 'down',
-  outcome: 'won',
-  amountCents: 20_000,
-  participations: 588.24,
-  payoutCents: 58_824,
-  targetPrice: 80_194.33,
-  finalPrice: 80_193.64,
+export const wonEntries: EntrySummary[] = [
+  {
+    id: 'entry-won-1',
+    code: 'DRFT7T2KLMW9QZ1',
+    createdAtLabel: 'Criado: 31/08 (18:40)',
+    stakeLabel: 'R$ 100,00',
+    totalOddsLabel: '2.45x',
+    potentialWinLabel: 'R$ 245,00',
+    selections: [
+      criarSelecaoDeTime('won-1-a', 'Palmeiras', 'Fluminense', 'Palmeiras', '1.45x', '31/08 (20:00)'),
+      criarSelecaoDeTime('won-1-b', 'Botafogo', 'Bahia', 'Botafogo', '1.69x', '31/08 (18:30)'),
+    ],
+  },
+]
+
+export const pastEntries: EntrySummary[] = [
+  ...wonEntries,
+  {
+    id: 'entry-past-1',
+    code: 'DRFT5NQX83BVKD2',
+    createdAtLabel: 'Criado: 30/08 (14:05)',
+    stakeLabel: 'R$ 30,00',
+    totalOddsLabel: '5.50x',
+    potentialWinLabel: 'R$ 165,00',
+    selections: [
+      criarSelecaoDeTime('past-1-a', 'Flamengo', 'Cruzeiro', 'Empate', '5.50x', '30/08 (16:00)'),
+    ],
+  },
+]
+
+export const entriesByTab: Record<EntryTabId, EntrySummary[]> = {
+  open: openEntries,
+  won: wonEntries,
+  past: pastEntries,
 }
-
-export const wonEntries: SettledEntrySummary[] = [
-  wonEntry,
-  {
-    ...wonEntry,
-    id: 'entry-won-2',
-    roundStart: new Date(2026, 8, 1, 8, 45).getTime(),
-    roundEnd: new Date(2026, 8, 1, 9, 0).getTime(),
-    side: 'up',
-    amountCents: 10_000,
-    participations: 312.5,
-    payoutCents: 31_250,
-    targetPrice: 80_120.5,
-    finalPrice: 80_144.18,
-  },
-]
-
-export const pastEntries: SettledEntrySummary[] = [
-  wonEntry,
-  {
-    ...wonEntry,
-    id: 'entry-lost',
-    roundStart: new Date(2026, 8, 1, 9, 45).getTime(),
-    roundEnd: new Date(2026, 8, 1, 10, 0).getTime(),
-    outcome: 'lost',
-    payoutCents: 0,
-    finalPrice: 80_195.64,
-  },
-  {
-    ...wonEntry,
-    id: 'entry-sold',
-    roundStart: new Date(2026, 8, 1, 9, 30).getTime(),
-    roundEnd: new Date(2026, 8, 1, 9, 45).getTime(),
-    side: 'up',
-    outcome: 'sold',
-    amountCents: 20_000,
-    participations: 298.51,
-    payoutCents: 20_000,
-    finalPrice: null,
-  },
-  {
-    ...wonEntry,
-    id: 'entry-canceled',
-    roundStart: new Date(2026, 8, 1, 9, 15).getTime(),
-    roundEnd: new Date(2026, 8, 1, 9, 30).getTime(),
-    outcome: 'canceled',
-    payoutCents: 0,
-    finalPrice: 80_195.64,
-  },
-]

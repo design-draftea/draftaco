@@ -2,14 +2,9 @@ import { useEffect, useRef, useState, type ComponentType } from 'react'
 
 import { ContentFilterChips } from '../../../components/ContentFilterChips'
 import { HeaderV2 } from '../../../components/HeaderV2'
-import {
-  openEntries,
-  openRoundWindow,
-  pastEntries,
-  wonEntries,
-} from '../../../data/entries'
+import { entriesByTab } from '../../../data/entries'
 import type { ProductMode } from '../../../shared/types/home'
-import { OpenEntryCard, SettledEntryCard } from './EntryCards'
+import { EntryCard } from './EntryCards'
 import './EntriesPage.css'
 
 // Mesmos props de header que a PromotionsPage recebe, para a tela nascer com a
@@ -88,10 +83,8 @@ export function EntriesPage({
   const tabSwapTimerRef = useRef<number | null>(null)
   const tabSettleTimerRef = useRef<number | null>(null)
 
-  const visibleEntriesCount = activeTab === 'open'
-    ? openEntries.length
-    : activeTab === 'won' ? wonEntries.length : pastEntries.length
-  const settledEntriesForTab = activeTab === 'won' ? wonEntries : pastEntries
+  const entradasDaAba = entriesByTab[activeTab]
+  const visibleEntriesCount = entradasDaAba.length
 
   useEffect(() => () => {
     if (tabSwapTimerRef.current !== null) {
@@ -150,20 +143,8 @@ export function EntriesPage({
           {visibleEntriesCount === 0 && (
             <p className="open-entries__empty">{emptyLabelByTab[activeTab]}</p>
           )}
-          {activeTab === 'open' && openEntries.map((entry) => (
-            <OpenEntryCard
-              entry={entry}
-              startTime={openRoundWindow.startTime}
-              endTime={openRoundWindow.endTime}
-              minutes={openRoundWindow.minutes}
-              seconds={openRoundWindow.seconds}
-              targetPrice={openRoundWindow.targetPrice}
-              currentPrice={openRoundWindow.currentPrice}
-              key={entry.side}
-            />
-          ))}
-          {activeTab !== 'open' && settledEntriesForTab.map((entry) => (
-            <SettledEntryCard entry={entry} key={entry.id} />
+          {entradasDaAba.map((entry) => (
+            <EntryCard entry={entry} key={entry.id} />
           ))}
         </div>
       </main>
