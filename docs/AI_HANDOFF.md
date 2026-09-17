@@ -116,6 +116,24 @@ Feito, porque não depende do Figma:
   `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
   320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
   os chips e entra no primeiro card, como no desenho.
+### Chip inativo passa a ser o token puro, em todo o app
+
+`.content-filter-chips__item:not(--active)` compunha `--ds-action-transparency-default` sobre
+`--ds-background-app`, que é **opaco**. O resultado era um chip preto sempre que a faixa fica sobre
+um degradê — na tela Entradas e também na de apostas com esporte selecionado. A regra base de
+`src/components/ContentFilterChips/ContentFilterChips.css` passou a usar só o token
+(`rgb(251 251 251 / 0.08)`), sem a camada opaca. A borda já vinha correta da regra base do
+componente: `1px solid var(--ds-fill-opacity-tertiary)` = `rgb(251 251 251 / 0.16)`.
+
+A mudança é no componente compartilhado, então vale para Home, Entradas, `SportsPageV2`,
+`LiveEventPage` e o bottom sheet de NFL. A variante `content-filter-chips--competition-markets`
+repetia o mesmo fundo opaco e virou duplicata da base; foi removida.
+
+Risco verificado: a faixa `.content-filter-chips` mantém o fundo opaco próprio
+(`linear-gradient(#000 0%, #000 calc(100% - 16px), transparent)`), então o conteúdo continua sendo
+cortado antes dos chips ao rolar. Conferido na home com esporte ativo, rolando 320px: a faixa fica
+sticky e nada transparece através dos chips.
+
 ### Correção do efeito do chip e do degradê
 
 Duas coisas estavam erradas, e o diagnóstico inicial de uma delas foi **falso** — fica registrado

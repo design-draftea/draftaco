@@ -86,17 +86,6 @@
   background: transparent;
 }
 
-.home--novo-trilho.home--competition-active.home--content-event-rail-active
-  > .content-filter-chips--competition-markets.content-filter-chips
-  .content-filter-chips__item:not(.content-filter-chips__item--active) {
-  background:
-    linear-gradient(
-      0deg,
-      var(--ds-action-transparency-default, rgb(251 251 251 / 0.08)),
-      var(--ds-action-transparency-default, rgb(251 251 251 / 0.08))
-    ),
-    var(--ds-background-app, var(--tokens-background-background));
-}
 
 .content-filter-chips--sport-markets .content-filter-chips__item,
 .content-filter-chips--competition-markets .content-filter-chips__item {
@@ -162,14 +151,12 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* O chip inativo é o token de transparência puro. Antes ele era composto sobre o
+   fundo OPACO do app, o que o transformava numa ilha preta sempre que a faixa de
+   chips fica sobre um degradê. A faixa (`.content-filter-chips`) mantém o fundo
+   opaco próprio, então nada de conteúdo passa por trás ao rolar. */
 .content-filter-chips__item:not(.content-filter-chips__item--active) {
-  background:
-    linear-gradient(
-      0deg,
-      var(--ds-action-transparency-default, rgb(251 251 251 / 0.08)),
-      var(--ds-action-transparency-default, rgb(251 251 251 / 0.08))
-    ),
-    var(--ds-background-app, var(--tokens-background-background));
+  background: var(--ds-action-transparency-default, rgb(251 251 251 / 0.08));
 }
 
 .content-filter-chips__item span {
