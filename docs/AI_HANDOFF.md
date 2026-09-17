@@ -1,5 +1,29 @@
 ## Estado atual
 
+### Peças de seleção extraídas para uso compartilhado
+
+`src/features/betslip/BetSuccessPage/betSuccessSelections.tsx` recebeu as peças puras de exibição
+de seleção que estavam dentro de `BetSuccessPage.tsx`: as constantes de promo e mercado, os
+auxiliares (`isResultFinalSelection`, `getOrderedResultFinalBadges`, `getResultFinalLiveStatus`,
+`getGroupedHeaderSelection` etc.) e os 13 componentes, de `BetSuccessSelectionAvatar` a
+`BetSuccessSelectionGroupRow`. Só os componentes são exportados — exportar as constantes quebrava
+`react-refresh/only-export-components`.
+
+As classes continuam `bet-success__*` e o módulo importa o mesmo `BetSuccessPage.css`, então o
+visual não muda em lugar nenhum. Importar esse CSS noutra tela é seguro: conferido que todas as 187
+regras de topo dele são prefixadas (`.bet-success*` ou `.camisa-premiada-static*`), sem nada global.
+
+**Verificação:** comparei o corpo extraído contra os intervalos removidos do `HEAD` anterior. As
+únicas diferenças são três linhas em branco nas junções dos quatro blocos — o código é byte a byte
+idêntico, fora o prefixo `export`. Com `tsc -b` e `npm run build` limpos, a refatoração é
+preservadora de comportamento.
+
+**Pendência:** não consegui abrir a tela de sucesso no navegador automatizado — o betslip completo
+(`.betslip-v2`) monta mas não fica visível ao clicar no bilhete compacto, com a sessão deslogada.
+Isso é independente da extração (o caminho de abertura não foi tocado), mas a conferência visual da
+tela de sucesso segue **pendente**.
+
+
 - Atualizado em: 2026-09-17.
 - Agente que entrega: Claude.
 - Checkout: worktree `.worktrees/feature-entradas-layout`, branch `feature/entradas-layout`,
