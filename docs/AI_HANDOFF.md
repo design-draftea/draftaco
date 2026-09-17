@@ -116,6 +116,14 @@ Feito, porque não depende do Figma:
   `::before` do header mostra os primeiros 104px e o `::before` da página continua o resto, até
   320px. Como as duas coincidem, não existe emenda nem corte para mascarar, e o brilho atravessa
   os chips e entra no primeiro card, como no desenho.
+### Respiro entre a faixa de chips e o primeiro mercado
+
+Na home com esporte selecionado, o conteúdo começava exatamente onde a faixa de chips terminava
+(folga de 0px entre os dois elementos; 14px entre a base do chip e o texto do primeiro mercado).
+O `padding-bottom` da faixa nesse estado passou de `8px` para `16px`, levando a folga até o texto
+para 22px — o valor derivado da referência de desenho, tomando a altura do chip como escala. Isso
+também acomoda os 16px de dissolução do fundo da faixa, que antes invadiam a área do chip.
+
 ### Chip inativo passa a ser o token puro, em todo o app
 
 `.content-filter-chips__item:not(--active)` compunha `--ds-action-transparency-default` sobre

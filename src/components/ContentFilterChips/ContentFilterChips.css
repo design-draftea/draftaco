@@ -34,7 +34,12 @@
   --content-filter-chips-padding-y: 0px;
   --content-filter-chips-sticky-top: -4px;
   padding-top: 12px;
-  padding-bottom: 8px;
+
+  /* 16px dá ao primeiro mercado o mesmo respiro do desenho: com os 6px que o
+     título já traz, a folga entre a base do chip e o texto vai de 14px para
+     22px. Também acomoda os 16px de dissolução do fundo da faixa, que antes
+     invadiam a área do chip. */
+  padding-bottom: 16px;
 }
 
 .home--novo-trilho.home--competition-active
