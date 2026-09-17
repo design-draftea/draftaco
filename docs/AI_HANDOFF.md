@@ -104,14 +104,17 @@ Feito, porque não depende do Figma:
 - As três abas e os estados vazios passaram a pt-BR (`PRÓXIMAS`, `GANHAS`, `PASSADAS`), com as
   traduções es-MX em `src/brands/draftea/legacyCopy.ts`, que é o mecanismo do projeto. `PRÓXIMAS`
   é igual nos dois idiomas e não precisa de entrada.
-- O indicador da aba ativa deixou de usar as posições em pixel fixas do Pulse — que quebravam ao
-  trocar os rótulos de idioma — e passou a usar `useSlidingActiveIndicator`, o hook que
-  `ContentFilterChips`, `PromotionsPage` e as demais grades de chips já usam. Com ele veio o
-  visual nativo de chip do Draftaco; o pill próprio do Pulse não foi reproduzido.
-- A faixa de abas trocou o fundo chapado por um degradê que se dissolve no conteúdo, no mesmo
-  padrão do `.header--v2` e do `ContentFilterChips`
-  (`linear-gradient(180deg, opaco 0%, opaco calc(100% - fade), transparente 100%)`), acabando com
-  o corte seco.
+- A faixa de abas própria do Pulse foi removida por inteiro. Os chips agora são o
+  `ContentFilterChips` do projeto — o mesmo componente da home, com o degradê, o indicador
+  deslizante e a transição de `520ms cubic-bezier(0.2, 1, 0.28, 1)` dele. A tela não tem mais
+  markup nem CSS de aba próprios.
+- Os chips foram para **dentro** do `HeaderComponent`, como fazem a home e a `PromotionsPage`.
+  Era isso que faltava para o header não cortar seco: a pilha do header passou de 56px para
+  104px e o brilho passa por trás dos chips.
+- O corte do brilho foi resolvido com a mesma técnica que a home usa contra o que o CSS dela
+  chama de "barra seca": `lightHeader.png` tem 220px e é recortada quando a pilha é mais curta,
+  então o fundo do header vai para um `::before` com `mask-image`, e o degradê passa a seguir a
+  altura real do header sem desbotar a barra nem os chips.
 
 Bloqueado no Figma:
 

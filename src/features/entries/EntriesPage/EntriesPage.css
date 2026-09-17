@@ -29,17 +29,47 @@
      Draftaco para não recortar um retângulo escuro sobre o header. */
   --color-background-app: var(--ds-background-app, #131313);
 
-  --entries-header-height: 56px;
-  --entries-tabs-fade-height: var(--content-filter-chips-fade-height, 16px);
-  --entries-background-rgb: var(
-    --ds-background-app-rgb,
-    var(--tokens-background-background-rgb, 19 19 19)
-  );
+  /* O header é fixo e agora carrega os chips dentro dele, como na home; o
+     conteúdo precisa começar abaixo da pilha inteira. Medido no protótipo. */
+  --entries-header-height: 104px;
 
   display: flex;
   min-height: 100svh;
   flex-direction: column;
   background: var(--color-background-app);
+}
+
+/* Mesma solução que a home usa contra a "barra seca": a pilha deste header tem
+   104px e a imagem de brilho tem 220px, então ela seria recortada no meio e
+   cortaria seco no conteúdo. O fundo vai para um ::before mascarado, e assim o
+   degradê segue a altura real do header sem desbotar a barra nem os chips. */
+.entries-page .header--v2 {
+  background: transparent;
+}
+
+.entries-page .header--v2::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-color: var(--ds-background-app, var(--tokens-background-background));
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: var(--header-v2-background-size, 100% 220px);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .open-entries {
@@ -50,73 +80,6 @@
   padding-bottom: var(--navbar-page-bottom-padding);
 }
 
-.open-entries__tabs {
-  position: sticky;
-  z-index: 20;
-  top: var(--entries-header-height);
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px calc(8px + var(--entries-tabs-fade-height));
-
-  /* O header é fixo, então as abas ficam sempre coladas nele e precisam de fundo
-     próprio: sem ele os cards passariam por trás. O fundo termina em degradê,
-     como o do header e o dos chips de filtro, para não cortar seco no conteúdo. */
-  background-image: linear-gradient(
-    180deg,
-    rgb(var(--entries-background-rgb) / 1) 0%,
-    rgb(var(--entries-background-rgb) / 1) calc(100% - var(--entries-tabs-fade-height)),
-    rgb(var(--entries-background-rgb) / 0) 100%
-  );
-}
-
-
-
-/* O pill ativo é o do design system do Draftaco (.sliding-chip-indicator), o
-   mesmo dos demais grupos de chips do app. O visual próprio que o Pulse tinha
-   não foi reproduzido aqui: o Figma desta tela ainda não pôde ser aberto, e
-   inventar um terceiro estilo seria pior que usar o que o projeto já tem. */
-
-.open-entries__tab {
-  appearance: none;
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 7px 12px;
-  border: 1px solid var(--color-fill-opacity-tertiary);
-  border-radius: 56px;
-  background: var(--color-action-transparency-default);
-  color: var(--color-fill-secondary);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 18px;
-  cursor: pointer;
-  transition:
-    border-color 180ms ease,
-    color 180ms ease,
-    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.open-entries__tab--active {
-  border-color: transparent;
-  background: transparent;
-  color: var(--color-fill-primary);
-}
-
-.open-entries__tab:active {
-  transform: scale(0.96);
-}
-
-.open-entries__tab:focus-visible {
-  outline: 2px solid var(--color-fill-primary);
-  outline-offset: 2px;
-}
-
 .open-entries__list {
   display: flex;
   width: 100%;
@@ -124,6 +87,12 @@
   align-items: stretch;
   gap: 12px;
   padding: 0 12px 12px;
+}
+
+/* A grade de chips tem uma aba a menos que a da home e cabe inteira na tela,
+   então não precisa da rolagem horizontal. */
+.entries-page__chips .content-filter-chips__list {
+  overflow-x: visible;
 }
 
 .open-entries__list--transition-out {

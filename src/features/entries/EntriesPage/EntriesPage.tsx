@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 
+import { ContentFilterChips } from '../../../components/ContentFilterChips'
 import { HeaderV2 } from '../../../components/HeaderV2'
-import { useSlidingActiveIndicator } from '../../../shared/hooks/useSlidingActiveIndicator'
 import {
   openEntries,
   openRoundWindow,
@@ -53,7 +53,7 @@ interface EntriesPageProps {
 type EntriesTab = 'open' | 'won' | 'past'
 type TabTransitionPhase = 'idle' | 'out' | 'in'
 
-const entriesTabs: { id: EntriesTab; label: string }[] = [
+const entriesTabs: readonly { id: EntriesTab; label: string }[] = [
   { id: 'open', label: 'PRÓXIMAS' },
   { id: 'won', label: 'GANHAS' },
   { id: 'past', label: 'PASSADAS' },
@@ -85,8 +85,6 @@ export function EntriesPage({
 }: EntriesPageProps) {
   const [activeTab, setActiveTab] = useState<EntriesTab>('open')
   const [tabTransitionPhase, setTabTransitionPhase] = useState<TabTransitionPhase>('idle')
-  const tabListRef = useRef<HTMLDivElement>(null)
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const tabSwapTimerRef = useRef<number | null>(null)
   const tabSettleTimerRef = useRef<number | null>(null)
 
@@ -94,15 +92,6 @@ export function EntriesPage({
     ? openEntries.length
     : activeTab === 'won' ? wonEntries.length : pastEntries.length
   const settledEntriesForTab = activeTab === 'won' ? wonEntries : pastEntries
-  const activeTabIndex = Math.max(0, entriesTabs.findIndex((tab) => tab.id === activeTab))
-
-  // O indicador mede a aba ativa em vez de usar as posições em pixel que o Pulse
-  // tinha fixas: os rótulos mudaram de idioma e de largura, e a Draftea traduz.
-  useSlidingActiveIndicator({
-    activeKey: activeTab,
-    containerRef: tabListRef,
-    getActiveElement: () => tabRefs.current[activeTabIndex],
-  })
 
   useEffect(() => () => {
     if (tabSwapTimerRef.current !== null) {
@@ -146,33 +135,17 @@ export function EntriesPage({
         onLoginClick={onLoginClick}
         onCreateAccountClick={onCreateAccountClick}
         onProductChange={onProductChange}
-      />
+      >
+        <ContentFilterChips
+          filters={entriesTabs}
+          activeFilter={activeTab}
+          ariaLabel="Estados de entradas"
+          className="entries-page__chips"
+          onFilterChange={selectTab}
+        />
+      </HeaderComponent>
 
       <main className="open-entries" data-node-id="383:6851">
-        <div
-          className="open-entries__tabs sliding-chip-group"
-          ref={tabListRef}
-          role="tablist"
-          aria-label="Estados de entradas"
-        >
-          <span className="sliding-chip-indicator" aria-hidden="true" />
-          {entriesTabs.map((tab, index) => (
-            <button
-              key={tab.id}
-              ref={(node) => {
-                tabRefs.current[index] = node
-              }}
-              className={`open-entries__tab${activeTab === tab.id ? ' open-entries__tab--active' : ''}`}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => selectTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
         <div className={`open-entries__list open-entries__list--transition-${tabTransitionPhase}${visibleEntriesCount === 0 ? ' open-entries__list--empty' : ''}`}>
           {visibleEntriesCount === 0 && (
             <p className="open-entries__empty">{emptyLabelByTab[activeTab]}</p>
