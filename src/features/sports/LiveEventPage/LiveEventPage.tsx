@@ -149,6 +149,8 @@ export interface LiveEventInlineHeaderProps {
   sport: string
   currentTime?: string
   isCompact?: boolean
+  /** Abre o sheet de jogadas já montado, para a rota de atalho `/<marca>/nfl`. */
+  initialStatsOpen?: boolean
   onSelectedIndexChange?: (index: number) => void
   onLayoutReady?: () => void
   onClose?: () => void
@@ -3365,12 +3367,15 @@ interface LiveEventInlineScoreHeaderProps {
   match: LiveEventMatch
   sport: string
   currentTime: string
+  /** Abre o sheet de jogadas já montado, para a rota de atalho `/<marca>/nfl`. */
+  initialStatsOpen?: boolean
 }
 
 function LiveEventInlineScoreHeader({
   match,
   sport,
   currentTime,
+  initialStatsOpen = false,
 }: LiveEventInlineScoreHeaderProps) {
   const contentSport = match.sport ?? sport
   const isBasketball = contentSport === 'basquete'
@@ -3380,7 +3385,7 @@ function LiveEventInlineScoreHeader({
   const situation = isLiveMatch ? match.footballSituation : undefined
   // Quem pontuou continua com a posse até o ponto extra, então a posse identifica o time.
   const scoringTeamName = situation?.possession === 'home' ? match.homeTeam.name : match.awayTeam.name
-  const [isStatsOpen, setIsStatsOpen] = useState(false)
+  const [isStatsOpen, setIsStatsOpen] = useState(initialStatsOpen)
   const scoreMain = (
     <div className="live-event-inline__score-main">
       <LiveEventInlineScoreTeam
@@ -4614,6 +4619,7 @@ export function LiveEventInlineHeader({
   sport,
   currentTime,
   isCompact: _isCompact = false,
+  initialStatsOpen = false,
   onSelectedIndexChange,
   onLayoutReady,
   onClose,
@@ -4688,6 +4694,7 @@ export function LiveEventInlineHeader({
         match={selectedMatch}
         sport={selectedMatch.sport ?? sport}
         currentTime={selectedDisplayTime}
+        initialStatsOpen={initialStatsOpen}
       />
       <LiveEventInlineMarketChips sport={selectedMatch.sport ?? sport} />
     </div>

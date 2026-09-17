@@ -27,6 +27,7 @@ Cassino está desativado nas duas marcas (`features.casino: false`): item visív
 - `/<marca>/apostas`: home de apostas esportivas.
 - `/<marca>/cassino`: indisponível nesta fase; redireciona para apostas.
 - `/<marca>/promocoes`: promoções.
+- `/<marca>/entradas`: tela Entradas. Layout portado do protótipo Pulse, ainda sem lógica e com dados mockados.
 
 `<marca>` é `pitaco` ou `draftea`. `/pitaco` e `/draftea` abrem apostas. `/<marca>/entrar` abre login. Somente `/pitaco/criar-conta` permite cadastro; a mesma rota na Draftea volta para apostas. O botão Crear cuenta permanece visível e sem ação.
 
@@ -44,6 +45,7 @@ Rotas desconhecidas são normalizadas para o produto padrão de apostas. Após p
 - `src/data/`: dados mockados.
 - `src/shared/hooks/`: estado compartilhado e feature flags.
 - `src/features/`: telas e comportamento agrupados por domínio.
+- `src/features/entries/EntriesPage/`: tela Entradas. Os cards são a geração **anterior** ao redesenho do Pulse (seletores `.open-entry-card` e `.won-entry-card`), não a `.entry-card-v2`. Os tokens de cor do Pulse ficam escopados na raiz `.entries-page`, fora da camada global; é ali que o mapeamento para os `--tokens-*` deve acontecer quando a lógica entrar.
 - `src/styles/`: tokens, temas e estilos globais.
 - `src/shared/utils/`: navegação e formatação.
 

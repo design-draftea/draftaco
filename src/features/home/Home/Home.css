@@ -221,6 +221,89 @@
   pointer-events: none;
 }
 
+/* Mesma "barra seca" do bloco acima, mas nos estados que não tinham remédio:
+   Destaques e esporte selecionado. A pilha do header mede 134px e a imagem é
+   renderizada a 220px, então o `overflow: hidden` a corta numa linha onde ela
+   ainda vale rgb(10, 4, 22) — visível contra o preto. Ela só chega ao preto por
+   volta de 180px.
+
+   Aqui a imagem sai da pilha de backgrounds do header e vai para um ::before
+   mascarado, que dissolve os últimos 16px acompanhando a altura real da pilha. O
+   fundo opaco continua no próprio header, e não no ::before, então a barra não
+   fica translúcida e nada de conteúdo passa por baixo ao rolar. O `z-index: -1`
+   deixa o brilho acima do fundo do header e abaixo do logo, do rail e dos chips,
+   que não são afetados pela máscara. */
+.home--novo-trilho:not(.home--event-inline-active):not(.home--competition-header-active)
+  .header--v2 {
+  background-image: linear-gradient(
+    180deg,
+    rgb(var(--header-v2-background-rgb) / 1) 0%,
+    rgb(var(--header-v2-background-rgb) / 1) calc(100% - var(--header-v2-background-fade-height)),
+    rgb(var(--header-v2-background-rgb) / 0) 100%
+  );
+  background-size: 100% 100%;
+}
+
+.home--novo-trilho:not(.home--event-inline-active):not(.home--competition-header-active)
+  .header--v2::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: var(--header-v2-background-size, 100% 220px);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 calc(100% - var(--header-v2-background-fade-height, 16px)),
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Destaques e esporte (futebol, basquete, etc.): o brilho continua ABAIXO do
+   header, em vez de dissolver nele.
+   A camada da página usa a mesma imagem, a mesma escala e a mesma origem do
+   ::before do header, então as duas se encontram sem emenda — o header é opaco e
+   cobre a faixa de cima, e o que aparece é só a continuação. Por isso a máscara
+   sai neste estado: não há mais corte para esconder. */
+.home--novo-trilho:not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)
+  .header--v2::before {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.home--novo-trilho:not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 220px;
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: var(--header-v2-background-size, 100% 220px);
+  pointer-events: none;
+}
+
+/* A faixa de promo encosta no header e é preta opaca, o que decepava o brilho
+   logo abaixo dele. A cor dela é a mesma do fundo do app, então deixá-la
+   transparente não muda nada além de liberar o degradê por trás. */
+.home--novo-trilho:not(.home--casino-active):not(.home--competition-active):not(.home--event-inline-active)
+  > .promo-draftaco {
+  background: transparent;
+}
+
 .home--event-inline-active .header .sport-rail-shell {
   max-height: 112px;
   overflow: hidden;

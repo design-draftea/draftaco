@@ -1,4 +1,12 @@
 export const exactDrafteaTranslations: Record<string, string> = {
+  // Tela Entradas — abas e estados vazios. 'PRÓXIMAS' é igual nos dois idiomas,
+  // então não precisa de entrada aqui.
+  'VENCEDORAS': 'GANADORAS',
+  'ANTERIORES': 'ANTERIORES',
+  'Você ainda não tem entradas próximas': 'Todavía no tienes entradas próximas',
+  'Você ainda não tem entradas vencedoras': 'Todavía no tienes entradas ganadoras',
+  'Você ainda não tem entradas anteriores': 'Todavía no tienes entradas anteriores',
+
   // NFL — aba Jogadas do bottom sheet (replay de campanhas)
   'Passe de 12 jardas': 'Pase de 12 yardas',
   'Mahomes → Rice · 2ª para 7': 'Mahomes → Rice · 2da para 7',

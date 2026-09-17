@@ -1,0 +1,384 @@
+/* Tela Entradas portada do protótipo Pulse.
+   Cards desenhados nos nós Figma 856:7277 (abiertas), 856:6341 (ganadas) e
+   856:7618 (pasadas). Só o layout veio: nada aqui está ligado a dados reais.
+
+   Os tokens do Pulse ficam escopados na raiz da tela em vez de entrar na camada
+   global de tokens do Draftaco. Assim o visual chega idêntico ao original e
+   nenhuma outra tela muda de cor. Quando a lógica entrar, é aqui que o
+   mapeamento para os --tokens-* do Draftaco deve acontecer. */
+.entries-page {
+  --color-fill-primary: #fbfbfb;
+  --color-fill-dark: #000;
+  --color-fill-secondary: rgb(251 251 251 / 0.7);
+  --color-fill-tertiary: rgb(251 251 251 / 0.5);
+  --color-fill-disabled: rgb(251 251 251 / 0.32);
+  --color-fill-opacity-quaternary: rgb(251 251 251 / 0.12);
+  --color-fill-opacity-tertiary: rgb(251 251 251 / 0.16);
+  --color-fill-success: #34d399;
+  --color-fill-error: #f87171;
+  --color-action-transparency-default: rgb(251 251 251 / 0.08);
+  --color-action-secondary-default: rgb(240 242 244 / 0.12);
+  --color-action-primary-default-start: #4b20ff;
+  --color-action-primary-default-end: #9730ff;
+  --color-background-success: rgb(52 211 153 / 0.16);
+  --color-background-error: rgb(248 113 113 / 0.16);
+  --color-background-opacity-secondary: rgb(251 251 251 / 0.1);
+  --color-background-opacity-quaternary: rgb(251 251 251 / 0.06);
+
+  /* No Pulse o app é preto; aqui a máscara da pílula acompanha o fundo do
+     Draftaco para não recortar um retângulo escuro sobre o header. */
+  --color-background-app: var(--ds-background-app, #131313);
+
+  /* O header é fixo e agora carrega os chips dentro dele, como na home; o
+     conteúdo precisa começar abaixo da pilha inteira. Medido no protótipo. */
+  --entries-header-height: 104px;
+
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  background: var(--color-background-app);
+}
+
+/* O brilho do topo é UMA imagem só, no modelo do Pulse (.pulse-app__background):
+   uma camada fixa colada no topo da viewport, que atravessa os chips e entra no
+   primeiro card antes de sumir. Como aqui o header é `position: fixed`, ele
+   precisa de fundo opaco próprio — senão o conteúdo aparece por baixo ao rolar —
+   então a mesma imagem é repintada nele com A MESMA escala e A MESMA origem.
+   `lightHeader.png` é 100% opaca (alpha 255 em todos os pixels), então repintar o
+   mesmo recorte não soma intensidade: as duas camadas coincidem pixel a pixel e
+   não existe emenda, qualquer que seja a altura real do header. É o mesmo registro
+   exato que o Pulse usa em `.open-entries__tabs--pinned`.
+
+   220px é a escala do brilho em todo o app — HeaderV2.css, Home.css, LoginPage.css
+   e ContentFilterChips.css usam esse valor. Esticar a imagem engorda o núcleo claro
+   e arrasta o pico de luminosidade para baixo. */
+.entries-page {
+  --entries-glow-height: 220px;
+}
+
+.entries-page::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--entries-glow-height);
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: 100% var(--entries-glow-height);
+  pointer-events: none;
+}
+
+.entries-page .header--v2 {
+  background: transparent;
+}
+
+.entries-page .header--v2::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-color: var(--ds-background-app, var(--tokens-background-background));
+  background-image: url('../../../assets/lightHeader.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: 100% var(--entries-glow-height);
+  pointer-events: none;
+}
+
+.open-entries {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  padding-top: var(--entries-header-height);
+  padding-bottom: var(--navbar-page-bottom-padding);
+}
+
+.open-entries__list {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+/* A grade de chips tem uma aba a menos que a da home e cabe inteira na tela,
+   então não precisa da rolagem horizontal. */
+.entries-page__chips .content-filter-chips__list {
+  overflow-x: visible;
+}
+
+/* Os chips vivem dentro do header, e o ::before do header já pinta o brilho atrás
+   deles. O fundo padrão de `.content-filter-chips` é opaco (preto chapado até
+   `100% - 16px`) e existe para esconder conteúdo rolando sob a faixa sticky da
+   home. Aqui ele não tem o que esconder — o header já é opaco — e só abre um
+   buraco preto no meio do degradê, criando o degrau na borda inferior dos chips.
+   O seletor é composto de propósito: `.entries-page__chips` sozinho empataria em
+   especificidade com `.content-filter-chips` e dependeria da ordem de injeção do
+   CSS pelo Vite. */
+.entries-page__chips.content-filter-chips {
+  background: transparent;
+}
+
+/* Paridade com a home, que usa `content-filter-chips--sport-markets`, cuja única
+   contribuição visual é esta. */
+.entries-page__chips .content-filter-chips__item {
+  text-transform: uppercase;
+}
+
+.open-entries__list--transition-out {
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 110ms ease-in,
+    transform 110ms ease-in;
+}
+
+.open-entries__list--transition-in {
+  animation: open-entries-content-fade-in 180ms ease-out;
+}
+
+@keyframes open-entries-content-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.open-entries__list--empty {
+  min-height: calc(
+    var(--app-viewport-height)
+    - var(--entries-header-height)
+    - 48px
+    - var(--navbar-page-bottom-padding)
+  );
+  align-items: center;
+  justify-content: center;
+}
+
+.open-entries__empty {
+  margin: 0;
+  color: var(--color-fill-tertiary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 21px;
+  text-align: center;
+}
+
+/* Card da tela Entradas — nó Figma 1993:6822.
+   As linhas de seleção lá dentro são as do recibo da tela de sucesso e trazem o
+   próprio CSS (`bet-success__*`); o que está aqui é só a moldura do card. */
+.entry-card {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
+  border-radius: 16px;
+  background: var(--ds-background-app, #000);
+  color: var(--ds-fill-primary, #fbfbfb);
+}
+
+.entry-card__header {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-fill-opacity-quaternary, rgb(251 251 251 / 0.12));
+}
+
+.entry-card__collapse,
+.entry-card__share {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.entry-card__collapse {
+  align-self: stretch;
+  padding: 8px 8px 8px 0;
+}
+
+.entry-card__collapse img,
+.entry-card__share img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Recolhido, a seta aponta para baixo. */
+.entry-card--collapsed .entry-card__collapse img {
+  transform: rotate(180deg);
+}
+
+.entry-card__header-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  padding-left: 8px;
+}
+
+.entry-card__title {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry-card__payout {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+  color: var(--ds-fill-primary, #fbfbfb);
+  white-space: nowrap;
+}
+
+.entry-card__payout span {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.entry-card__payout strong {
+  font-size: 18px;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 900;
+  line-height: 27px;
+}
+
+.entry-card__payout-label {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 21px;
+  white-space: nowrap;
+}
+
+.entry-card__meta strong {
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 400;
+}
+
+.entry-card__selections {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+/* As linhas do recibo nascem para a tela de sucesso, que não as separa; aqui o
+   desenho pede um divisor entre seleções. */
+.entry-card__selections > * {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ds-fill-opacity-tertiary, rgb(251 251 251 / 0.16));
+}
+
+.entry-card__selections > *:last-child {
+  border-bottom: 0;
+}
+
+.entry-card--collapsed .entry-card__selections,
+.entry-card--collapsed .entry-card__actions {
+  display: none;
+}
+
+.entry-card__actions {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  padding: 4px 12px 12px;
+}
+
+.entry-card__cash-out {
+  appearance: none;
+  height: 36px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(
+    75.115deg,
+    var(--ds-action-primary-default-start, #4b20ff) 0%,
+    var(--ds-action-primary-default-end, #9730ff) 100%
+  );
+  color: var(--ds-fill-primary, #fbfbfb);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.entry-card__cash-out:focus-visible {
+  outline: 2px solid var(--ds-fill-primary, #fbfbfb);
+  outline-offset: 2px;
+}
+
+.entry-card__footer {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  align-items: center;
+  gap: 16px;
+  padding: 2px 16px;
+  background: var(--ds-background-opacity-tertiary, rgb(251 251 251 / 0.08));
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.entry-card__footer > span {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1 1 0;
+  text-overflow: ellipsis;
+}
+
+.entry-card__code {
+  text-align: right;
+}
+
+@media (max-width: 499px) {
+  .entries-page {
+    position: fixed;
+    inset: 0;
+    height: var(--app-viewport-height);
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: var(--navbar-page-bottom-padding);
+  }
+}

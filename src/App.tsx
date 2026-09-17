@@ -12,6 +12,7 @@ import {
   type DepositAccountId,
 } from './components/DepositPanel'
 import { FeatureFlagsPanel } from './components/FeatureFlagsPanel'
+import { NFL_LIVE_EVENT_ID } from './features/sports/NflLiveFeed'
 import { ProfileBottomSheet } from './components/ProfileBottomSheet'
 import { LocationPermissionGate } from './components/LocationPermissionGate'
 import { BetslipProvider } from './shared/hooks/BetslipProvider'
@@ -37,6 +38,7 @@ const LiveEventPage = lazy(() => import('./features/sports/LiveEventPage').then(
 const EmbaixadinhaPage = lazy(() => import('./features/games/EmbaixadinhaPage').then((m) => ({ default: m.EmbaixadinhaPage })))
 const MemoriaPage = lazy(() => import('./features/games/MemoriaPage').then((m) => ({ default: m.MemoriaPage })))
 const PongPage = lazy(() => import('./features/games/PongPage').then((m) => ({ default: m.PongPage })))
+const EntriesPage = lazy(() => import('./features/entries/EntriesPage').then((m) => ({ default: m.EntriesPage })))
 
 const RouteFallback = () => (
   <div
@@ -49,6 +51,8 @@ const defaultProduct: ProductMode = 'apostas'
 const productRoutes: ProductMode[] = ['apostas', 'cassino']
 const sportsV2RouteSegment = 'apostas2'
 const promotionsRouteSegment = 'promocoes'
+const entriesRouteSegment = 'entradas'
+const nflPlaysRouteSegment = 'nfl'
 const embaixadinhaRouteSegment = 'embaixadinha'
 const memoriaRouteSegment = 'memoria'
 const pongRouteSegment = 'pong'
@@ -74,6 +78,18 @@ const isPromotionsPath = (pathname: string) => {
     routeSegments[0] === promotionsRouteSegment &&
     routeSegments.length <= 2
   )
+}
+
+const isNflPlaysPath = (pathname: string) => {
+  const routeSegments = getRouteSegments(pathname)
+
+  return routeSegments.length === 1 && routeSegments[0] === nflPlaysRouteSegment
+}
+
+const isEntriesPath = (pathname: string) => {
+  const routeSegments = getRouteSegments(pathname)
+
+  return routeSegments.length === 1 && routeSegments[0] === entriesRouteSegment
 }
 
 const isSportsV2Path = (pathname: string) => {
@@ -286,9 +302,11 @@ function AppContent() {
   const actualProductRoute = useMemo(() => resolveProductFromPath(pathname), [pathname])
   const isCurrentSportsV2Page = useMemo(() => isSportsV2Path(pathname), [pathname])
   const isCurrentPromotionsPage = useMemo(() => isPromotionsPath(pathname), [pathname])
+  const isCurrentEntriesPage = useMemo(() => isEntriesPath(pathname), [pathname])
   const isEmbaixadinhaPage = useMemo(() => isEmbaixadinhaPath(pathname), [pathname])
   const isMemoriaPage = useMemo(() => isMemoriaPath(pathname), [pathname])
   const isPongPage = useMemo(() => isPongPath(pathname), [pathname])
+  const isCurrentNflPlaysPage = useMemo(() => isNflPlaysPath(pathname), [pathname])
   const isCurrentCamisaPremiadaPage = useMemo(() => isCamisaPremiadaPath(pathname), [pathname])
   const isCurrentPenaltiPremiadoPage = useMemo(() => isPenaltiPremiadoPath(pathname), [pathname])
   const isCamisaPremiadaStaticPreview = isCurrentCamisaPremiadaPage && hasCamisaPremiadaStaticParam(search)
@@ -305,6 +323,8 @@ function AppContent() {
   const productRoute = useMemo(() => resolveProductFromPath(renderedPathname), [renderedPathname])
   const isSportsV2Page = useMemo(() => isSportsV2Path(renderedPathname), [renderedPathname])
   const isPromotionsPage = useMemo(() => isPromotionsPath(renderedPathname), [renderedPathname])
+  const isEntriesPage = useMemo(() => isEntriesPath(renderedPathname), [renderedPathname])
+  const isNflPlaysPage = useMemo(() => isNflPlaysPath(renderedPathname), [renderedPathname])
   const isCamisaPremiadaMode = useMemo(() => isCamisaPremiadaPath(renderedPathname), [renderedPathname])
   const isPenaltiPremiadoMode = useMemo(() => isPenaltiPremiadoPath(renderedPathname), [renderedPathname])
   const isPremiadaMode = isCamisaPremiadaMode || isPenaltiPremiadoMode
@@ -366,6 +386,8 @@ function AppContent() {
   useEffect(() => {
     if (isCurrentSportsV2Page) return
     if (isCurrentPromotionsPage) return
+    if (isCurrentEntriesPage) return
+    if (isCurrentNflPlaysPage) return
     if (isStandalonePage) return
     if (isAuthPage) return
     if (isCurrentCamisaPremiadaPage) return
@@ -379,7 +401,7 @@ function AppContent() {
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
+  }, [actualProductRoute, isCurrentCamisaPremiadaPage, isCurrentEntriesPage, isCurrentNflPlaysPage, isCurrentPenaltiPremiadoPage, isCurrentPromotionsPage, isCurrentSportsV2Page, isAuthPage, isStandalonePage, search, syncBrowserLocation])
 
   useEffect(() => {
     if (!isCurrentPromotionsPage) return
@@ -660,6 +682,9 @@ function AppContent() {
       handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
       return
     }
+    // Entradas continua visível na navbar e sem ação, como o item de cassino: a
+    // tela ainda está em construção e só é alcançada pela URL direta.
+    if (itemId === entriesRouteSegment) return
     if (itemId === promotionsRouteSegment) {
       if (!ENABLE_APP_PROMOTIONS_NAV_LINK) return
 
@@ -1018,6 +1043,23 @@ function AppContent() {
           <MemoriaPage />
         ) : isPongPage ? (
           <PongPage />
+
+        ) : isEntriesPage ? (
+          <EntriesPage
+            activeProduct={activeProduct}
+            authVariant={authVariant}
+            balanceCents={playableBalanceCents}
+            depositStatus={headerDepositStatus}
+            HeaderComponent={HeaderV2}
+            isProfileOpen={isProfileOpen}
+            onLoginClick={handleLoginOpen}
+            onCreateAccountClick={handleCreateAccountClick}
+            onDepositOpen={handleDepositPanelOpen}
+            onIdentityOpen={handleSignupIdentityOpen}
+            onLimitsOpen={handleSignupLimitsOpen}
+            onProfileOpen={handleProfileOpen}
+            onProductChange={handleProductChange}
+          />
         ) : isPromotionsPage ? (
           <PromotionsPage
             activeProduct={activeProduct}
@@ -1052,7 +1094,11 @@ function AppContent() {
         ) : (
           <Home
             activeProduct={activeProduct}
-            authVariant={authVariant}
+            authVariant={isNflPlaysPage ? 'logged-in' : authVariant}
+            initialActiveSport={isNflPlaysPage ? 'nfl' : undefined}
+            initialCompetition={isNflPlaysPage ? { id: 'nfl', name: 'NFL' } : undefined}
+            initialEventId={isNflPlaysPage ? NFL_LIVE_EVENT_ID : undefined}
+            initialStatsOpen={isNflPlaysPage}
             balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}
             HeaderComponent={HeaderV2}
@@ -1212,7 +1258,9 @@ function AppContent() {
       {!isStandalonePage ? (
         <Navbar
           activeProduct={activeProduct}
-          activeItemId={isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
+          activeItemId={isEntriesPage
+            ? entriesRouteSegment
+            : isPromotionsPage ? promotionsRouteSegment : activeProduct === 'cassino' ? 'ao-vivo' : 'home'}
           onItemSelect={handleNavbarItemSelect}
         />
       ) : null}

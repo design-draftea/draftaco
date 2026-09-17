@@ -540,7 +540,8 @@ img {
 }
 
 .home--v2 .sliding-chip-indicator,
-.promotions-page--v2 .sliding-chip-indicator {
+.promotions-page--v2 .sliding-chip-indicator,
+.entries-page .sliding-chip-indicator {
   --sliding-chip-v2-active-start: var(--tokens-border-border-gradient-02);
   --sliding-chip-v2-active-start-rgb: var(--tokens-border-border-gradient-02-rgb);
   --sliding-chip-v2-active-end: var(--tokens-border-border-gradient-01);
@@ -558,7 +559,8 @@ img {
 }
 
 :root[data-theme="light"] .home--v2 .sliding-chip-indicator,
-:root[data-theme="light"] .promotions-page--v2 .sliding-chip-indicator {
+:root[data-theme="light"] .promotions-page--v2 .sliding-chip-indicator,
+:root[data-theme="light"] .entries-page .sliding-chip-indicator {
   --sliding-chip-v2-active-start: var(--primitives-brand-violet-brand-violet-300);
   --sliding-chip-v2-active-start-rgb: var(--primitives-brand-violet-brand-violet-300-rgb);
   --sliding-chip-v2-active-end: var(--primitives-brand-purple-brand-purple-300);
@@ -658,7 +660,8 @@ img {
 }
 
 .home--v2 .sliding-chip-indicator::before,
-.promotions-page--v2 .sliding-chip-indicator::before {
+.promotions-page--v2 .sliding-chip-indicator::before,
+.entries-page .sliding-chip-indicator::before {
   inset: var(--sliding-chip-v2-active-inset, 1px);
   z-index: 0;
   background:
@@ -720,7 +723,8 @@ img {
 }
 
 .home--v2 .sliding-chip > *,
-.promotions-page--v2 .sliding-chip > * {
+.promotions-page--v2 .sliding-chip > *,
+.entries-page .sliding-chip > * {
   z-index: 2;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -803,12 +807,14 @@ img {
 }
 
 .home--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before,
-.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before {
+.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::before,
+.entries-page .sliding-chip-group--indicator-switching .sliding-chip-indicator::before {
   animation: none;
 }
 
 .home--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after,
-.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after {
+.promotions-page--v2 .sliding-chip-group--indicator-switching .sliding-chip-indicator::after,
+.entries-page .sliding-chip-group--indicator-switching .sliding-chip-indicator::after {
   animation: none;
 }
 
