@@ -6,6 +6,34 @@ export const exactDrafteaTranslations: Record<string, string> = {
   'Você ainda não tem entradas próximas': 'Todavía no tienes entradas próximas',
   'Você ainda não tem entradas vencedoras': 'Todavía no tienes entradas ganadoras',
   'Você ainda não tem entradas anteriores': 'Todavía no tienes entradas anteriores',
+  'ENCERRADAS': 'CERRADAS',
+  'Você ainda não tem entradas encerradas': 'Todavía no tienes entradas cerradas',
+  // Tela Entradas — tags das entradas encerradas, com os textos do Pulse.
+  // 'CANCELADO' (cabeçalho), 'CANCELADA' (seleção) e 'Reembolso' são iguais nos dois
+  // idiomas, então não precisam de entrada aqui.
+  'GANHOU!': '¡GANADOR!',
+  'NÃO GANHOU': 'NO GANADOR',
+  // Tela Entradas — card da aposta, com os termos do Pulse. 'Ganho potencial' e
+  // 'Entrada:' também aparecem no recibo da tela de sucesso, com o mesmo sentido.
+  // 'Reembolso:' e 'Odds:' são iguais nos dois idiomas.
+  'Ganho potencial': 'Ganancia potencial',
+  'Entrada:': 'Monto:',
+  'Criado:': 'Creado:',
+  'Encerrar aposta:': 'Cerrar apuesta:',
+  'Recolher aposta': 'Contraer apuesta',
+  'Expandir aposta': 'Expandir apuesta',
+  // Jogo encerrado: o check da seleção certa. 'Final' é igual nos dois idiomas.
+  'Acertou': 'Acertó',
+  'Errou': 'Falló',
+  // Card recolhido: o resultado de cada escolha, só para leitor de tela.
+  '(acertou)': '(acertó)',
+  '(errou)': '(falló)',
+  // Encerrar aposta, com os termos do app da Draftea. 'Cancelar' e 'Confirmar:' são
+  // iguais nos dois idiomas.
+  'ENCERRADA': 'CERRADA',
+  'Aposta encerrada por:': 'Apuesta cerrada por:',
+  // Card recolhido: rótulo da fileira de escolhas, só para leitor de tela.
+  'Escolhas da aposta': 'Selecciones de la apuesta',
 
   // NFL — aba Jogadas do bottom sheet (replay de campanhas)
   'Passe de 12 jardas': 'Pase de 12 yardas',

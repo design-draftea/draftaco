@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { getTeamAbbreviationAlias } from '../utils/teamAbbreviations'
 
-export type BetslipEventStatus = 'prematch' | 'live'
+// `finished` só existe nos exemplos da tela Entradas: o fluxo de aposta nunca o produz.
+export type BetslipEventStatus = 'prematch' | 'live' | 'finished'
 export type BetslipSelectionType = 'team' | 'player' | 'market'
 export type BetslipBadgeType = 'boost' | 'substitution'
 export type BetslipPromoVariant = 'garantida' | 'aumentada' | 'super-aumentada'
@@ -32,6 +33,8 @@ export interface BetslipSelection {
   homeScore?: string | number
   awayScore?: string | number
   playerName?: string
+  /** Estatística final do jogador no mercado da seleção (ex.: finalizações), em jogo encerrado. */
+  playerStatValue?: number
   selectionTeamName?: string
   homeTeamIcon?: string
   awayTeamIcon?: string

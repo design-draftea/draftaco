@@ -6,9 +6,13 @@
 // aqui não vaza estilo para a tela que consumir.
 import './BetSuccessPage.css'
 
+import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
+
 import iconBetslipAumentada from '../../../assets/iconsDraftaco/iconBetslipAumentada.svg'
 import iconBetslipGarantida from '../../../assets/iconsDraftaco/iconBetslipGarantida.svg'
 import iconBetslipSuperAumentada from '../../../assets/iconsDraftaco/iconBetslipSuperAumentada.svg'
+import iconCircleCheckSuccess from '../../../assets/iconsDraftaco/iconCircleCheckSuccess.svg'
+import iconCircleXError from '../../../assets/iconsDraftaco/iconCircleXError.svg'
 import iconShieldVersusPlaceholder from '../../../assets/iconsDraftaco/iconShieldVersusPlaceholder.svg'
 import imgAdebayoPromo from '../../../assets/iconsDraftaco/imgAdebayoPromo.png'
 import imgDembelePromo from '../../../assets/iconsDraftaco/imgDembelePromo.png'
@@ -40,15 +44,92 @@ import {
   isDrawSelection,
   type BetslipSelectionGroup,
 } from '../BetslipPageV2/betslipDisplayUtils'
+import {
+  getPlayerPropResult,
+  getResultFinalLiveStatus,
+  isResultFinalSelection,
+  isSelectedResultFinalTeam,
+  type PlayerPropResult,
+  type SelectionResultState,
+} from './selectionResult'
 
-const resultFinalMarketKeys = new Set([
-  'resultado-final',
-  'resultado-final-pagamento-antecipado',
-  '1x2',
-  'vencer',
-  'vencedor',
-  'vencedor-pagamento-antecipado',
-])
+// Quem reaproveita estas linhas pode trocar a odd de todas elas por outra peça: a
+// tela Entradas põe ali a tag de seleção cancelada. Sem o provedor, nada muda — é
+// o caso do recibo da tela de sucesso.
+const OddOverrideContext = createContext<ReactNode>(null)
+
+export function BetSuccessOddOverride({ children, override }: { children: ReactNode; override: ReactNode }) {
+  return <OddOverrideContext.Provider value={override}>{children}</OddOverrideContext.Provider>
+}
+
+function BetSuccessOdd({
+  className,
+  oddLabel,
+  result,
+}: {
+  className: string
+  oddLabel: string
+  result?: SelectionResultState | null
+}) {
+  const override = useContext(OddOverrideContext)
+  if (override) return override
+
+  // Jogo encerrado (tela Entradas, nós Figma 1993:6893 e 1993:6923): ao lado da odd, o
+  // check verde na seleção certa e o X vermelho na errada.
+  if (result) {
+    return (
+      <span className="bet-success__odd-status">
+        <strong className={className}>{oddLabel}</strong>
+        <img
+          src={result === 'hit' ? iconCircleCheckSuccess : iconCircleXError}
+          alt={result === 'hit' ? 'Acertou' : 'Errou'}
+        />
+      </span>
+    )
+  }
+
+  return <strong className={className}>{oddLabel}</strong>
+}
+
+// Barra de progresso da estatística do jogador — componente "points" do Figma
+// (nó 1993:6440). Abaixo da linha, a bolinha com o valor avança proporcionalmente
+// até a marca; passou da linha, a barra enche até a marca e a bolinha vai para a
+// faixa de 40px depois dela.
+function BetSuccessPlayerStatProgress({ result }: { result: PlayerPropResult }) {
+  const isOverLine = result.value > result.line
+  const ratio = Math.min(Math.max(result.value / result.line, 0), 1)
+
+  return (
+    <div
+      className={`bet-success__stat-progress bet-success__stat-progress--${result.state}`}
+      aria-label={`${result.value} / ${result.line}`}
+    >
+      <div className="bet-success__stat-track" aria-hidden="true">
+        <span className="bet-success__stat-track-bar" />
+        <span className="bet-success__stat-track-line" />
+        <span className="bet-success__stat-track-rest" />
+        {isOverLine ? (
+          <span className="bet-success__stat-fill bet-success__stat-fill--over">
+            <span className="bet-success__stat-fill-bar" />
+            <span className="bet-success__stat-fill-line" />
+            <span className="bet-success__stat-fill-rest">
+              <span className="bet-success__stat-fill-solid" />
+              <span className="bet-success__stat-value">{result.value}</span>
+            </span>
+          </span>
+        ) : (
+          <span
+            className="bet-success__stat-fill"
+            style={{ '--bet-success-stat-ratio': ratio } as CSSProperties}
+          >
+            <span className="bet-success__stat-fill-bar" />
+            <span className="bet-success__stat-value">{result.value}</span>
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const resultFinalBadgeOrder = ['90’', 'PA', 'B+']
 const promoIconByVariant: Record<BetslipPromoVariant, string> = {
@@ -67,31 +148,12 @@ const promoVariantClassNameByVariant: Record<BetslipPromoVariant, string> = {
   'super-aumentada': 'bet-success__selection-title--promo-super-aumentada',
 }
 
-const isResultFinalSelection = (selection: BetslipSelection) => {
-  const marketKey = normalizeBetslipIdPart(selection.marketLabel || selection.marketId)
-  const marketIdKey = normalizeBetslipIdPart(selection.marketId)
-
-  return resultFinalMarketKeys.has(marketKey) || resultFinalMarketKeys.has(marketIdKey)
-}
-
 const getOrderedResultFinalBadges = (selection: BetslipSelection) => {
   const badges = getSelectionBadges(selection)
   const orderedBadges = resultFinalBadgeOrder.filter((badge) => badges.includes(badge))
   const remainingBadges = badges.filter((badge) => !resultFinalBadgeOrder.includes(badge))
 
   return [...orderedBadges, ...remainingBadges]
-}
-
-const isSelectedResultFinalTeam = (selection: BetslipSelection, teamName: string) => (
-  normalizeBetslipIdPart(getSelectionTitle(selection)) === normalizeBetslipIdPart(teamName)
-)
-
-const parseResultFinalScore = (score: BetslipSelection['homeScore']) => {
-  if (score === undefined || score === null) return null
-  if (typeof score === 'string' && !score.trim()) return null
-
-  const numericScore = Number(score)
-  return Number.isFinite(numericScore) ? numericScore : null
 }
 
 const isPlayerAvatarLogo = (logo?: string) => Boolean(logo?.includes('playerAvatar'))
@@ -116,33 +178,6 @@ const getSelectionPromoVariant = (selection: BetslipSelection): BetslipPromoVari
   if (normalizedValues.some((value) => value.includes('garantida'))) return 'garantida'
 
   return null
-}
-
-const getResultFinalLiveStatus = (
-  selection: BetslipSelection,
-  homeTeam: string,
-  awayTeam: string
-) => {
-  const homeScore = parseResultFinalScore(selection.homeScore)
-  const awayScore = parseResultFinalScore(selection.awayScore)
-
-  if (homeScore === null || awayScore === null) return null
-
-  const isDraw = isDrawSelection(selection)
-  const isHomeSelected = !isDraw && isSelectedResultFinalTeam(selection, homeTeam)
-  const isAwaySelected = !isDraw && isSelectedResultFinalTeam(selection, awayTeam)
-  const isHit = (
-    (homeScore > awayScore && isHomeSelected)
-    || (awayScore > homeScore && isAwaySelected)
-    || (homeScore === awayScore && isDraw)
-  )
-
-  return {
-    state: isHit ? 'hit' : 'miss',
-    isDraw,
-    isHomeSelected,
-    isAwaySelected,
-  } as const
 }
 
 export function BetSuccessSelectionAvatar({
@@ -317,6 +352,10 @@ export function BetSuccessResultFinalLiveSelectionRow({
   const visibleBadges = isDrawHit
     ? badges.filter((badge) => badge === '90’')
     : badges
+  // Jogo encerrado (tela Entradas, nó Figma 1993:6893): "Final" no lugar do ao vivo e,
+  // na seleção certa, o check ao lado da odd e o selo PA em verde.
+  const isFinished = selection.eventStatus === 'finished'
+  const isFinishedHit = isFinished && liveStatus.state === 'hit'
 
   return (
     <article
@@ -325,16 +364,23 @@ export function BetSuccessResultFinalLiveSelectionRow({
         'bet-success__selection-row--result-final',
         'bet-success__selection-row--result-final-live',
         `bet-success__selection-row--result-final-live-${liveStatus.state}`,
-      ].join(' ')}
+        isFinished ? 'bet-success__selection-row--result-final-finished' : '',
+      ].filter(Boolean).join(' ')}
     >
       <div className="bet-success__result-live-meta">
-        <span className="bet-success__result-live-label">
-          <span className="bet-success__result-live-dot-wrap" aria-hidden="true">
-            <span className="bet-success__result-live-dot" />
-          </span>
-          <span>AO VIVO</span>
-        </span>
-        <span className="bet-success__result-live-clock">{getSelectionTimeLabel(selection)}</span>
+        {isFinished ? (
+          <span className="bet-success__result-final-status">Final</span>
+        ) : (
+          <>
+            <span className="bet-success__result-live-label">
+              <span className="bet-success__result-live-dot-wrap" aria-hidden="true">
+                <span className="bet-success__result-live-dot" />
+              </span>
+              <span>AO VIVO</span>
+            </span>
+            <span className="bet-success__result-live-clock">{getSelectionTimeLabel(selection)}</span>
+          </>
+        )}
       </div>
       <div className="bet-success__result-selection-line">
         <div className="bet-success__result-selection-main">
@@ -342,7 +388,15 @@ export function BetSuccessResultFinalLiveSelectionRow({
             {isDrawHit ? 'EMPATE' : getSelectionMarketLabel(selection)}
           </span>
           {visibleBadges.map((badge) => (
-            <em className="bet-success__selection-badge" key={badge}>{badge}</em>
+            <em
+              className={[
+                'bet-success__selection-badge',
+                isFinishedHit && badge === 'PA' ? 'bet-success__selection-badge--success' : '',
+              ].filter(Boolean).join(' ')}
+              key={badge}
+            >
+              {badge}
+            </em>
           ))}
           {isDrawHit ? null : (
             <strong
@@ -355,7 +409,11 @@ export function BetSuccessResultFinalLiveSelectionRow({
             </strong>
           )}
         </div>
-        <strong className="bet-success__result-odd">{selection.oddLabel}</strong>
+        <BetSuccessOdd
+          className="bet-success__result-odd"
+          oddLabel={selection.oddLabel}
+          result={isFinished ? liveStatus.state : null}
+        />
       </div>
       <div
         className="bet-success__result-live-match"
@@ -466,7 +524,7 @@ export function BetSuccessResultFinalPrematchSelectionRow({ selection }: { selec
           ))}
           <strong className="bet-success__result-choice">{title}</strong>
         </div>
-        <strong className="bet-success__result-odd">{selection.oddLabel}</strong>
+        <BetSuccessOdd className="bet-success__result-odd" oddLabel={selection.oddLabel} />
       </div>
       <div className="bet-success__result-match">
         <BetSuccessResultFinalTeamRow
@@ -491,7 +549,7 @@ export function BetSuccessResultFinalSelectionRow({ selection }: { selection: Be
 
   if (!homeTeam || !awayTeam) return <BetSuccessDefaultSelectionRow selection={selection} />
 
-  if (selection.eventStatus === 'live') {
+  if (selection.eventStatus === 'live' || selection.eventStatus === 'finished') {
     return (
       <BetSuccessResultFinalLiveSelectionRow
         awayTeam={awayTeam}
@@ -546,6 +604,27 @@ export function BetSuccessSelectionMeta({
   prematchLabel?: string
   selection: BetslipSelection
 }) {
+  if (selection.eventStatus === 'finished') {
+    const { homeTeam, awayTeam } = getSelectionEventTeams(selection)
+
+    return (
+      <div className="bet-success__result-live-meta bet-success__selection-live-meta">
+        <span className="bet-success__result-final-status">Final</span>
+        {homeTeam && awayTeam ? (
+          <>
+            <span className="bet-success__selection-live-separator" aria-hidden="true">•</span>
+            <span className="bet-success__selection-live-matchup">
+              {`${getTeamAbbreviation(homeTeam)} (${getSelectionScoreLabel(selection.homeScore)}) `}
+              <span className="bet-success__selection-final-away">
+                {`vs (${getSelectionScoreLabel(selection.awayScore)}) ${getTeamAbbreviation(awayTeam)}`}
+              </span>
+            </span>
+          </>
+        ) : null}
+      </div>
+    )
+  }
+
   if (selection.eventStatus !== 'live') {
     return <div className="bet-success__selection-meta">{prematchLabel ?? getSelectionEventMeta(selection)}</div>
   }
@@ -575,6 +654,7 @@ export function BetSuccessSelectionMeta({
 export function BetSuccessDefaultSelectionRow({ selection }: { selection: BetslipSelection }) {
   const badges = getSelectionBadges(selection)
   const promoVariant = getSelectionPromoVariant(selection)
+  const playerPropResult = getPlayerPropResult(selection)
 
   return (
     <article className="bet-success__selection-row">
@@ -588,8 +668,13 @@ export function BetSuccessDefaultSelectionRow({ selection }: { selection: Betsli
           </div>
           <BetSuccessTitleLine promoVariant={promoVariant} selection={selection} />
         </div>
-        <strong className="bet-success__selection-odd">{selection.oddLabel}</strong>
+        <BetSuccessOdd
+          className="bet-success__selection-odd"
+          result={playerPropResult?.state}
+          oddLabel={selection.oddLabel}
+        />
       </div>
+      {playerPropResult ? <BetSuccessPlayerStatProgress result={playerPropResult} /> : null}
     </article>
   )
 }
