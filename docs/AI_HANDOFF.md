@@ -1,11 +1,11 @@
 ## Estado atual
 
 - Atualizado em: 2026-09-18.
-- Branch `feature/entradas-funcionalidade`, criada a partir da `main` em `3871b85` (merge da
-  [PR #15](https://github.com/design-draftea/draftaco/pull/15)). Worktree
-  `.worktrees/feature-entradas-layout` (o nome da pasta é da branch anterior).
-- **Implementado e validado no navegador.** Commit, Pull Request e merge autorizados pela pessoa
-  responsável; o registro da entrega e da conferência em produção entra depois do deploy.
+- Checkout: pasta principal `draftaco`, branch `main`, igual à `origin/main` e ao publicado. Este
+  registro da entrega entrou em seguida, por uma PR só de documentação.
+- **Entregue e publicado.** [PR #16](https://github.com/design-draftea/draftaco/pull/16), merge
+  em `main` no commit `35ff197` e deploy concluído pelo GitHub Actions
+  ([run](https://github.com/design-draftea/draftaco/actions/runs/35381230330)).
 - Detalhes completos, decisões e medições:
   [`docs/handoffs/2026-09-18-entradas-funcionalidade.md`](handoffs/2026-09-18-entradas-funcionalidade.md).
   A entrega anterior da tela (PR #15):
@@ -40,13 +40,32 @@ Tela Entradas funcional, com resultados e encerramento, nas duas marcas:
   `npm run build` limpos. `npm run lint` completo segue com erros preexistentes em arquivos que
   esta branch não altera.
 
+### Verificação depois do deploy
+
+- `https://design-draftea.github.io/draftaco/pitaco/entradas`: abas PRÓXIMAS, VENCEDORAS,
+  ANTERIORES e ENCERRADAS; pessoa logada; Anteriores com os exemplos novos (GANHOU!, NÃO GANHOU
+  R$165,30 com X e check, CANCELADO); bundle `index-B8WSXznO.js`.
+- `https://design-draftea.github.io/draftaco/draftea/entradas`: abas GANADORAS e CERRADAS e estado
+  vazio em espanhol.
+- O único 404 é o do próprio documento da rota, servido pelo `404.html` do deploy (fallback de SPA
+  do GitHub Pages); todos os arquivos carregam com 200.
+- Local igual a produção: o servidor `draftaco-dev` rodando da `main` mostrou o mesmo.
+
+### Limpeza feita
+
+- Worktree `.worktrees/feature-entradas-layout` removido; branches locais
+  `feature/entradas-funcionalidade` e `feature/entradas-layout` apagadas; as remotas das duas
+  (incorporadas pelas PRs #15 e #16) apagadas com autorização ("deixe limpo").
+- Na pasta principal, as cópias locais dos ícones da navbar (idênticas às da `main`, conferido por
+  hash) foram descartadas para o `git pull` passar.
+- Preservados, por não serem desta tarefa: os não rastreados `.agents/`, `.pnpm-store/`,
+  `design-qa.md`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` e `skills-lock.json`; a pasta
+  `.worktrees/docs-unifica-agentes` e o worktree registrado em `draftaco-v0`; a branch local
+  `fix/nfl-relogio-regra-e-placar`.
+
 ### Pendências e próximo passo
 
-- Depois do merge: conferir o deploy na rota `/pitaco/entradas` e `/draftea/entradas` e registrar a
-  entrega aqui.
-- **Pasta principal:** os ícones da navbar foram deixados lá pela pessoa responsável, sem commit
-  (`src/assets/navApostas.svg` modificado e três `nav*Active.svg` novos). São idênticos aos desta
-  branch; depois do merge, precisam ser descartados para o `git pull` passar.
+- Nenhuma pendência obrigatória desta entrega.
 - Fora do escopo, visto nos prints da Draftea: aba ABIERTAS, "Inicia en" no card recolhido, tag
   SGP, odds riscadas quando mudam, faixa "Tu multiplicador cambió" e o saldo (a aposta não debita e
   o encerramento não credita).
