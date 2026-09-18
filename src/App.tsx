@@ -25,6 +25,7 @@ import { BETSLIP_LIVE_EVENT_OPEN_EVENT } from './shared/utils/betslipLiveEvent'
 import type { PixKeyType } from './shared/utils/pixKeyValidation'
 import { LoginPage } from './features/auth/LoginPage'
 import type { BetSuccessReceipt } from './features/betslip/BetSuccessPage'
+import { useMyEntries } from './features/entries/useMyEntries'
 
 const Home = lazy(() => import('./features/home/Home').then((m) => ({ default: m.Home })))
 const SportsPageV2 = lazy(() => import('./features/sports/SportsPageV2').then((m) => ({ default: m.SportsPageV2 })))
@@ -173,6 +174,11 @@ const buildSportsV2Path = () => {
 const buildPromotionsPath = () => {
   const basePath = getBasePath()
   return `${basePath}/${promotionsRouteSegment}`
+}
+
+const buildEntriesPath = () => {
+  const basePath = getBasePath()
+  return `${basePath}/${entriesRouteSegment}`
 }
 
 const buildLoginPath = () => {
@@ -324,6 +330,13 @@ function AppContent() {
   const isSportsV2Page = useMemo(() => isSportsV2Path(renderedPathname), [renderedPathname])
   const isPromotionsPage = useMemo(() => isPromotionsPath(renderedPathname), [renderedPathname])
   const isEntriesPage = useMemo(() => isEntriesPath(renderedPathname), [renderedPathname])
+  // Entradas é a lista de apostas da pessoa, então quem entra na tela já fica logado,
+  // como depois de um login bem-sucedido, e segue assim no resto do app. O ajuste é
+  // feito durante a renderização para o header não piscar deslogado antes.
+  if (isEntriesPage && authVariant === 'logged-out') {
+    setAuthVariant('logged-in')
+    setWithdrawableBalanceCents(loggedInInitialWithdrawableBalanceCents)
+  }
   const isNflPlaysPage = useMemo(() => isNflPlaysPath(renderedPathname), [renderedPathname])
   const isCamisaPremiadaMode = useMemo(() => isCamisaPremiadaPath(renderedPathname), [renderedPathname])
   const isPenaltiPremiadoMode = useMemo(() => isPenaltiPremiadoPath(renderedPathname), [renderedPathname])
@@ -336,6 +349,14 @@ function AppContent() {
   const [promotionsProduct, setPromotionsProduct] = useState<ProductMode>(() => productRoute.product)
   const [isFullBetslipOpen, setIsFullBetslipOpen] = useState(false)
   const [betSuccessReceipt, setBetSuccessReceipt] = useState<BetSuccessReceipt | null>(null)
+  // Apostas feitas nesta sessão (Entradas › Próximas) e as que a pessoa encerrou
+  // (Entradas › Encerradas). Só em memória: recarregar a página começa do zero.
+  const {
+    openEntries: placedEntries,
+    cashedOutEntries,
+    addFromReceipt: addEntryFromReceipt,
+    cashOut: cashOutEntry,
+  } = useMyEntries()
   const [isCompactBetslipSuppressed, setIsCompactBetslipSuppressed] = useState(false)
   const [isDepositPanelOpen, setIsDepositPanelOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
@@ -682,9 +703,16 @@ function AppContent() {
       handleProductChange(itemId === 'home' ? 'apostas' : 'cassino')
       return
     }
-    // Entradas continua visível na navbar e sem ação, como o item de cassino: a
-    // tela ainda está em construção e só é alcançada pela URL direta.
-    if (itemId === entriesRouteSegment) return
+    if (itemId === entriesRouteSegment) {
+      const nextPath = withSearch(buildEntriesPath(), getGarantidaBannerSearch(search))
+
+      if (getCurrentPathWithSearch() !== nextPath) {
+        window.history.pushState({}, '', nextPath)
+      }
+
+      syncBrowserLocation()
+      return
+    }
     if (itemId === promotionsRouteSegment) {
       if (!ENABLE_APP_PROMOTIONS_NAV_LINK) return
 
@@ -706,7 +734,8 @@ function AppContent() {
 
   const handleBetSuccess = useCallback((receipt: BetSuccessReceipt) => {
     setBetSuccessReceipt(receipt)
-  }, [])
+    addEntryFromReceipt(receipt)
+  }, [addEntryFromReceipt])
 
   const handleBetSuccessShare = useCallback(() => {
     // Placeholder until the prototype gets a real share integration.
@@ -1047,6 +1076,9 @@ function AppContent() {
         ) : isEntriesPage ? (
           <EntriesPage
             activeProduct={activeProduct}
+            openEntries={placedEntries}
+            cashedOutEntries={cashedOutEntries}
+            onCashOut={cashOutEntry}
             authVariant={authVariant}
             balanceCents={playableBalanceCents}
             depositStatus={headerDepositStatus}

@@ -217,7 +217,8 @@ export function Navbar({
                       aria-hidden="true"
                     />
                   ) : null}
-                  {renderNavbarIcon(item.icon)}
+                  {/* Selecionado, o item troca para a versão preenchida do ícone, quando existe. */}
+                  {renderNavbarIcon(isActive && item.activeIcon ? item.activeIcon : item.icon)}
                   <span className="navbar__label">{item.label}</span>
                 </button>
               )

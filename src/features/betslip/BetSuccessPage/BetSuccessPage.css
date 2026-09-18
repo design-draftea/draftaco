@@ -1908,3 +1908,190 @@
   }
 
 }
+
+/* As linhas de seleção também são usadas fora do recibo (tela Entradas), onde não há
+   `.bet-success` em volta para definir as variáveis que elas herdam da raiz. Sem as
+   cores de acerto e erro, o time escolhido perde o verde e a barra ao lado do placar
+   some; sem o fundo, a bolinha do trilho do parlay fica transparente e o tracejado a
+   atravessa. Os valores são os mesmos da raiz, então no recibo nada muda. */
+.bet-success__selection-row {
+  --bet-success-background: var(--ds-background-app, var(--tokens-background-background, #000));
+  --bet-success-live-hit: var(--ds-fill-success, var(--ds-fill-colors-fill-success, #34d399));
+  --bet-success-live-miss: var(--ds-live, var(--tokens-feedback-feedback-error-icon, #f43f5e));
+}
+
+/* Jogo encerrado — tela Entradas, nó Figma 1993:6893. O recibo da tela de sucesso
+   nunca recebe jogo encerrado (`eventStatus: 'finished'`), então nada daqui muda nele. */
+/* Encerrado, a seleção errada usa o vermelho de erro do desenho (`fill-error`, nó Figma
+   1993:6923) na escolha e na barra, e não o vermelho de ao vivo. Vem depois da regra de
+   `.bet-success__selection-row` para ganhar dela no mesmo elemento. */
+.bet-success__selection-row--result-final-finished {
+  --bet-success-live-miss: var(--ds-fill-error, #f87171);
+}
+
+.bet-success__result-final-status {
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.bet-success__selection-final-away {
+  color: var(--ds-fill-tertiary, rgb(251 251 251 / 0.5));
+}
+
+/* Na seleção certa, o selo PA fica verde. */
+.bet-success__selection-badge.bet-success__selection-badge--success {
+  background: var(--ds-background-success, rgb(52 211 153 / 0.16));
+  color: var(--ds-fill-success, #34d399);
+}
+
+.bet-success__odd-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+/* A odd deixa de reservar os 56px fixos: o check ocupa parte desse espaço. */
+.bet-success__odd-status > .bet-success__result-odd,
+.bet-success__odd-status > .bet-success__selection-odd {
+  flex: 0 0 auto;
+}
+
+.bet-success__odd-status > img {
+  display: block;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+}
+
+/* Barra da estatística do jogador — componente "points" (nó Figma 1993:6440). A pista
+   tem o trecho até a linha, a marca da linha (2×8) e 40px depois dela; o recuo de 38px
+   alinha a barra com o texto, depois do avatar de 32px e do espaço de 6px. */
+.bet-success__stat-progress {
+  --bet-success-stat-color: var(--ds-fill-success, #34d399);
+  --bet-success-stat-fade: rgb(52 211 153 / 0);
+
+  padding-left: 38px;
+}
+
+.bet-success__stat-progress--miss {
+  --bet-success-stat-color: var(--ds-fill-error, #f87171);
+  --bet-success-stat-fade: rgb(248 113 113 / 0);
+}
+
+.bet-success__stat-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 15px;
+}
+
+.bet-success__stat-track-bar,
+.bet-success__stat-track-line,
+.bet-success__stat-track-rest,
+.bet-success__stat-fill-bar,
+.bet-success__stat-fill-line,
+.bet-success__stat-fill-solid {
+  display: block;
+  border-radius: 56px;
+}
+
+.bet-success__stat-track-bar,
+.bet-success__stat-track-line,
+.bet-success__stat-track-rest {
+  background: var(--ds-fill-opacity-secondary, rgb(251 251 251 / 0.24));
+}
+
+.bet-success__stat-track-bar {
+  flex: 1 1 0;
+  min-width: 1px;
+  height: 2px;
+}
+
+.bet-success__stat-track-line,
+.bet-success__stat-fill-line {
+  flex: 0 0 2px;
+  width: 2px;
+  height: 8px;
+}
+
+.bet-success__stat-track-rest {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 2px;
+}
+
+/* Abaixo da linha, a faixa pintada termina na bolinha, que fica na proporção
+   valor/linha do trecho antes da marca: a pista menos 50px (4 + 2 + 4 + 40). Os 19px
+   mínimos são os do desenho com a bolinha no zero. */
+.bet-success__stat-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  width: max(19px, calc((100% - 50px) * var(--bet-success-stat-ratio, 0)));
+}
+
+.bet-success__stat-fill-bar {
+  flex: 1 1 0;
+  min-width: 1px;
+  height: 2px;
+  margin-right: -1px;
+  background: linear-gradient(to right, var(--bet-success-stat-fade), var(--bet-success-stat-color));
+}
+
+.bet-success__stat-value {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 4px;
+  border: 1px solid var(--bet-success-stat-color);
+  border-radius: 12px;
+  background: var(--ds-background-app, #000);
+  color: var(--bet-success-stat-color);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 15px;
+}
+
+/* Passou da linha: a pista inteira até a marca fica pintada, a marca ganha a cor do
+   resultado e a bolinha fecha um trecho sólido de 33px na faixa depois dela. */
+.bet-success__stat-fill--over {
+  right: 0;
+  width: auto;
+  gap: 4px;
+}
+
+.bet-success__stat-fill-line {
+  background: var(--bet-success-stat-color);
+}
+
+.bet-success__stat-fill-rest {
+  display: flex;
+  flex: 0 0 40px;
+  align-items: center;
+  width: 40px;
+}
+
+.bet-success__stat-fill-solid {
+  flex: 0 0 16px;
+  height: 2px;
+  margin-right: -1px;
+  background: var(--bet-success-stat-color);
+}
+
+.bet-success__stat-fill-rest .bet-success__stat-value {
+  padding: 0 6px;
+}
