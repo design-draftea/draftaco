@@ -18,6 +18,8 @@ export interface ProductRailSection<T extends ProductRailBaseItem = ProductRailB
 export interface NavItem {
   id: string
   icon: string
+  /** Versão preenchida do ícone, usada quando o item está selecionado. */
+  activeIcon?: string
   label: string
 }
 

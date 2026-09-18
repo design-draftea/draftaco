@@ -53,9 +53,12 @@ import iconRoleta from '../assets/iconSports/roleta.png'
 import iconSlots from '../assets/iconSports/slots.png'
 
 import navApostas from '../assets/navApostas.svg'
+import navApostasActive from '../assets/navApostasActive.svg'
 import navBusca from '../assets/navBusca.svg'
 import navCassino from '../assets/navCassino.svg'
+import navCassinoActive from '../assets/navCassinoActive.svg'
 import navEntrada from '../assets/navEntrada.svg'
+import navEntradaActive from '../assets/navEntradaActive.svg'
 import navPitacoClubIniciante from '../brands/pitaco/assets/navPitacoClubIniciante.png'
 
 export const productLabels: Record<ProductMode, string> = {
@@ -67,9 +70,9 @@ export const productNavbarConfigs: Record<ProductMode, NavbarConfig> = {
   apostas: {
     activeItemId: 'home',
     mainItems: [
-      { id: 'home', icon: navApostas, label: 'Apostas' },
-      { id: 'entradas', icon: navEntrada, label: 'Entradas' },
-      { id: 'ao-vivo', icon: navCassino, label: 'Cassino' },
+      { id: 'home', icon: navApostas, activeIcon: navApostasActive, label: 'Apostas' },
+      { id: 'entradas', icon: navEntrada, activeIcon: navEntradaActive, label: 'Entradas' },
+      { id: 'ao-vivo', icon: navCassino, activeIcon: navCassinoActive, label: 'Cassino' },
       { id: 'promocoes', icon: navPitacoClubIniciante, label: 'Pitaco Club' },
     ],
     searchItem: { id: 'buscar', icon: navBusca, label: 'Buscar' },
@@ -77,9 +80,9 @@ export const productNavbarConfigs: Record<ProductMode, NavbarConfig> = {
   cassino: {
     activeItemId: 'home',
     mainItems: [
-      { id: 'home', icon: navApostas, label: 'Apostas' },
-      { id: 'entradas', icon: navEntrada, label: 'Entradas' },
-      { id: 'ao-vivo', icon: navCassino, label: 'Cassino' },
+      { id: 'home', icon: navApostas, activeIcon: navApostasActive, label: 'Apostas' },
+      { id: 'entradas', icon: navEntrada, activeIcon: navEntradaActive, label: 'Entradas' },
+      { id: 'ao-vivo', icon: navCassino, activeIcon: navCassinoActive, label: 'Cassino' },
       { id: 'promocoes', icon: navPitacoClubIniciante, label: 'Pitaco Club' },
     ],
     searchItem: { id: 'buscar', icon: navBusca, label: 'Buscar' },
